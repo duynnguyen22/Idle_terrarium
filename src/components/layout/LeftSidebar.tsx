@@ -1,3 +1,6 @@
+import { CatalogGrid } from '@/components/catalog/CatalogGrid'
+import { PlantingStageToggle } from '@/components/catalog/PlantingStageToggle'
+import { VesselTab } from '@/components/catalog/VesselTab'
 import { selectActiveTab } from '@/store/selectors'
 import { useStudioStore } from '@/store/useStudioStore'
 
@@ -8,7 +11,49 @@ const TABS = [
   { id: 'fauna', icon: '🐸', label: 'Fauna' },
 ] as const
 
-/** Tab-bar shell; the panels for each tab arrive in Task 8. */
+const BLURB = 'text-[11px] leading-relaxed text-stone'
+const STRONG = 'font-semibold text-forest-deep'
+
+function ActivePanel({ tab }: { tab: string }) {
+  switch (tab) {
+    case 'flora':
+      return (
+        <div className="space-y-3">
+          <PlantingStageToggle />
+          <p className={BLURB}>
+            Click any plant to place it, or drag it onto{' '}
+            <strong className={STRONG}>glowing green rock ledges</strong> to mount epiphytes onto
+            cliffs and driftwood.
+          </p>
+          <CatalogGrid category="flora" />
+        </div>
+      )
+    case 'hardscape':
+      return (
+        <div className="space-y-3">
+          <p className={BLURB}>
+            Build vertical moss walls, cascading root waterfalls, and golden river stone banks. Drag
+            plants onto rock ledges to anchor them.
+          </p>
+          <CatalogGrid category="hardscape" />
+        </div>
+      )
+    case 'fauna':
+      return (
+        <div className="space-y-3">
+          <p className={BLURB}>
+            Autonomous creatures wander, rest, graze moss, swim in the semi-aquatic lake, and clean
+            up fungal spores.
+          </p>
+          <CatalogGrid category="fauna" />
+        </div>
+      )
+    default:
+      return <VesselTab />
+  }
+}
+
+/** Sidebar: tab bar plus the active tab's panel. */
 export function LeftSidebar() {
   const activeTab = useStudioStore(selectActiveTab)
   const setActiveTab = useStudioStore((s) => s.setActiveTab)
@@ -42,8 +87,9 @@ export function LeftSidebar() {
           )
         })}
       </div>
-      {/* TODO(task-8): tab panels render here. */}
-      <div className="flex-1 space-y-5 overflow-y-auto p-3.5" />
+      <div className="flex-1 space-y-5 overflow-y-auto p-3.5">
+        <ActivePanel tab={activeTab} />
+      </div>
     </aside>
   )
 }

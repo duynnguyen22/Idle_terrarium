@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { CareToolbar } from '@/components/stage/CareToolbar'
+import { ItemInspector } from '@/components/stage/ItemInspector'
 import { Toast } from '@/components/stage/Toast'
 import { LeftSidebar } from './LeftSidebar'
 import { RightTelemetry } from './RightTelemetry'
@@ -12,6 +14,8 @@ export function StudioLayout({ children }: { children: ReactNode }) {
         <LeftSidebar />
         <main className="relative flex-1 overflow-hidden">
           {children}
+          <CareToolbar />
+          <ItemInspector />
           <Toast />
         </main>
         <RightTelemetry />
