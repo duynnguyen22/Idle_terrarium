@@ -36,7 +36,7 @@ describe('importPrototypeSave', () => {
   })
 
   it('falls back to defaults for bad fields', () => {
-    localStorage.setItem(KEY, JSON.stringify({ vessel: 'nope', terrainContour: [1], items: [{ uid: 'a' }], dayCount: 0 }))
+    localStorage.setItem(KEY, JSON.stringify({ vessel: 'nope', terrainContour: [1], items: [{ uid: 'a', id: 'fern' }], dayCount: 0 }))
     const r = importPrototypeSave(localStorage)
     expect(r?.vessel).toBe('paludarium_tank')
     expect(r?.hasLid).toBe(true)
