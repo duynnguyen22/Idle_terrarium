@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { SUBSTRATE_LAYERS } from '@/data/substrates'
 import { VESSELS } from '@/data/vessels'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
 import { configureSpriteCache } from '@/engine/sprites/spriteCache'
@@ -57,6 +58,27 @@ describe('renderFrame', () => {
     expect(calls.filter((c) => c === 'save')).toHaveLength(
       calls.filter((c) => c === 'restore').length,
     )
+  })
+
+  it('paints the substrate layers twice per frame (prototype second pass over specimens)', () => {
+    const state: StudioState = createDefaultState()
+    state.substrates = { ...state.substrates, water: 0 }
+    const solid = SUBSTRATE_LAYERS.filter(
+      (l) =>
+        l.id !== 'water' &&
+        l.id !== 'siphon' &&
+        state.substrates[l.id as keyof typeof state.substrates] > 0.2,
+    ).length
+    const { ctx, calls } = makeRecordingContext()
+    renderFrame(
+      ctx,
+      createWorld(),
+      { ...state, hasGrowLamp: false },
+      computeVesselRect(800, 600),
+      0,
+    )
+    // sky gradient + one gradient per layer, twice
+    expect(calls.filter((c) => c === 'createLinearGradient')).toHaveLength(1 + 2 * solid)
   })
 
   it.each(VESSELS.map((v) => v.id))('renders every lighting phase on %s', (vessel) => {

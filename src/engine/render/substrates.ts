@@ -4,10 +4,11 @@ import { getSoilSurfaceNormalizedY } from '../geometry'
 import { num, str, vesselMetrics, type RenderFn } from './metrics'
 
 /**
- * Soil phase of prototype drawSubstratesAndLake: substrate layers with the sculpted contour on the top
- * layer, grain texture, user-scattered surface grains, moss carpet and mold patches.
+ * Substrate layers with the sculpted contour on the top layer, plus grain texture. The prototype's
+ * drawSubstratesAndLake runs this un-gated in both of its phases, so it is drawn a second time (over the
+ * specimens) by drawWater.
  */
-export const drawSubstrates: RenderFn = (ctx, world, state, R) => {
+export const drawSubstrateLayers: RenderFn = (ctx, world, state, R) => {
   const { cx, cy, r: Rad } = vesselMetrics(R)
   const bottomY = cy + Rad * 0.84
   let currentY = bottomY
@@ -76,7 +77,13 @@ export const drawSubstrates: RenderFn = (ctx, world, state, R) => {
 
     currentY = nextY
   })
+}
 
+/** Soil phase of prototype drawSubstratesAndLake: layers, then surface grains, moss carpet and mold patches. */
+export const drawSubstrates: RenderFn = (ctx, world, state, R, timestamp) => {
+  drawSubstrateLayers(ctx, world, state, R, timestamp)
+  const { cx, cy, r: Rad } = vesselMetrics(R)
+  const contour = world.terrainContour
   const surfaceY = (nx: number) => getSoilSurfaceNormalizedY(state.substrates, contour, nx)
 
   // Custom user-scattered surface pebbles, sand & gravel grains

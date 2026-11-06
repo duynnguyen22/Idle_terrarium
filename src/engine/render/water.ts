@@ -1,7 +1,10 @@
+import { drawSubstrateLayers } from './substrates'
 import { vesselMetrics, type RenderFn } from './metrics'
 
-/** Water phase of prototype drawSubstratesAndLake: the translucent semi-aquatic water table overlay. */
-export const drawWater: RenderFn = (ctx, _world, state, R, timestamp) => {
+/** Water phase of prototype drawSubstratesAndLake: second layer pass, then the translucent semi-aquatic water table overlay. */
+export const drawWater: RenderFn = (ctx, world, state, R, timestamp) => {
+  // Prototype parity: the layer loop is not phase-gated, so layers and grains are painted again over the specimens.
+  drawSubstrateLayers(ctx, world, state, R, timestamp)
   if (!(state.substrates.water > 0.4)) return
   const { cx, cy, r: Rad } = vesselMetrics(R)
   const bottomY = cy + Rad * 0.84
