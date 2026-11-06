@@ -1,8 +1,60 @@
+import { useStudioStore, type StudioStore } from '@/store/useStudioStore'
 import type { EngineWorld } from '../world'
+import { advanceClock } from './clock'
+import type { Rng } from './constants'
+import { updateFauna } from './fauna'
+import { updateGrowth } from './growth'
+import { updateMold } from './mold'
+import { initWorldParticles, updateAmbientMotes, updateFireflies } from './particles'
+import { siphonStep, spawnPourStream, stepPourParticles } from './pouring'
+import { pushTelemetry } from './telemetry'
 
-/** Per-frame simulation step. Filled in by the simulation task; a no-op until then. */
-export function tick(world: EngineWorld, dtMs: number, timestamp: number): void {
-  void world
-  void dtMs
-  void timestamp
+export interface TickDeps {
+  store?: StudioStore
+  rng?: Rng
+  now?: Date
+}
+
+/** Child items follow their parent via offsetX/offsetY; orphans are detached (prototype 2361-2370). */
+export function syncChildren(world: EngineWorld): void {
+  for (const item of world.items) {
+    if (!item.parentUid || item.uid === world.draggingId) continue
+    const parent = world.items.find((p) => p.uid === item.parentUid)
+    if (parent) {
+      item.x = parent.x + (item.offsetX || 0)
+      item.y = parent.y + (item.offsetY || 0)
+    } else {
+      item.parentUid = null
+    }
+  }
+}
+
+/**
+ * Per-frame simulation step, in the prototype's order: pour spawn / siphon, clock, fauna AI, ambient motes,
+ * growth, mold cleanup (all biology skipped at timeSpeed 0, motes excepted), then the draw-phase mutations
+ * (child sync, firefly drift, stream integration) and the throttled store flush.
+ */
+export function tick(world: EngineWorld, dtMs: number, timestamp: number, deps: TickDeps = {}): void {
+  const store = deps.store ?? useStudioStore.getState()
+  const rng = deps.rng ?? Math.random
+  if (world.ambientMotes.length === 0 && world.fireflies.length === 0) initWorldParticles(world, rng)
+
+  if (store.timeSpeed !== 0) {
+    if (world.isPouring && store.activeTool === 'pour' && store.activePourMaterial) {
+      if (store.activePourMaterial === 'siphon') siphonStep(world, store)
+      else spawnPourStream(world, store.activePourMaterial, rng)
+    }
+    advanceClock(store, deps.now)
+    updateFauna(world, store, dtMs, timestamp, rng)
+  }
+  updateAmbientMotes(world, dtMs)
+  if (store.timeSpeed !== 0) {
+    updateGrowth(world, store, dtMs)
+    updateMold(world, store, dtMs)
+  }
+
+  syncChildren(world)
+  updateFireflies(world, dtMs)
+  stepPourParticles(world, store, dtMs, rng)
+  pushTelemetry(world, store, timestamp)
 }
