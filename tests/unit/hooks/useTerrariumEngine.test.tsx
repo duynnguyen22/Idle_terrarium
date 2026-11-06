@@ -65,12 +65,25 @@ describe('useTerrariumEngine', () => {
     expect(cancel).toHaveBeenCalled()
   })
 
-  it('never writes to the store during a frame', () => {
-    const setState = vi.spyOn(useStudioStore, 'setState')
+  it('never writes worldSnapshot during frames and flushes telemetry at most once per 250 ms', () => {
     render(<Harness />)
-    runFrame(16)
-    runFrame(500)
-    expect(setState).not.toHaveBeenCalled()
+    // Subscribe after mount so the first-run seeding commit is not counted.
+    let snapshotWrites = 0
+    let telemetryWrites = 0
+    let otherWrites = 0
+    const unsubscribe = useStudioStore.subscribe((s, prev) => {
+      if (s.worldSnapshot !== prev.worldSnapshot) snapshotWrites++
+      else if (s.telemetry !== prev.telemetry) telemetryWrites++
+      else otherWrites++
+    })
+    const simulatedMs = 2000
+    for (let t = 16; t <= simulatedMs; t += 16) runFrame(t)
+    unsubscribe()
+    expect(snapshotWrites).toBe(0)
+    expect(telemetryWrites).toBeLessThanOrEqual(Math.ceil(simulatedMs / 250))
+    // The seeded scene has cleanup crew the default telemetry does not, so the flush really happened.
+    expect(telemetryWrites).toBeGreaterThanOrEqual(1)
+    expect(otherWrites).toBe(0)
   })
 
   it('pauses while the document is hidden and resumes when visible', () => {
