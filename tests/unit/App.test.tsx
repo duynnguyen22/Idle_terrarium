@@ -27,4 +27,9 @@ describe('App', () => {
     render(<App />)
     expect(screen.getByRole('heading', { name: /botanica/i })).toBeInTheDocument()
   })
+
+  it('exposes the stage canvas as a labelled application region', () => {
+    render(<App />)
+    expect(screen.getByRole('application', { name: 'Terrarium canvas' })).toBeInTheDocument()
+  })
 })

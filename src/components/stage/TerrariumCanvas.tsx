@@ -161,7 +161,7 @@ export function TerrariumCanvas() {
     <canvas
       ref={canvasRef}
       aria-label="Terrarium canvas"
-      role="img"
+      role="application"
       data-cursor={cursor}
       onPointerDown={onPointerDown}
       className={`absolute inset-0 block h-full w-full touch-none ${CURSOR_CLASS[cursor]}`}
