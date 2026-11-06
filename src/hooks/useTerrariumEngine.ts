@@ -1,6 +1,12 @@
 import { useEffect, type RefObject } from 'react'
 import { ALL_CATALOG_DEFS, type CatalogId } from '@/data/catalog'
-import { isOwnSnapshot, registerWorld, unregisterWorld } from '@/engine/engineBridge'
+import {
+  commitWorld,
+  isOwnSnapshot,
+  tryGetWorld,
+  registerWorld,
+  unregisterWorld,
+} from '@/engine/engineBridge'
 import { seedInitialScene } from '@/engine/presets'
 import { restoreWorld } from '@/engine/persistence'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
@@ -61,6 +67,13 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
 
       const state = useStudioStore.getState()
       tick(world, dt, timestamp, { onCue: play })
+      if (world.pourSettled) {
+        // Pointer-up committed before the last particles landed; commit once more outside the frame.
+        world.pourSettled = false
+        queueMicrotask(() => {
+          if (tryGetWorld() === world) commitWorld()
+        })
+      }
 
       const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR)
       const W = canvas.width / dpr

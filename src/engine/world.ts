@@ -30,6 +30,8 @@ export interface EngineWorld {
   dragOffset: Point
   hoveredSnapTarget: string | null
   isPouring: boolean
+  /** Set when the last in-flight pour particle landed after the pour ended; the engine hook commits once and clears it. */
+  pourSettled: boolean
   pointerNorm: Point
   lastTelemetryPush: number
   clockAccumulatorMs: number
@@ -59,6 +61,7 @@ export function createWorld(): EngineWorld {
     dragOffset: { x: 0, y: 0 },
     hoveredSnapTarget: null,
     isPouring: false,
+    pourSettled: false,
     pointerNorm: { x: 0.5, y: 0.35 },
     lastTelemetryPush: 0,
     clockAccumulatorMs: 0,

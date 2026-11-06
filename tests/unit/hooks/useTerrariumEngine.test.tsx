@@ -86,6 +86,35 @@ describe('useTerrariumEngine', () => {
     expect(otherWrites).toBe(0)
   })
 
+  it('commits exactly once after in-flight pour particles land, none while they fall', async () => {
+    render(<Harness />)
+    const world = getWorld()
+    useStudioStore.setState({ activeTool: 'pour', activePourMaterial: 'soil' })
+    world.pointerNorm = { x: 0.5, y: 0.3 }
+    world.isPouring = true
+    let t = 0
+    runFrame((t += 16))
+    expect(world.fallingStreams.length).toBeGreaterThan(0)
+    // Pointer-up: the pour ends with particles still in the air.
+    world.isPouring = false
+    let commits = 0
+    const unsubscribe = useStudioStore.subscribe((s, prev) => {
+      if (s.worldSnapshot !== prev.worldSnapshot) commits++
+    })
+    runFrame((t += 16))
+    await Promise.resolve()
+    expect(world.fallingStreams.length).toBeGreaterThan(0)
+    expect(commits).toBe(0)
+    for (let i = 0; i < 600 && world.fallingStreams.length; i++) runFrame((t += 16))
+    expect(world.fallingStreams.length).toBe(0)
+    await Promise.resolve()
+    expect(commits).toBe(1)
+    for (let i = 0; i < 20; i++) runFrame((t += 16))
+    await Promise.resolve()
+    expect(commits).toBe(1)
+    unsubscribe()
+  })
+
   it('pauses while the document is hidden and resumes when visible', () => {
     render(<Harness />)
     const hidden = vi.spyOn(document, 'hidden', 'get')
