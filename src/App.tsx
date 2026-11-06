@@ -1,8 +1,20 @@
+import { TerrariumCanvas } from '@/components/stage/TerrariumCanvas'
+import { loadFallsLake } from '@/dev/loadFallsLake'
+
 export default function App() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center bg-parchment text-ink">
-      <h1 className="font-display text-4xl font-bold text-forest-deep">Botanica</h1>
-      <p className="mt-2 font-mono text-xs text-stone">Living Biosphere</p>
+    <main className="relative h-screen w-screen overflow-hidden bg-parchment text-ink">
+      <TerrariumCanvas />
+      <h1 className="sr-only">Botanica</h1>
+      {import.meta.env.DEV && (
+        <button
+          type="button"
+          onClick={loadFallsLake}
+          className="absolute left-4 top-4 rounded-md bg-forest-deep px-3 py-1.5 font-mono text-xs text-parchment"
+        >
+          Falls Lake (dev)
+        </button>
+      )}
     </main>
   )
 }

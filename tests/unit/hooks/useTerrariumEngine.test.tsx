@@ -1,0 +1,85 @@
+import { render } from '@testing-library/react'
+import { useRef } from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { configureSpriteCache } from '@/engine/sprites/spriteCache'
+import { useTerrariumEngine } from '@/hooks/useTerrariumEngine'
+import { useStudioStore } from '@/store/useStudioStore'
+import { makeRecordingContext } from '../helpers/recordingContext'
+
+function Harness() {
+  const ref = useRef<HTMLCanvasElement>(null)
+  useTerrariumEngine(ref)
+  return <canvas ref={ref} width={800} height={600} />
+}
+
+describe('useTerrariumEngine', () => {
+  let callbacks: Map<number, FrameRequestCallback>
+  let nextId: number
+  let ctxCalls: string[]
+  const cancel = vi.fn()
+
+  const runFrame = (t: number) => {
+    const pending = [...callbacks.entries()]
+    callbacks.clear()
+    pending.forEach(([, cb]) => cb(t))
+  }
+
+  beforeEach(() => {
+    callbacks = new Map()
+    nextId = 1
+    cancel.mockClear()
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      callbacks.set(nextId, cb)
+      return nextId++
+    })
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+      cancel(id)
+      callbacks.delete(id)
+    })
+    const rec = makeRecordingContext()
+    ctxCalls = rec.calls
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      rec.ctx as unknown as ReturnType<HTMLCanvasElement['getContext']>,
+    )
+    configureSpriteCache(
+      () => ({ width: 0, height: 0, getContext: () => null }) as unknown as HTMLCanvasElement,
+    )
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+    configureSpriteCache()
+  })
+
+  it('starts exactly one loop, keeps it single across frames, and stops on unmount', () => {
+    const { unmount } = render(<Harness />)
+    expect(callbacks.size).toBe(1)
+    runFrame(16)
+    runFrame(32)
+    expect(callbacks.size).toBe(1)
+    expect(ctxCalls.filter((c) => c === 'clip').length).toBe(2)
+    unmount()
+    expect(callbacks.size).toBe(0)
+    expect(cancel).toHaveBeenCalled()
+  })
+
+  it('never writes to the store during a frame', () => {
+    const setState = vi.spyOn(useStudioStore, 'setState')
+    render(<Harness />)
+    runFrame(16)
+    runFrame(500)
+    expect(setState).not.toHaveBeenCalled()
+  })
+
+  it('pauses while the document is hidden and resumes when visible', () => {
+    render(<Harness />)
+    const hidden = vi.spyOn(document, 'hidden', 'get')
+    hidden.mockReturnValue(true)
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(callbacks.size).toBe(0)
+    hidden.mockReturnValue(false)
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(callbacks.size).toBe(1)
+  })
+})
