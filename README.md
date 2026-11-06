@@ -4,34 +4,34 @@ A browser-based terrarium simulator: a living canvas biosphere of plants, soil, 
 
 | Script               | Purpose                            |
 | -------------------- | ---------------------------------- |
-| `pnpm run dev`        | Start the Vite dev server          |
-| `pnpm run build`      | Typecheck and build for production |
-| `pnpm run preview`    | Preview the production build       |
-| `pnpm run test`       | Run unit tests once (Vitest)       |
-| `pnpm run test:watch` | Run unit tests in watch mode       |
-| `pnpm run lint`       | Lint with ESLint                   |
-| `pnpm run typecheck`  | Typecheck with `tsc`               |
-| `pnpm run format`     | Format with Prettier               |
-| `pnpm run e2e`        | Run Playwright end-to-end tests    |
+| `npm run dev`        | Start the Vite dev server          |
+| `npm run build`      | Typecheck and build for production |
+| `npm run preview`    | Preview the production build       |
+| `npm run test`       | Run unit tests once (Vitest)       |
+| `npm run test:watch` | Run unit tests in watch mode       |
+| `npm run lint`       | Lint with ESLint                   |
+| `npm run typecheck`  | Typecheck with `tsc`               |
+| `npm run format`     | Format with Prettier               |
+| `npm run e2e`        | Run Playwright end-to-end tests    |
 
 ## Deploying
 
-`pnpm run build` writes a static site to `dist/`; any static host works. The app has no server and no client-side router, so no rewrite rules are needed.
+`npm run build` writes a static site to `dist/`; any static host works. The app has no server and no client-side router, so no rewrite rules are needed.
 
 ### Vercel
 
-Import the repository, framework preset **Vite**, build command `pnpm run build`, output directory `dist`. No environment variables are needed (the base path defaults to `/`).
+Import the repository, framework preset **Vite**, build command `npm run build`, output directory `dist`. No environment variables are needed (the base path defaults to `/`).
 
 ### Netlify
 
-Build command `pnpm run build`, publish directory `dist`. No environment variables are needed.
+Build command `npm run build`, publish directory `dist`. No environment variables are needed.
 
 ### GitHub Pages
 
 Project pages are served from `https://<user>.github.io/<repo>/`, so build with the base path set:
 
 ```sh
-VITE_BASE_PATH=/<repo>/ pnpm run build
+VITE_BASE_PATH=/<repo>/ npm run build
 ```
 
 Then publish `dist/` (for example with `actions/upload-pages-artifact` and `actions/deploy-pages`, or by pushing it to a `gh-pages` branch). `VITE_BASE_PATH` is read in `vite.config.ts` as Vite's `base`; leave it unset for root-hosted sites.
