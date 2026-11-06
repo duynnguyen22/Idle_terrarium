@@ -1,0 +1,35 @@
+import { beforeEach, describe, expect, it } from 'vitest'
+import {
+  getWorld,
+  isOwnSnapshot,
+  mutateWorld,
+  registerWorld,
+  unregisterWorld,
+} from '@/engine/engineBridge'
+import { createWorld } from '@/engine/world'
+import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+
+beforeEach(() => {
+  unregisterWorld()
+  useStudioStore.setState(createDefaultState())
+})
+
+describe('engineBridge', () => {
+  it('throws a clear error when no world is registered', () => {
+    expect(() => mutateWorld(() => {})).toThrow(/no world registered/)
+    expect(() => getWorld()).toThrow(/no world registered/)
+  })
+
+  it('mutateWorld runs fn, commits a snapshot and recognises it as its own', () => {
+    const world = createWorld()
+    registerWorld(world)
+    mutateWorld((w) => {
+      w.terrainContour[0] = 3
+    })
+    const snap = useStudioStore.getState().worldSnapshot
+    expect(snap?.terrainContour[0]).toBe(3)
+    expect(isOwnSnapshot(snap)).toBe(true)
+    expect(isOwnSnapshot({ items: [], terrainContour: [] })).toBe(false)
+    expect(isOwnSnapshot(null)).toBe(false)
+  })
+})

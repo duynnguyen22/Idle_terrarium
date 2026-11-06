@@ -1,0 +1,154 @@
+import { beforeEach, describe, expect, it } from 'vitest'
+import { addItem } from '@/engine/items'
+import {
+  applyTool,
+  beginDrag,
+  endDrag,
+  hitTest,
+  SNAP_RADIUS,
+  updateDrag,
+} from '@/engine/interaction'
+import { createWorld, type EngineWorld } from '@/engine/world'
+
+let world: EngineWorld
+beforeEach(() => {
+  world = createWorld()
+})
+
+const telemetry = { humidity: 70, soilMoisture: 60, nutrients: 50 }
+
+function place(id: string, x: number, y: number) {
+  const it = addItem(world, id, 'mature', { x, y })!
+  return it
+}
+
+describe('hitTest', () => {
+  it('picks the topmost of two overlapping items', () => {
+    const a = place('peacock_fern', 0.5, 0.5)
+    const b = place('boston_fern', 0.5, 0.5)
+    a.zIndex = 1
+    b.zIndex = 5
+    expect(hitTest(world, 0.51, 0.5)?.uid).toBe(b.uid)
+    b.zIndex = 0
+    expect(hitTest(world, 0.51, 0.5)?.uid).toBe(a.uid)
+  })
+  it('misses outside 0.085 * scale', () => {
+    place('peacock_fern', 0.5, 0.5)
+    expect(hitTest(world, 0.8, 0.8)).toBeNull()
+  })
+})
+
+describe('drag', () => {
+  it('moves the item by the pointer delta', () => {
+    const it = place('peacock_fern', 0.5, 0.5)
+    beginDrag(world, it, 0.52, 0.5)
+    updateDrag(world, 0.6, 0.45)
+    expect(it.x).toBeCloseTo(0.58)
+    expect(it.y).toBeCloseTo(0.45)
+    endDrag(world)
+    expect(world.draggingId).toBeNull()
+  })
+
+  it('clamps to the play area', () => {
+    const it = place('peacock_fern', 0.5, 0.5)
+    beginDrag(world, it, 0.5, 0.5)
+    updateDrag(world, 2, 2)
+    expect(it.x).toBe(0.82)
+    expect(it.y).toBe(0.86)
+  })
+
+  it('snaps a mountable plant to a mount point and sets parentUid/offset', () => {
+    const rock = place('river_stones', 0.4, 0.6)
+    const plant = place('peacock_fern', 0.7, 0.5)
+    const mpx = rock.x
+    const mpy = rock.y + -0.14 * 0.18 * rock.scale
+    beginDrag(world, plant, 0.7, 0.5)
+    updateDrag(world, mpx + SNAP_RADIUS * 0.5, mpy)
+    expect(plant.parentUid).toBe(rock.uid)
+    expect(plant.x).toBeCloseTo(mpx)
+    expect(plant.y).toBeCloseTo(mpy)
+    expect(plant.offsetX).toBeCloseTo(0)
+    expect(plant.offsetY).toBeCloseTo(mpy - rock.y)
+    expect(world.hoveredSnapTarget).toBe(rock.uid)
+  })
+
+  it('does not snap a non-mountable item', () => {
+    const rock = place('river_stones', 0.4, 0.6)
+    const other = place('river_stones', 0.7, 0.5)
+    beginDrag(world, other, 0.7, 0.5)
+    updateDrag(world, rock.x, rock.y - 0.025)
+    expect(other.parentUid).toBeNull()
+  })
+
+  it('moving the parent moves the child; dragging the child beyond the radius unmounts it', async () => {
+    const { syncChildren } = await import('@/engine/simulation/tick')
+    const rock = place('river_stones', 0.4, 0.6)
+    const plant = place('peacock_fern', 0.7, 0.5)
+    beginDrag(world, plant, 0.7, 0.5)
+    updateDrag(world, rock.x, rock.y - 0.025)
+    endDrag(world)
+    expect(plant.parentUid).toBe(rock.uid)
+
+    beginDrag(world, rock, 0.4, 0.6)
+    updateDrag(world, 0.5, 0.65)
+    endDrag(world)
+    syncChildren(world)
+    expect(plant.x).toBeCloseTo(rock.x + (plant.offsetX ?? 0))
+    expect(plant.y).toBeCloseTo(rock.y + (plant.offsetY ?? 0))
+
+    beginDrag(world, plant, plant.x, plant.y)
+    updateDrag(world, plant.x + 0.2, plant.y - 0.2)
+    expect(plant.parentUid).toBeNull()
+    expect(world.hoveredSnapTarget).toBeNull()
+  })
+})
+
+describe('applyTool', () => {
+  it('mist raises humidity and soil moisture within caps', () => {
+    const fx = applyTool(world, { telemetry }, 'mist', 0.5, 0.5)!
+    expect(fx.telemetryDelta).toEqual({ humidity: 4, soilMoisture: 3 })
+    const capped = applyTool(
+      world,
+      { telemetry: { ...telemetry, humidity: 98, soilMoisture: 98 } },
+      'mist',
+      0.5,
+      0.5,
+    )!
+    expect(capped.telemetryDelta).toEqual({ humidity: 1, soilMoisture: 0 })
+  })
+
+  it('boost adds nutrients with the chime cue', () => {
+    const fx = applyTool(world, { telemetry }, 'boost', 0.5, 0.5)!
+    expect(fx.telemetryDelta?.nutrients).toBe(8)
+    expect(fx.sound).toBe('chime')
+  })
+
+  it('scrub removes a mold patch and cues repot; reports a clean substrate otherwise', () => {
+    world.moldPatches.push({ x: 0.5, size: 12 })
+    const fx = applyTool(world, { telemetry }, 'scrub', 0.5, 0.8)!
+    expect(world.moldPatches).toHaveLength(0)
+    expect(fx.sound).toBe('repot')
+    const none = applyTool(world, { telemetry }, 'scrub', 0.5, 0.8)!
+    expect(none.sound).toBeUndefined()
+    expect(none.toast).toMatch(/spotless/)
+  })
+
+  it('prune shrinks flora under the pointer, floors at 0.55, ignores hardscape', () => {
+    const fern = place('peacock_fern', 0.5, 0.5)
+    const s = fern.scale
+    const fx = applyTool(world, { telemetry }, 'prune', 0.5, 0.5)!
+    expect(fx.sound).toBe('prune')
+    expect(fern.scale).toBeCloseTo(s * 0.88)
+    fern.scale = 0.56
+    applyTool(world, { telemetry }, 'prune', 0.5, 0.5)
+    expect(fern.scale).toBe(0.55)
+    expect(applyTool(world, { telemetry }, 'prune', 0.9, 0.9)).toBeNull()
+    world.items = []
+    place('river_stones', 0.5, 0.5)
+    expect(applyTool(world, { telemetry }, 'prune', 0.5, 0.5)).toBeNull()
+  })
+
+  it('select is not consumed', () => {
+    expect(applyTool(world, { telemetry }, 'select', 0.5, 0.5)).toBeNull()
+  })
+})

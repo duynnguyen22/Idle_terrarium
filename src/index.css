@@ -1,0 +1,192 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-display: 'Fraunces', serif;
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Forest greens */
+  --color-forest-night: #11221a;
+  --color-forest-ink: #163022;
+  --color-forest-deep: #1b3b2b;
+  --color-forest-dark: #234c35;
+  --color-forest-slate: #2b4c39;
+  --color-forest-mid: #2d5a43;
+  --color-forest-grey: #4a6b56;
+  --color-moss: #528c67;
+  --color-sage: #a5d1b8;
+  --color-sage-light: #bfd8c8;
+  --color-mint: #d9ece1;
+  --color-mint-light: #e0ede5;
+  --color-mint-pale: #e8f0eb;
+  --color-mint-mist: #eef5f0;
+
+  /* Text and neutrals */
+  --color-ink-deep: #1f2924;
+  --color-ink-soft: #2b332e;
+  --color-ink-brown: #4a463d;
+  --color-ink-umber: #575247;
+  --color-ink-bark: #5a5343;
+  --color-ink: #5c5649;
+  --color-stone: #6e6759;
+  --color-stone-grey: #6e6a5f;
+  --color-stone-light: #7c7464;
+
+  /* Parchment and sand */
+  --color-sand-border: #dcd6c8;
+  --color-sand-track: #e2ddd2;
+  --color-sand-warm: #eae5d9;
+  --color-sand-light: #ebe6da;
+  --color-sand-pale: #ede9df;
+  --color-linen: #efece3;
+  --color-parchment: #f0ede4;
+  --color-cream: #f4f1ea;
+  --color-paper: #f8f6f0;
+  --color-white: #ffffff;
+
+  /* Accents and alerts */
+  --color-amber-brown: #78350f;
+  --color-amber-glow: #f59e0b;
+  --color-amber-soft: #fde68a;
+  --color-amber-pale: #fef3c7;
+  --color-blood: #991b1b;
+  --color-rose: #fca5a5;
+  --color-rose-light: #fecaca;
+  --color-rose-pale: #fee2e2;
+}
+
+:root {
+  --bg-cream: var(--color-cream);
+  --forest-deep: var(--color-forest-deep);
+  --forest-mid: var(--color-forest-mid);
+  --moss-accent: var(--color-moss);
+  --sand-border: var(--color-sand-border);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-cream);
+    color: var(--color-ink-deep);
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Keyboard focus ring (tokens only); mouse clicks do not show it. */
+  :focus-visible,
+  input[type='range']:focus-visible {
+    outline: 2px solid var(--color-moss);
+    outline-offset: 2px;
+  }
+  /* Relax dock sits on a dark glass pill; a lighter ring keeps contrast. */
+  #relax-dock :focus-visible {
+    outline-color: var(--color-sage);
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: rgba(212, 205, 190, 0.25);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(45, 90, 67, 0.35);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(45, 90, 67, 0.6);
+  }
+
+  /* Range slider */
+  input[type='range'] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: var(--color-sand-track);
+    border-radius: 999px;
+    outline: none;
+  }
+  input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--color-forest-deep);
+    border: 2px solid var(--color-white);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    transition: transform 0.15s ease;
+  }
+  input[type='range']::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+  }
+}
+
+@layer components {
+  .font-serif-title {
+    font-family: var(--font-display);
+  }
+  .font-mono-clock {
+    font-family: var(--font-mono);
+  }
+
+  /* Floating inspector square button */
+  .inspector-btn {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+  }
+  .inspector-btn:hover {
+    background-color: rgba(27, 59, 43, 0.08);
+    transform: translateY(-1px);
+  }
+  .inspector-btn:active {
+    transform: translateY(0);
+  }
+
+  /* Relax mode */
+  body.relax-active #top-nav,
+  body.relax-active #left-sidebar,
+  body.relax-active #right-sidebar,
+  body.relax-active #care-toolbar,
+  body.relax-active #item-inspector {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: scale(0.98);
+  }
+  body.relax-active #left-sidebar,
+  body.relax-active #right-sidebar,
+  body.relax-active #top-nav {
+    display: none !important;
+  }
+  #relax-dock {
+    transition:
+      opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.45s ease;
+  }
+  body.relax-idle #relax-dock {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    /* Tailwind v4's -translate-x-1/2 uses the `translate` property, so only add the vertical drop here. */
+    transform: translateY(12px);
+  }
+  body.relax-idle {
+    cursor: none !important;
+  }
+}
