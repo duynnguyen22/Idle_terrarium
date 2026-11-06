@@ -13,6 +13,7 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
   return (
     <aside
       id="right-sidebar"
+      tabIndex={-1}
       data-drawer-open={drawerOpen}
       className={`z-20 max-lg:z-40 flex w-72 shrink-0 flex-col justify-between overflow-y-auto border-l border-sand-border bg-paper p-4 max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:max-w-[85vw] max-lg:shadow-xl max-lg:transition-[transform,visibility] motion-reduce:max-lg:transition-none ${
         drawerOpen ? '' : 'max-lg:invisible max-lg:translate-x-full'

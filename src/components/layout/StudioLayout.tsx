@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { CareToolbar } from '@/components/stage/CareToolbar'
 import { ItemInspector } from '@/components/stage/ItemInspector'
 import { RelaxDock } from '@/components/stage/RelaxDock'
@@ -11,6 +11,8 @@ import { LeftSidebar } from './LeftSidebar'
 import { RightTelemetry } from './RightTelemetry'
 import { TopNav, type DrawerSide } from './TopNav'
 
+const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+
 export function StudioLayout({ children }: { children: ReactNode }) {
   useKeyboardShortcuts()
   useRelaxMode()
@@ -22,11 +24,29 @@ export function StudioLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!drawer) return
+    // Capture phase + stopPropagation: Escape closes the drawer only, so the global shortcut handler
+    // (relax exit / clear selection) does not also fire on the same keypress.
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDrawer(null)
+      if (e.key !== 'Escape') return
+      e.stopPropagation()
+      setDrawer(null)
     }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [drawer])
+
+  // Focus management: into the drawer on open, back to its toggle on close.
+  const prevDrawer = useRef<DrawerSide | null>(null)
+  useEffect(() => {
+    const prev = prevDrawer.current
+    prevDrawer.current = drawer
+    if (drawer) {
+      const panel = document.getElementById(`${drawer}-sidebar`)
+      const first = panel?.querySelector<HTMLElement>(FOCUSABLE)
+      ;(first ?? panel)?.focus()
+    } else if (prev) {
+      document.querySelector<HTMLElement>(`[aria-controls="${prev}-sidebar"]`)?.focus()
+    }
   }, [drawer])
 
   return (

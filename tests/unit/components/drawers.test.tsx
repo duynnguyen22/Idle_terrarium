@@ -45,4 +45,31 @@ describe('responsive drawers', () => {
     act(() => void fireEvent.keyDown(window, { key: 'Escape' }))
     expect(document.getElementById('left-sidebar')).toHaveAttribute('data-drawer-open', 'false')
   })
+
+  it('Escape closes the drawer only (selection kept) and returns focus to the toggle', () => {
+    useStudioStore.getState().selectItem('some-item')
+    render(<StudioLayout>{null}</StudioLayout>)
+    const left = screen.getByRole('button', { name: 'Toggle catalog panel' })
+    act(() => void fireEvent.click(left))
+    // Focus moved into the drawer.
+    expect(document.getElementById('left-sidebar')).toContainElement(
+      document.activeElement as HTMLElement,
+    )
+    act(() => void fireEvent.keyDown(document.body, { key: 'Escape' }))
+    expect(document.getElementById('left-sidebar')).toHaveAttribute('data-drawer-open', 'false')
+    expect(useStudioStore.getState().selectedId).toBe('some-item')
+    expect(left).toHaveFocus()
+
+    // With no drawer open, Escape still clears the selection.
+    act(() => void fireEvent.keyDown(document.body, { key: 'Escape' }))
+    expect(useStudioStore.getState().selectedId).toBeNull()
+  })
+
+  it('moves focus into the right drawer on open', () => {
+    render(<StudioLayout>{null}</StudioLayout>)
+    act(() => void fireEvent.click(screen.getByRole('button', { name: 'Toggle telemetry panel' })))
+    expect(document.getElementById('right-sidebar')).toContainElement(
+      document.activeElement as HTMLElement,
+    )
+  })
 })
