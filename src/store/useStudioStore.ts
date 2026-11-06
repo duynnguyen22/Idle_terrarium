@@ -85,8 +85,7 @@ export const DEFAULT_TELEMETRY: Telemetry = {
   cleanupCrewCount: 0,
   mossCoverPct: 28,
   waterCycle: 'Cascading & Mist',
-  note:
-    'Semi-aquatic waterfall circulates fresh oxygenated water while the Halo LED lamp nurtures epiphytic ferns and moss along the cliff wall.',
+  note: 'Semi-aquatic waterfall circulates fresh oxygenated water while the Halo LED lamp nurtures epiphytic ferns and moss along the cliff wall.',
 }
 
 export function createDefaultState(): StudioState {
@@ -152,7 +151,7 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
 
   return create<StudioStore>()(
     persist(
-      (set) => ({
+      (set, get) => ({
         ...createDefaultState(),
         ...seed,
         setVessel: (vessel) => set({ vessel }),
@@ -169,18 +168,33 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
         setAudioEnabled: (audioEnabled) => set({ audioEnabled }),
         setSoundPreset: (soundPreset) => set({ soundPreset }),
         setSubstrate: (id, mm) => set((s) => ({ substrates: { ...s.substrates, [id]: mm } })),
-        setSubstrates: (substrates) => set({ substrates: { ...substrates } }),
+        setSubstrates: (substrates) => {
+          // Skip set() when unchanged: persist writes storage on every set(), even for an identical state.
+          const cur = get().substrates
+          const keys = new Set([...Object.keys(cur), ...Object.keys(substrates)]) as Set<
+            keyof SubstrateDepths
+          >
+          if ([...keys].every((k) => cur[k] === substrates[k])) return
+          set({ substrates: { ...substrates } })
+        },
         selectItem: (selectedId) => set({ selectedId }),
         setActivePourMaterial: (activePourMaterial) => set({ activePourMaterial }),
         advanceDay: () => set((s) => ({ dayCount: s.dayCount + 1 })),
-        setTelemetry: (partial) =>
-          set((s) => {
-            const keys = Object.keys(partial) as (keyof Telemetry)[]
-            if (keys.every((k) => partial[k] === undefined || partial[k] === s.telemetry[k])) return s
-            return { telemetry: { ...s.telemetry, ...partial } }
-          }),
+        setTelemetry: (partial) => {
+          const cur = get().telemetry
+          const next: Partial<Telemetry> = {}
+          let changed = false
+          for (const k of Object.keys(partial) as (keyof Telemetry)[]) {
+            const v = partial[k]
+            if (v === undefined || v === cur[k]) continue
+            ;(next as Record<string, unknown>)[k] = v
+            changed = true
+          }
+          if (changed) set({ telemetry: { ...cur, ...next } })
+        },
         setWorldSnapshot: (worldSnapshot) => set({ worldSnapshot }),
-        resetStudio: () => set((s) => ({ ...createDefaultState(), reducedMotion: s.reducedMotion })),
+        resetStudio: () =>
+          set((s) => ({ ...createDefaultState(), reducedMotion: s.reducedMotion })),
       }),
       {
         name: STUDIO_STORAGE_KEY,
