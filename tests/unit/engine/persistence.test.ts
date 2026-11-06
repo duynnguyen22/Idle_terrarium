@@ -10,17 +10,7 @@ describe('world persistence', () => {
 
   it('snapshot/restore round-trips and never carries particles', () => {
     const w = createWorld()
-    const item: PlacedItem = {
-      uid: 'a',
-      id: 'fern',
-      category: 'flora',
-      x: 1,
-      y: 2,
-      scale: 1,
-      rotation: 0,
-      flipX: false,
-      zIndex: 1,
-    }
+    const item: PlacedItem = { uid: 'a', id: 'fern', category: 'flora', x: 1, y: 2, scale: 1, rotation: 0, flipX: false, zIndex: 1 }
     w.items.push(item)
     w.terrainContour[3] = 5
     w.fireflies.push({ x: 1 })

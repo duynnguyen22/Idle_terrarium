@@ -82,7 +82,8 @@ export const DEFAULT_TELEMETRY: Telemetry = {
   cleanupCrewCount: 0,
   mossCoverPct: 28,
   waterCycle: 'Cascading & Mist',
-  note: 'Semi-aquatic waterfall circulates fresh oxygenated water while the Halo LED lamp nurtures epiphytic ferns and moss along the cliff wall.',
+  note:
+    'Semi-aquatic waterfall circulates fresh oxygenated water while the Halo LED lamp nurtures epiphytic ferns and moss along the cliff wall.',
 }
 
 export function createDefaultState(): StudioState {
@@ -170,8 +171,7 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
         setTelemetry: (partial) =>
           set((s) => {
             const keys = Object.keys(partial) as (keyof Telemetry)[]
-            if (keys.every((k) => partial[k] === undefined || partial[k] === s.telemetry[k]))
-              return s
+            if (keys.every((k) => partial[k] === undefined || partial[k] === s.telemetry[k])) return s
             return { telemetry: { ...s.telemetry, ...partial } }
           }),
         setWorldSnapshot: (worldSnapshot) => set({ worldSnapshot }),
