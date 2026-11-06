@@ -44,8 +44,7 @@ export function importPrototypeSave(storage: Storage): Partial<StudioState> | nu
         ? (saved.terrainContour as number[])
         : new Array<number>(TERRAIN_POINTS).fill(0)
 
-    const dayCount =
-      typeof saved.dayCount === 'number' && saved.dayCount >= 1 ? saved.dayCount : 1
+    const dayCount = typeof saved.dayCount === 'number' && saved.dayCount >= 1 ? saved.dayCount : 1
 
     return {
       vessel,

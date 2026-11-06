@@ -17,7 +17,10 @@ export function LeftSidebar() {
       id="left-sidebar"
       className="z-20 flex w-80 shrink-0 flex-col border-r border-sand-border bg-paper md:w-96"
     >
-      <div role="tablist" className="grid grid-cols-4 gap-1 border-b border-sand-border bg-sand-light p-2">
+      <div
+        role="tablist"
+        className="grid grid-cols-4 gap-1 border-b border-sand-border bg-sand-light p-2"
+      >
         {TABS.map((t) => {
           const active = t.id === activeTab
           return (

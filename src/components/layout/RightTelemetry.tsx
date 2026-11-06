@@ -17,7 +17,9 @@ export function RightTelemetry() {
     >
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-stone">Biosphere Telemetry</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-stone">
+            Biosphere Telemetry
+          </h2>
           <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-800">
             Thriving
           </span>

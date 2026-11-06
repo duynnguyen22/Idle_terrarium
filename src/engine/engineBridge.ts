@@ -18,7 +18,9 @@ export function unregisterWorld(): void {
 
 export function getWorld(): EngineWorld {
   if (!current) {
-    throw new Error('engineBridge: no world registered. The terrarium engine must be mounted first.')
+    throw new Error(
+      'engineBridge: no world registered. The terrarium engine must be mounted first.',
+    )
   }
   return current
 }

@@ -15,7 +15,8 @@ export function getTotalSubstrateDepth(substrates: Partial<SubstrateDepths>): nu
 /** Linear interpolation of the terrain contour (mm) at normalized x; clamps outside [0.15, 0.85]. */
 export function sampleContour(contour: readonly number[], nx: number): number {
   const clampedX = clamp(nx, CONTOUR_X_MIN, CONTOUR_X_MAX)
-  const idxFloat = ((clampedX - CONTOUR_X_MIN) / (CONTOUR_X_MAX - CONTOUR_X_MIN)) * (contour.length - 1)
+  const idxFloat =
+    ((clampedX - CONTOUR_X_MIN) / (CONTOUR_X_MAX - CONTOUR_X_MIN)) * (contour.length - 1)
   const i0 = Math.floor(idxFloat)
   const i1 = Math.min(contour.length - 1, i0 + 1)
   const frac = idxFloat - i0
@@ -77,20 +78,76 @@ export function traceVesselPath(ctx: CanvasRenderingContext2D, vessel: string, R
     case 'teardrop':
       ctx.moveTo(cx - r * 0.22, cy - r * 0.86)
       ctx.lineTo(cx + r * 0.22, cy - r * 0.86)
-      ctx.bezierCurveTo(cx + r * 0.38, cy - r * 0.35, cx + r * 0.88, cy + r * 0.15, cx + r * 0.8, cy + r * 0.65)
-      ctx.bezierCurveTo(cx + r * 0.75, cy + r * 0.85, cx + r * 0.4, cy + r * 0.85, cx, cy + r * 0.85)
-      ctx.bezierCurveTo(cx - r * 0.4, cy + r * 0.85, cx - r * 0.75, cy + r * 0.85, cx - r * 0.8, cy + r * 0.65)
-      ctx.bezierCurveTo(cx - r * 0.88, cy + r * 0.15, cx - r * 0.38, cy - r * 0.35, cx - r * 0.22, cy - r * 0.86)
+      ctx.bezierCurveTo(
+        cx + r * 0.38,
+        cy - r * 0.35,
+        cx + r * 0.88,
+        cy + r * 0.15,
+        cx + r * 0.8,
+        cy + r * 0.65,
+      )
+      ctx.bezierCurveTo(
+        cx + r * 0.75,
+        cy + r * 0.85,
+        cx + r * 0.4,
+        cy + r * 0.85,
+        cx,
+        cy + r * 0.85,
+      )
+      ctx.bezierCurveTo(
+        cx - r * 0.4,
+        cy + r * 0.85,
+        cx - r * 0.75,
+        cy + r * 0.85,
+        cx - r * 0.8,
+        cy + r * 0.65,
+      )
+      ctx.bezierCurveTo(
+        cx - r * 0.88,
+        cy + r * 0.15,
+        cx - r * 0.38,
+        cy - r * 0.35,
+        cx - r * 0.22,
+        cy - r * 0.86,
+      )
       ctx.closePath()
       break
     default:
       // apothecary
       ctx.moveTo(cx - r * 0.4, cy - r * 0.86)
       ctx.lineTo(cx + r * 0.4, cy - r * 0.86)
-      ctx.bezierCurveTo(cx + r * 0.5, cy - r * 0.6, cx + r * 0.86, cy - r * 0.2, cx + r * 0.86, cy + r * 0.4)
-      ctx.bezierCurveTo(cx + r * 0.86, cy + r * 0.75, cx + r * 0.65, cy + r * 0.84, cx, cy + r * 0.84)
-      ctx.bezierCurveTo(cx - r * 0.65, cy + r * 0.84, cx - r * 0.86, cy + r * 0.75, cx - r * 0.86, cy + r * 0.4)
-      ctx.bezierCurveTo(cx - r * 0.86, cy - r * 0.2, cx - r * 0.5, cy - r * 0.6, cx - r * 0.4, cy - r * 0.86)
+      ctx.bezierCurveTo(
+        cx + r * 0.5,
+        cy - r * 0.6,
+        cx + r * 0.86,
+        cy - r * 0.2,
+        cx + r * 0.86,
+        cy + r * 0.4,
+      )
+      ctx.bezierCurveTo(
+        cx + r * 0.86,
+        cy + r * 0.75,
+        cx + r * 0.65,
+        cy + r * 0.84,
+        cx,
+        cy + r * 0.84,
+      )
+      ctx.bezierCurveTo(
+        cx - r * 0.65,
+        cy + r * 0.84,
+        cx - r * 0.86,
+        cy + r * 0.75,
+        cx - r * 0.86,
+        cy + r * 0.4,
+      )
+      ctx.bezierCurveTo(
+        cx - r * 0.86,
+        cy - r * 0.2,
+        cx - r * 0.5,
+        cy - r * 0.6,
+        cx - r * 0.4,
+        cy - r * 0.86,
+      )
       ctx.closePath()
       break
   }

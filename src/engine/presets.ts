@@ -38,7 +38,8 @@ export function applyPreset(world: EngineWorld, presetId: PresetId, state: Prese
   for (const p of preset.items) {
     const def = findCatalogDef(p.defId)
     if (!def) continue
-    const parent = 'parentIndex' in p && p.parentIndex !== undefined ? items[p.parentIndex] : undefined
+    const parent =
+      'parentIndex' in p && p.parentIndex !== undefined ? items[p.parentIndex] : undefined
     const item: PlacedItem = {
       uid: createItemId(),
       id: p.defId,

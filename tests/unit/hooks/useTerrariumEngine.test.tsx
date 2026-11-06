@@ -87,18 +87,20 @@ describe('useTerrariumEngine', () => {
   it('registers its world, skips its own snapshots, applies external ones, and unregisters', () => {
     const { unmount } = render(<Harness />)
     const world = getWorld()
+    const contourBefore = world.terrainContour
+    const itemsBefore = world.items
     mutateWorld((w) => {
       w.terrainContour[0] = 7
     })
-    const own = world.terrainContour
     expect(useStudioStore.getState().worldSnapshot?.terrainContour[0]).toBe(7)
     // Own write: restoreWorld skipped, so the world's arrays are not replaced.
-    expect(world.terrainContour).toBe(own)
+    expect(world.terrainContour).toBe(contourBefore)
+    expect(world.items).toBe(itemsBefore)
 
     const external = { items: [], terrainContour: new Array<number>(21).fill(1) }
     useStudioStore.getState().setWorldSnapshot(external)
     expect(world.terrainContour[0]).toBe(1)
-    expect(world.terrainContour).not.toBe(own)
+    expect(world.terrainContour).not.toBe(contourBefore)
 
     unmount()
     expect(() => getWorld()).toThrow(/no world registered/)

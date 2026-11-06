@@ -47,6 +47,7 @@ export function ClockSpeedPill() {
   }
 
   const plusDay = () => {
+    // TODO(task-10): playTactileASMR('chime')
     mutateWorld((w) => advanceDay(w, useStudioStore.getState()))
     showToast('🌱 Advanced +24 Hours — plants grew lushly!')
   }
@@ -70,7 +71,13 @@ export function ClockSpeedPill() {
         onClick={() => setSpeed(true, 1, '🕒 Real-Time Biosphere sync active')}
         className={`${BTN} inline-flex items-center gap-1.5 px-2.5 ${realTime && speed === 1 ? ACTIVE : IDLE}`}
       >
-        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          className="h-3.5 w-3.5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <circle cx="12" cy="12" r="9" />
           <path d="M12 7v5l3 2" />
         </svg>

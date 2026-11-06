@@ -68,7 +68,13 @@ export function UtilityActions() {
         title="Clear Placed Specimens"
         className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-rose bg-rose-pale text-blood transition hover:bg-rose-light"
       >
-        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          className="h-3.5 w-3.5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" />
         </svg>
       </button>

@@ -16,7 +16,10 @@ export function effectiveSubstrate(
   return (substrates[key] || 0) + (world.pendingSubstrates[key] || 0)
 }
 
-export function effectiveSubstrates(world: EngineWorld, substrates: SubstrateDepths): SubstrateDepths {
+export function effectiveSubstrates(
+  world: EngineWorld,
+  substrates: SubstrateDepths,
+): SubstrateDepths {
   const out = { ...substrates }
   for (const k of Object.keys(world.pendingSubstrates) as (keyof SubstrateDepths)[]) {
     out[k] = (out[k] || 0) + (world.pendingSubstrates[k] || 0)
@@ -74,7 +77,8 @@ export function pushTelemetry(
     moldCount: world.moldPatches.length,
     cleanupCrewCount: countCleanupCrew(world),
   }
-  if (world.pendingTelemetry.humidity) partial.humidity = t.humidity + world.pendingTelemetry.humidity
+  if (world.pendingTelemetry.humidity)
+    partial.humidity = t.humidity + world.pendingTelemetry.humidity
   if (world.pendingTelemetry.soilMoisture)
     partial.soilMoisture = t.soilMoisture + world.pendingTelemetry.soilMoisture
   world.pendingTelemetry = { humidity: 0, soilMoisture: 0 }

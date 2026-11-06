@@ -34,10 +34,16 @@ export function syncChildren(world: EngineWorld): void {
  * growth, mold cleanup (all skipped at timeSpeed 0, ambient motes included, as the prototype early-returns), then the draw-phase mutations
  * (child sync, firefly drift, stream integration) and the throttled store flush.
  */
-export function tick(world: EngineWorld, dtMs: number, timestamp: number, deps: TickDeps = {}): void {
+export function tick(
+  world: EngineWorld,
+  dtMs: number,
+  timestamp: number,
+  deps: TickDeps = {},
+): void {
   const store = deps.store ?? useStudioStore.getState()
   const rng = deps.rng ?? Math.random
-  if (world.ambientMotes.length === 0 && world.fireflies.length === 0) initWorldParticles(world, rng)
+  if (world.ambientMotes.length === 0 && world.fireflies.length === 0)
+    initWorldParticles(world, rng)
 
   if (store.timeSpeed !== 0) {
     if (world.isPouring && store.activeTool === 'pour' && store.activePourMaterial) {

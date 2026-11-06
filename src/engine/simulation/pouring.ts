@@ -3,7 +3,12 @@ import type { StudioState } from '@/store/useStudioStore'
 import { CONTOUR_X_MAX, CONTOUR_X_MIN, getSoilSurfaceNormalizedY } from '../geometry'
 import type { EngineWorld, WorldEntity } from '../world'
 import { frameScale, type Rng } from './constants'
-import { bumpTelemetry, effectiveSubstrate, effectiveSubstrates, setEffectiveSubstrate } from './telemetry'
+import {
+  bumpTelemetry,
+  effectiveSubstrate,
+  effectiveSubstrates,
+  setEffectiveSubstrate,
+} from './telemetry'
 
 export const GRAVITY = 0.00085
 const MAX_SURFACE_GRAINS = 220
@@ -18,7 +23,11 @@ function num(e: WorldEntity, k: string): number {
 }
 
 /** Spawns one frame's worth of stream particles (3 for water, 2 otherwise) at the pointer (prototype 2561-2584). */
-export function spawnPourStream(world: EngineWorld, materialId: string, rng: Rng = Math.random): void {
+export function spawnPourStream(
+  world: EngineWorld,
+  materialId: string,
+  rng: Rng = Math.random,
+): void {
   const layer = SUBSTRATE_LAYERS.find((l) => l.id === materialId)
   if (!layer || materialId === 'siphon') return
   const count = materialId === 'water' ? 3 : 2
@@ -30,10 +39,7 @@ export function spawnPourStream(world: EngineWorld, materialId: string, rng: Rng
       y: Math.max(0.12, world.pointerNorm.y + 0.02),
       vx: (rng() - 0.5) * (materialId === 'water' ? 0.0012 : 0.0032),
       vy: 0.004 + rng() * 0.003,
-      r:
-        materialId === 'sand' || materialId === 'charcoal'
-          ? 2.2 + rng() * 1.8
-          : 3.5 + rng() * 3.2,
+      r: materialId === 'sand' || materialId === 'charcoal' ? 2.2 + rng() * 1.8 : 3.5 + rng() * 3.2,
       rot: rng() * Math.PI,
       color: isAlt ? layer.color : layer.secondaryColor,
     })
@@ -50,7 +56,10 @@ export function siphonStep(world: EngineWorld, state: PourState): void {
   const rev = [...SUBSTRATE_LAYERS]
     .reverse()
     .find(
-      (l) => l.id !== 'water' && l.id !== 'siphon' && effectiveSubstrate(world, state.substrates, l.id) > 0,
+      (l) =>
+        l.id !== 'water' &&
+        l.id !== 'siphon' &&
+        effectiveSubstrate(world, state.substrates, l.id) > 0,
     )
   if (rev) {
     setEffectiveSubstrate(
@@ -78,7 +87,11 @@ export function stepPourParticles(
     p.vy = num(p, 'vy') + GRAVITY * fs
 
     const px = num(p, 'x')
-    const surface = getSoilSurfaceNormalizedY(effectiveSubstrates(world, state.substrates), world.terrainContour, px)
+    const surface = getSoilSurfaceNormalizedY(
+      effectiveSubstrates(world, state.substrates),
+      world.terrainContour,
+      px,
+    )
     if (num(p, 'y') < surface) continue
 
     const mat = String(p.materialId)
@@ -100,7 +113,9 @@ export function stepPourParticles(
       )
       const c = world.terrainContour
       const clampedX = Math.max(CONTOUR_X_MIN, Math.min(CONTOUR_X_MAX, px))
-      const cIdx = Math.round(((clampedX - CONTOUR_X_MIN) / (CONTOUR_X_MAX - CONTOUR_X_MIN)) * (c.length - 1))
+      const cIdx = Math.round(
+        ((clampedX - CONTOUR_X_MIN) / (CONTOUR_X_MAX - CONTOUR_X_MIN)) * (c.length - 1),
+      )
       if (c[cIdx] !== undefined) {
         c[cIdx] = Math.min(MAX_CONTOUR_MM, c[cIdx] + 0.22)
         if (cIdx > 0) c[cIdx - 1] = Math.min(MAX_CONTOUR_MM, c[cIdx - 1] + 0.11)
