@@ -1,17 +1,19 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { StudioLayout } from '@/components/layout/StudioLayout'
 import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
 
 beforeEach(() => {
   useStudioStore.setState(createDefaultState())
-  window.matchMedia = ((query: string) => ({
+  vi.stubGlobal('matchMedia', (query: string) => ({
     matches: false,
     media: query,
     addEventListener: () => {},
     removeEventListener: () => {},
-  })) as unknown as typeof window.matchMedia
+  }))
 })
+
+afterEach(() => vi.unstubAllGlobals())
 
 describe('responsive drawers', () => {
   it('toggles each sidebar from the top nav with aria-expanded / aria-controls', () => {

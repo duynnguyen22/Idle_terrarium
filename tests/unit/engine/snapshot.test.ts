@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { exportSnapshotPng, snapshotFilename } from '@/lib/snapshot'
 
 describe('exportSnapshotPng', () => {
-  afterEach(() => vi.restoreAllMocks())
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
 
   it('encodes the canvas once and downloads it under the given filename', async () => {
     const blob = new Blob(['x'], { type: 'image/png' })
@@ -11,8 +14,10 @@ describe('exportSnapshotPng', () => {
       cb(blob)
     })
     const canvas = { toBlob } as unknown as HTMLCanvasElement
-    URL.createObjectURL = vi.fn(() => 'blob:fake')
-    URL.revokeObjectURL = vi.fn()
+    vi.stubGlobal('URL', {
+      createObjectURL: vi.fn(() => 'blob:fake'),
+      revokeObjectURL: vi.fn(),
+    })
     let downloaded = ''
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
       this: HTMLAnchorElement,

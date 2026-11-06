@@ -40,7 +40,7 @@ export function StudioLayout({ children }: { children: ReactNode }) {
             aria-label="Close panel"
             data-testid="drawer-scrim"
             onClick={() => setDrawer(null)}
-            className="absolute inset-0 z-10 bg-forest-night/40 lg:hidden"
+            className="absolute inset-0 z-[35] bg-forest-night/40 lg:hidden"
           />
         )}
         <main className="relative flex-1 overflow-hidden">

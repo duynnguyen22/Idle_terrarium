@@ -39,6 +39,25 @@ export function TopNav({ drawer = null, onToggleDrawer }: TopNavProps) {
             <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
           </svg>
         </button>
+        <button
+          type="button"
+          aria-label="Toggle telemetry panel"
+          aria-expanded={drawer === 'right'}
+          aria-controls="right-sidebar"
+          onClick={() => onToggleDrawer?.('right')}
+          className={DRAWER_BTN}
+        >
+          <svg
+            className="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <path d="M4 20V10M10 20V4M16 20v-8M22 20H2" strokeLinecap="round" />
+          </svg>
+        </button>
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-forest-deep text-white shadow-sm">
           <svg
             className="h-5 w-5"
@@ -72,25 +91,6 @@ export function TopNav({ drawer = null, onToggleDrawer }: TopNavProps) {
       <ClockSpeedPill />
       <LightingControls />
       <UtilityActions />
-      <button
-        type="button"
-        aria-label="Toggle telemetry panel"
-        aria-expanded={drawer === 'right'}
-        aria-controls="right-sidebar"
-        onClick={() => onToggleDrawer?.('right')}
-        className={DRAWER_BTN}
-      >
-        <svg
-          className="h-4 w-4"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          aria-hidden="true"
-        >
-          <path d="M4 20V10M10 20V4M16 20v-8M22 20H2" strokeLinecap="round" />
-        </svg>
-      </button>
     </header>
   )
 }

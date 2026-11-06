@@ -61,7 +61,7 @@ export function LeftSidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
     <aside
       id="left-sidebar"
       data-drawer-open={drawerOpen}
-      className={`z-20 flex w-80 shrink-0 flex-col border-r border-sand-border bg-paper md:w-96 max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:max-w-[85vw] max-lg:shadow-xl max-lg:transition-[transform,visibility] motion-reduce:max-lg:transition-none ${
+      className={`z-20 max-lg:z-40 flex w-80 shrink-0 flex-col border-r border-sand-border bg-paper md:w-96 max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:max-w-[85vw] max-lg:shadow-xl max-lg:transition-[transform,visibility] motion-reduce:max-lg:transition-none ${
         drawerOpen ? '' : 'max-lg:invisible max-lg:-translate-x-full'
       }`}
     >

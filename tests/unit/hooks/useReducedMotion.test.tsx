@@ -1,10 +1,11 @@
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { createDefaultState, partialize, useStudioStore } from '@/store/useStudioStore'
 
 describe('useReducedMotion', () => {
   beforeEach(() => useStudioStore.setState(createDefaultState()))
+  afterEach(() => vi.unstubAllGlobals())
 
   it('mirrors the media query into the store and follows changes', () => {
     let listener: () => void = () => {}
@@ -13,7 +14,7 @@ describe('useReducedMotion', () => {
       addEventListener: (_: string, l: () => void) => (listener = l),
       removeEventListener: () => {},
     }
-    window.matchMedia = (() => mql) as unknown as typeof window.matchMedia
+    vi.stubGlobal('matchMedia', () => mql)
     renderHook(() => useReducedMotion())
     expect(useStudioStore.getState().reducedMotion).toBe(true)
     mql.matches = false
