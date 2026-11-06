@@ -25,6 +25,11 @@ export function getWorld(): EngineWorld {
   return current
 }
 
+/** Like getWorld but returns null instead of throwing; safe to call during render. */
+export function tryGetWorld(): EngineWorld | null {
+  return current
+}
+
 /** True when `snap` is the exact object this bridge last wrote to the store (the engine skips re-reading it). */
 export function isOwnSnapshot(snap: WorldSnapshot | null): boolean {
   return snap !== null && snap === lastCommitted

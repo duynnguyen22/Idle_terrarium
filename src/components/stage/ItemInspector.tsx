@@ -1,6 +1,6 @@
 import { useReducer, type ReactNode } from 'react'
 import { findCatalogDef } from '@/data/catalog'
-import { mutateWorld, getWorld } from '@/engine/engineBridge'
+import { mutateWorld, tryGetWorld } from '@/engine/engineBridge'
 import {
   advanceGrowth,
   deleteItem,
@@ -68,7 +68,7 @@ export function ItemInspector() {
   const [, bump] = useReducer((n: number) => n + 1, 0)
 
   if (!selectedId || relaxMode) return null
-  const item = getWorld().items.find((i) => i.uid === selectedId)
+  const item = tryGetWorld()?.items.find((i) => i.uid === selectedId)
   if (!item) return null
   const def = findCatalogDef(item.id)
 

@@ -196,6 +196,13 @@ describe('ItemInspector', () => {
     expect(screen.queryByTestId('insp-name')).not.toBeInTheDocument()
   })
 
+  it('renders nothing (no throw) when an item is selected but no world is registered', () => {
+    act(() => state().selectItem('ghost'))
+    unregisterWorld()
+    expect(() => render(<ItemInspector />)).not.toThrow()
+    expect(screen.queryByTestId('insp-name')).not.toBeInTheDocument()
+  })
+
   const select = () => {
     const it = addItem(world, 'peacock_fern', 'mature')!
     act(() => state().selectItem(it.uid))
