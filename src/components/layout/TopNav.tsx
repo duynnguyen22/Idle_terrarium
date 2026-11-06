@@ -17,7 +17,7 @@ export function TopNav({ drawer = null, onToggleDrawer }: TopNavProps) {
   return (
     <header
       id="top-nav"
-      className="z-30 flex h-14 shrink-0 items-center justify-between gap-2 overflow-x-auto border-b border-sand-border bg-paper/95 px-3 backdrop-blur-md"
+      className="z-30 flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-b border-sand-border bg-paper/95 px-3 py-1.5 backdrop-blur-md"
     >
       <div className="flex shrink-0 items-center gap-2.5">
         <button

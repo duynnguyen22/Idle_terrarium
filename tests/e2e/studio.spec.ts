@@ -60,6 +60,41 @@ test('studio journey: biome, 5x, relax, persistence', async ({ page }) => {
   await expect.poll(() => liveItemCount(page)).toBe(count)
 })
 
+for (const size of [
+  { width: 900, height: 700 },
+  { width: 1280, height: 800 },
+]) {
+  test(`every top-nav control is inside the viewport at ${size.width}x${size.height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(size)
+    await page.goto('/')
+    const nav = page.locator('#top-nav')
+    for (const n of [
+      /Biome/,
+      /Clear Placed/,
+      /Snapshot/,
+      /Toggle Ambient/,
+      /Relax Mode/,
+      /Auto Sync/i,
+    ])
+      await expect(nav.getByRole('button', { name: n })).toBeVisible()
+    // Every rendered control (speed pills, lighting, utilities); drawer toggles are display:none from lg up.
+    const buttons = await nav.getByRole('button').filter({ visible: true }).all()
+    expect(buttons.length).toBeGreaterThanOrEqual(14)
+    for (const btn of buttons) {
+      const box = await btn.boundingBox()
+      expect(box, await btn.innerText()).not.toBeNull()
+      expect(box!.x).toBeGreaterThanOrEqual(0)
+      expect(box!.x + box!.width).toBeLessThanOrEqual(size.width)
+    }
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    )
+    expect(overflow).toBeLessThanOrEqual(0)
+  })
+}
+
 test.describe('narrow viewport drawers', () => {
   test.use({ viewport: { width: 900, height: 700 } })
 
@@ -99,5 +134,12 @@ test.describe('narrow viewport drawers', () => {
     })
     expect(inside).not.toBeNull()
     expect(inside).toMatchObject({ overlap: true, inDrawer: true })
+
+    const stageTop = await page.evaluate(() => {
+      const main = document.querySelector('main')!.getBoundingClientRect()
+      const el = document.elementFromPoint(main.left + main.width / 2, main.top + main.height / 2)
+      return el?.getAttribute('data-testid') ?? null
+    })
+    expect(stageTop).toBe('drawer-scrim')
   })
 })
