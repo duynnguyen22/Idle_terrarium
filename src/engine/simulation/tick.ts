@@ -61,13 +61,14 @@ export function tick(
     }
     advanceClock(store, deps.now)
     updateFauna(world, store, dtMs, timestamp, rng)
-    updateAmbientMotes(world, dtMs)
+    if (!store.reducedMotion) updateAmbientMotes(world, dtMs)
     updateGrowth(world, store, dtMs)
     updateMold(world, store, dtMs)
   }
 
   syncChildren(world)
-  if (store.lighting === 'night' || store.lighting === 'twilight') updateFireflies(world, dtMs)
+  if (!store.reducedMotion && (store.lighting === 'night' || store.lighting === 'twilight'))
+    updateFireflies(world, dtMs)
   stepPourParticles(world, store, dtMs, rng)
   pushTelemetry(world, store, timestamp)
 }

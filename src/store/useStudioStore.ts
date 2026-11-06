@@ -39,6 +39,8 @@ export interface StudioState {
   activeTool: ActiveTool
   plantingStage: GrowthStage
   relaxMode: boolean
+  /** OS `prefers-reduced-motion`; transient (not persisted), driven by useReducedMotion. */
+  reducedMotion: boolean
   audioEnabled: boolean
   soundPreset: SoundPresetId
   substrates: SubstrateDepths
@@ -59,6 +61,7 @@ export interface StudioActions {
   setActiveTool: (tool: ActiveTool) => void
   setPlantingStage: (stage: GrowthStage) => void
   setRelaxMode: (v: boolean) => void
+  setReducedMotion: (v: boolean) => void
   setAudioEnabled: (v: boolean) => void
   setSoundPreset: (id: SoundPresetId) => void
   setSubstrate: (id: keyof SubstrateDepths, mm: number) => void
@@ -101,6 +104,7 @@ export function createDefaultState(): StudioState {
     activeTool: 'select',
     plantingStage: 'mature',
     relaxMode: false,
+    reducedMotion: false,
     audioEnabled: false,
     soundPreset: 'stream',
     substrates: { ...DEFAULT_SUBSTRATES },
@@ -161,6 +165,7 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
         setActiveTool: (activeTool) => set({ activeTool }),
         setPlantingStage: (plantingStage) => set({ plantingStage }),
         setRelaxMode: (relaxMode) => set({ relaxMode }),
+        setReducedMotion: (reducedMotion) => set({ reducedMotion }),
         setAudioEnabled: (audioEnabled) => set({ audioEnabled }),
         setSoundPreset: (soundPreset) => set({ soundPreset }),
         setSubstrate: (id, mm) => set((s) => ({ substrates: { ...s.substrates, [id]: mm } })),
@@ -175,7 +180,7 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
             return { telemetry: { ...s.telemetry, ...partial } }
           }),
         setWorldSnapshot: (worldSnapshot) => set({ worldSnapshot }),
-        resetStudio: () => set({ ...createDefaultState() }),
+        resetStudio: () => set((s) => ({ ...createDefaultState(), reducedMotion: s.reducedMotion })),
       }),
       {
         name: STUDIO_STORAGE_KEY,

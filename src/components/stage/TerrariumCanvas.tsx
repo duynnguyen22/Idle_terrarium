@@ -3,6 +3,7 @@ import { commitWorld, getWorld } from '@/engine/engineBridge'
 import { toNormalized } from '@/engine/geometry'
 import { applyTool, beginDrag, endDrag, hitTest, updateDrag } from '@/engine/interaction'
 import { computeVesselRect } from '@/engine/render/renderFrame'
+import { registerTerrariumCanvas } from '@/lib/terrariumCanvas'
 import { play } from '@/hooks/useAudio'
 import { useTerrariumEngine } from '@/hooks/useTerrariumEngine'
 import { showToast } from '@/store/toastStore'
@@ -41,6 +42,11 @@ export function TerrariumCanvas() {
   const activeTool = useStudioStore((s) => s.activeTool)
   const pourMaterial = useStudioStore((s) => s.activePourMaterial)
   useTerrariumEngine(canvasRef)
+
+  useEffect(() => {
+    registerTerrariumCanvas(canvasRef.current)
+    return () => registerTerrariumCanvas(null)
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -154,6 +160,8 @@ export function TerrariumCanvas() {
   return (
     <canvas
       ref={canvasRef}
+      aria-label="Terrarium canvas"
+      role="img"
       data-cursor={cursor}
       onPointerDown={onPointerDown}
       className={`absolute inset-0 block h-full w-full touch-none ${CURSOR_CLASS[cursor]}`}

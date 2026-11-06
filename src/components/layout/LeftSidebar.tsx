@@ -54,13 +54,16 @@ function ActivePanel({ tab }: { tab: string }) {
 }
 
 /** Sidebar: tab bar plus the active tab's panel. */
-export function LeftSidebar() {
+export function LeftSidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
   const activeTab = useStudioStore(selectActiveTab)
   const setActiveTab = useStudioStore((s) => s.setActiveTab)
   return (
     <aside
       id="left-sidebar"
-      className="z-20 flex w-80 shrink-0 flex-col border-r border-sand-border bg-paper md:w-96"
+      data-drawer-open={drawerOpen}
+      className={`z-20 flex w-80 shrink-0 flex-col border-r border-sand-border bg-paper md:w-96 max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:max-w-[85vw] max-lg:shadow-xl max-lg:transition-[transform,visibility] motion-reduce:max-lg:transition-none ${
+        drawerOpen ? '' : 'max-lg:invisible max-lg:-translate-x-full'
+      }`}
     >
       <div
         role="tablist"
@@ -73,7 +76,9 @@ export function LeftSidebar() {
               key={t.id}
               type="button"
               role="tab"
+              id={`sidebar-tab-${t.id}`}
               aria-selected={active}
+              aria-controls="sidebar-panel"
               onClick={() => setActiveTab(t.id)}
               className={`flex flex-col items-center justify-center rounded-xl px-1 py-2 text-xs transition ${
                 active
@@ -87,7 +92,12 @@ export function LeftSidebar() {
           )
         })}
       </div>
-      <div className="flex-1 space-y-5 overflow-y-auto p-3.5">
+      <div
+        role="tabpanel"
+        id="sidebar-panel"
+        aria-labelledby={`sidebar-tab-${activeTab}`}
+        className="flex-1 space-y-5 overflow-y-auto p-3.5"
+      >
         <ActivePanel tab={activeTab} />
       </div>
     </aside>

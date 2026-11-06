@@ -25,7 +25,7 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
 
     // Subtle gentle sway for flora
     let sway = 0
-    if (item.category === 'flora') {
+    if (item.category === 'flora' && !state.reducedMotion) {
       sway = Math.sin(timestamp * 0.0009 + px * 0.02) * 0.025
     }
     ctx.rotate(((item.rotation || 0) * Math.PI) / 180 + sway)

@@ -2,6 +2,8 @@ import { ensureAudioContext } from '@/engine/audio/audioContext'
 import { mutateWorld } from '@/engine/engineBridge'
 import { applyPreset } from '@/engine/presets'
 import { selectAudioEnabled } from '@/store/selectors'
+import { exportSnapshotPng, snapshotFilename } from '@/lib/snapshot'
+import { getTerrariumCanvas } from '@/lib/terrariumCanvas'
 import { showToast } from '@/store/toastStore'
 import { useStudioStore } from '@/store/useStudioStore'
 
@@ -12,8 +14,11 @@ const toggleAudio = () => {
   const s = useStudioStore.getState()
   s.setAudioEnabled(!s.audioEnabled)
 }
-const takeSnapshot = () => {
-  // TODO(task-11): export the canvas as a PNG.
+const takeSnapshot = async () => {
+  const canvas = getTerrariumCanvas()
+  if (!canvas) return
+  const ok = await exportSnapshotPng(canvas, snapshotFilename(useStudioStore.getState().dayCount))
+  if (ok) showToast('📸 High-DPI Snapshot saved!')
 }
 
 const NEUTRAL =
@@ -82,7 +87,8 @@ export function UtilityActions() {
       </button>
       <button
         type="button"
-        onClick={takeSnapshot}
+        onClick={() => void takeSnapshot()}
+        title="Save a PNG snapshot of the terrarium"
         className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-forest-deep px-3 text-xs font-semibold text-white shadow-xs transition hover:bg-forest-dark"
       >
         <span>📸</span>

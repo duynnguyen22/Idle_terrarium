@@ -108,6 +108,25 @@ describe('renderFrame', () => {
   })
 })
 
+describe('reduced motion', () => {
+  const rotations = (reducedMotion: boolean, timestamp: number) => {
+    const { ctx } = makeRecordingContext()
+    const angles: number[] = []
+    ;(ctx as unknown as { rotate: (a: number) => void }).rotate = (a) => void angles.push(a)
+    const state: StudioState = { ...createDefaultState(), reducedMotion }
+    renderFrame(ctx, populatedWorld(), state, computeVesselRect(800, 600), timestamp)
+    return angles
+  }
+
+  it('sways flora over time by default', () => {
+    expect(rotations(false, 0)).not.toEqual(rotations(false, 1500))
+  })
+
+  it('holds flora still when reducedMotion is set', () => {
+    expect(rotations(true, 0)).toEqual(rotations(true, 1500))
+  })
+})
+
 describe('computeVesselRect', () => {
   it('is square and centred horizontally, 0.52 down vertically', () => {
     const R = computeVesselRect(1000, 600)

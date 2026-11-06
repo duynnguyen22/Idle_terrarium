@@ -11,7 +11,7 @@ const AI_STATES = ['wandering', 'resting', 'eating', 'exploring'] as const
 /** Autonomous creature AI (prototype 2594-2619). Dragged fauna are skipped; swimmers bob in the water band. */
 export function updateFauna(
   world: EngineWorld,
-  state: Pick<StudioState, 'timeSpeed' | 'substrates'>,
+  state: Pick<StudioState, 'timeSpeed' | 'substrates'> & { reducedMotion?: boolean },
   dtMs: number,
   timestamp = 0,
   rng: Rng = Math.random,
@@ -44,7 +44,8 @@ export function updateFauna(
     }
 
     if (def && def.category === 'fauna' && def.swimsInWater && state.substrates.water > 4) {
-      item.y = surfaceY + 0.04 + Math.sin(timestamp * 0.002 + item.x * 10) * 0.015
+      const bob = state.reducedMotion ? 0 : Math.sin(timestamp * 0.002 + item.x * 10) * 0.015
+      item.y = surfaceY + 0.04 + bob
     }
   }
 }

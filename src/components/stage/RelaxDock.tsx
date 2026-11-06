@@ -1,6 +1,6 @@
 import { SOUND_PRESETS } from '@/data/soundPresets'
 import type { LightingId } from '@/data/types'
-import { selectRelaxMode, selectSoundPreset } from '@/store/selectors'
+import { selectLighting, selectRelaxMode, selectSoundPreset } from '@/store/selectors'
 import { useStudioStore } from '@/store/useStudioStore'
 
 const WEATHER: { id: LightingId; label: string }[] = [
@@ -15,6 +15,7 @@ const DIVIDER = <span className="h-4 w-px bg-white/15" />
 export function RelaxDock() {
   const relaxMode = useStudioStore(selectRelaxMode)
   const soundPreset = useStudioStore(selectSoundPreset)
+  const lighting = useStudioStore(selectLighting)
   const setSoundPreset = useStudioStore((s) => s.setSoundPreset)
   const setLighting = useStudioStore((s) => s.setLighting)
   const setAutoLightSync = useStudioStore((s) => s.setAutoLightSync)
@@ -56,6 +57,7 @@ export function RelaxDock() {
             key={w.id}
             type="button"
             data-weather={w.id}
+            aria-pressed={lighting === w.id}
             onClick={() => {
               setLighting(w.id)
               setAutoLightSync(false)
