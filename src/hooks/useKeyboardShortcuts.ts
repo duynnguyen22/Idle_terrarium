@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { startAudioFromGesture } from '@/hooks/useAudio'
 import { useStudioStore } from '@/store/useStudioStore'
 
 function isEditable(target: EventTarget | null): boolean {
@@ -19,6 +20,7 @@ export function useKeyboardShortcuts(): void {
       const s = useStudioStore.getState()
       if (e.key === 'r' || e.key === 'R') {
         s.setRelaxMode(!s.relaxMode)
+        if (!s.relaxMode) startAudioFromGesture()
       } else if (e.key === 'Escape') {
         if (s.relaxMode) s.setRelaxMode(false)
         else if (s.selectedId !== null) s.selectItem(null)

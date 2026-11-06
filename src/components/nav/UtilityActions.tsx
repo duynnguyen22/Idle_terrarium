@@ -1,4 +1,4 @@
-import { ensureAudioContext } from '@/engine/audio/audioContext'
+import { startAudioFromGesture, stopAudio } from '@/hooks/useAudio'
 import { mutateWorld } from '@/engine/engineBridge'
 import { applyPreset } from '@/engine/presets'
 import { selectAudioEnabled } from '@/store/selectors'
@@ -7,12 +7,14 @@ import { getTerrariumCanvas } from '@/lib/terrariumCanvas'
 import { showToast } from '@/store/toastStore'
 import { useStudioStore } from '@/store/useStudioStore'
 
-const enterRelax = () => useStudioStore.getState().setRelaxMode(true)
+const enterRelax = () => {
+  useStudioStore.getState().setRelaxMode(true)
+  startAudioFromGesture()
+}
 const toggleAudio = () => {
-  // The click is the user gesture that may create/resume the AudioContext (useAudio then starts the ambient loop).
-  ensureAudioContext()
-  const s = useStudioStore.getState()
-  s.setAudioEnabled(!s.audioEnabled)
+  // Starting must happen inside this click (gesture); stopping must not create an AudioContext.
+  if (useStudioStore.getState().audioEnabled) stopAudio()
+  else startAudioFromGesture()
 }
 const takeSnapshot = async () => {
   const canvas = getTerrariumCanvas()

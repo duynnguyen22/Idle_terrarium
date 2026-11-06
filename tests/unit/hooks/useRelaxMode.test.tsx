@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RelaxDock } from '@/components/stage/RelaxDock'
 import { UtilityActions } from '@/components/nav/UtilityActions'
 import { setAudioContextFactory } from '@/engine/audio/audioContext'
-import { play, useAudio } from '@/hooks/useAudio'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { play, stopAudio, useAudio } from '@/hooks/useAudio'
 import { RELAX_IDLE_MS, useRelaxMode } from '@/hooks/useRelaxMode'
 import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
 import { createFakeAudio } from '../helpers/fakeAudio'
@@ -13,6 +14,9 @@ function Harness() {
   useAudio()
   return <RelaxDock />
 }
+
+// Stops the module-level ambient loop a handler-started test leaves behind (no useAudio mounted to do it).
+const cleanupAmbient = () => stopAudio()
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -104,5 +108,45 @@ describe('useAudio', () => {
     expect(factory).not.toHaveBeenCalled()
     fireEvent.pointerDown(window)
     expect(factory).toHaveBeenCalledTimes(1)
+  })
+
+  it('toggling audio off does not create an AudioContext', () => {
+    const { ctx } = createFakeAudio()
+    const factory = vi.fn(() => ctx)
+    setAudioContextFactory(factory)
+    useStudioStore.setState({ audioEnabled: true })
+    render(<UtilityActions />)
+    fireEvent.click(screen.getByLabelText('Toggle Ambient Soundscape'))
+    expect(useStudioStore.getState().audioEnabled).toBe(false)
+    expect(factory).not.toHaveBeenCalled()
+  })
+
+  it('the Relax button starts ambient inside the click, without any effect or prior gesture', () => {
+    const { ctx, oscs } = createFakeAudio()
+    const factory = vi.fn(() => ctx)
+    setAudioContextFactory(factory)
+    // No useAudio mounted: only the click handler can have started the context and the loop.
+    render(<UtilityActions />)
+    fireEvent.click(screen.getByText('Relax Mode'))
+    expect(factory).toHaveBeenCalledTimes(1)
+    act(() => void vi.advanceTimersByTime(520))
+    expect(oscs.length).toBeGreaterThanOrEqual(2)
+    cleanupAmbient()
+  })
+
+  it('the R shortcut starts ambient inside the keydown handler', () => {
+    const { ctx, oscs } = createFakeAudio()
+    const factory = vi.fn(() => ctx)
+    setAudioContextFactory(factory)
+    function Keys() {
+      useKeyboardShortcuts()
+      return null
+    }
+    render(<Keys />)
+    fireEvent.keyDown(window, { key: 'r' })
+    expect(factory).toHaveBeenCalledTimes(1)
+    act(() => void vi.advanceTimersByTime(520))
+    expect(oscs.length).toBeGreaterThanOrEqual(2)
+    cleanupAmbient()
   })
 })
