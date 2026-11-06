@@ -62,8 +62,13 @@ describe('traceVesselPath', () => {
     'begins a path for %s',
     (vessel) => {
       const ctx = {
-        beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), bezierCurveTo: vi.fn(),
-        closePath: vi.fn(), arc: vi.fn(), roundRect: vi.fn(),
+        beginPath: vi.fn(),
+        moveTo: vi.fn(),
+        lineTo: vi.fn(),
+        bezierCurveTo: vi.fn(),
+        closePath: vi.fn(),
+        arc: vi.fn(),
+        roundRect: vi.fn(),
       } as unknown as CanvasRenderingContext2D
       traceVesselPath(ctx, vessel, R)
       expect(ctx.beginPath).toHaveBeenCalledTimes(1)

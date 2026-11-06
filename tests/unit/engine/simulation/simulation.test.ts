@@ -7,7 +7,11 @@ import { FRAME_MS } from '@/engine/simulation/constants'
 import { updateFauna } from '@/engine/simulation/fauna'
 import { advanceDay, updateGrowth } from '@/engine/simulation/growth'
 import { addSporePatch, updateMold } from '@/engine/simulation/mold'
-import { initWorldParticles, updateAmbientMotes, updateFireflies } from '@/engine/simulation/particles'
+import {
+  initWorldParticles,
+  updateAmbientMotes,
+  updateFireflies,
+} from '@/engine/simulation/particles'
 import { siphonStep, spawnPourStream, stepPourParticles } from '@/engine/simulation/pouring'
 import { pushTelemetry, TELEMETRY_INTERVAL_MS } from '@/engine/simulation/telemetry'
 import { syncChildren, tick } from '@/engine/simulation/tick'
@@ -25,8 +29,16 @@ function mulberry32(seed: number) {
   }
 }
 
-const item = (o: Partial<PlacedItem> & Pick<PlacedItem, 'uid' | 'id' | 'category'>): PlacedItem => ({
-  x: 0.5, y: 0.5, scale: 1, rotation: 0, flipX: false, zIndex: 1, ...o,
+const item = (
+  o: Partial<PlacedItem> & Pick<PlacedItem, 'uid' | 'id' | 'category'>,
+): PlacedItem => ({
+  x: 0.5,
+  y: 0.5,
+  scale: 1,
+  rotation: 0,
+  flipX: false,
+  zIndex: 1,
+  ...o,
 })
 
 let store: ReturnType<typeof createStudioStore>
@@ -86,7 +98,16 @@ describe('fauna', () => {
   })
   it('skips the dragged item', () => {
     const world = createWorld()
-    world.items.push(item({ uid: 'w', id: FAUNA[0].id, category: 'fauna', aiTimer: 5, vx: 0.01, aiState: 'wandering' }))
+    world.items.push(
+      item({
+        uid: 'w',
+        id: FAUNA[0].id,
+        category: 'fauna',
+        aiTimer: 5,
+        vx: 0.01,
+        aiState: 'wandering',
+      }),
+    )
     world.draggingId = 'w'
     updateFauna(world, store.getState(), FRAME_MS, 0, mulberry32(1))
     expect(world.items[0].x).toBe(0.5)
@@ -97,7 +118,15 @@ describe('fauna', () => {
 describe('growth', () => {
   it('sprout reaches mature after ~3200 frames and +1 Day makes it lush', () => {
     const world = createWorld()
-    world.items.push(item({ uid: 'p', id: 'boston_fern', category: 'flora', stage: 'sprout', growthProgress: 0.2 }))
+    world.items.push(
+      item({
+        uid: 'p',
+        id: 'boston_fern',
+        category: 'flora',
+        stage: 'sprout',
+        growthProgress: 0.2,
+      }),
+    )
     const state = store.getState()
     for (let i = 0; i < 3100; i++) updateGrowth(world, state, FRAME_MS)
     expect(world.items[0].stage).toBe('sprout')
@@ -112,7 +141,15 @@ describe('growth', () => {
   })
   it('5x speed grows 3.5x faster', () => {
     const w = createWorld()
-    w.items.push(item({ uid: 'p', id: 'boston_fern', category: 'flora', stage: 'sprout', growthProgress: 0.2 }))
+    w.items.push(
+      item({
+        uid: 'p',
+        id: 'boston_fern',
+        category: 'flora',
+        stage: 'sprout',
+        growthProgress: 0.2,
+      }),
+    )
     updateGrowth(w, { timeSpeed: 5 }, FRAME_MS)
     expect(w.items[0].growthProgress).toBeCloseTo(0.2 + 0.00025 * 3.5)
   })
@@ -205,7 +242,10 @@ describe('pouring', () => {
     for (const v of Object.values(s)) expect(v).toBeGreaterThanOrEqual(0)
     expect(s.water).toBe(0)
     const w2 = createWorld()
-    siphonStep(w2, { substrates: { ...store.getState().substrates, water: 24 }, telemetry: store.getState().telemetry })
+    siphonStep(w2, {
+      substrates: { ...store.getState().substrates, water: 24 },
+      telemetry: store.getState().telemetry,
+    })
     expect(w2.pendingSubstrates.water).toBeCloseTo(-0.35)
     expect(w2.pendingSubstrates.soil).toBeUndefined()
   })
@@ -218,7 +258,8 @@ describe('pushTelemetry', () => {
     let writes = 0
     const unsub = store.subscribe(() => writes++)
     let flushes = 0
-    for (let t = 1000; t < 2000; t += FRAME_MS) if (pushTelemetry(world, store.getState(), t)) flushes++
+    for (let t = 1000; t < 2000; t += FRAME_MS)
+      if (pushTelemetry(world, store.getState(), t)) flushes++
     unsub()
     expect(flushes).toBeLessThanOrEqual(1000 / TELEMETRY_INTERVAL_MS)
     expect(flushes).toBeGreaterThanOrEqual(3)
@@ -233,7 +274,14 @@ describe('tick', () => {
     const world = createWorld()
     world.items.push(
       item({ uid: 'r', id: 'moss_wall_cliff', category: 'hardscape', x: 0.4, y: 0.6 }),
-      item({ uid: 'c', id: 'boston_fern', category: 'flora', parentUid: 'r', offsetX: 0.1, offsetY: -0.1 }),
+      item({
+        uid: 'c',
+        id: 'boston_fern',
+        category: 'flora',
+        parentUid: 'r',
+        offsetX: 0.1,
+        offsetY: -0.1,
+      }),
       item({ uid: 'o', id: 'boston_fern', category: 'flora', parentUid: 'gone', x: 0.9 }),
     )
     syncChildren(world)
@@ -247,7 +295,15 @@ describe('tick', () => {
   })
   it('timeSpeed 0 pauses biology and motes; pouring spawns and lands via the store', () => {
     const world = createWorld()
-    world.items.push(item({ uid: 'p', id: 'boston_fern', category: 'flora', stage: 'sprout', growthProgress: 0.2 }))
+    world.items.push(
+      item({
+        uid: 'p',
+        id: 'boston_fern',
+        category: 'flora',
+        stage: 'sprout',
+        growthProgress: 0.2,
+      }),
+    )
     store.getState().setTimeSpeed(0)
     const rng = mulberry32(9)
     tick(world, FRAME_MS, 1000, { store: store.getState(), rng })
@@ -260,7 +316,8 @@ describe('tick', () => {
     store.getState().setActiveTool('pour')
     store.getState().setActivePourMaterial('soil')
     world.isPouring = true
-    for (let i = 0; i < 120; i++) tick(world, FRAME_MS, 2000 + i * FRAME_MS, { store: store.getState(), rng })
+    for (let i = 0; i < 120; i++)
+      tick(world, FRAME_MS, 2000 + i * FRAME_MS, { store: store.getState(), rng })
     expect(world.fallingStreams.length + world.surfaceGrains.length).toBeGreaterThan(0)
     expect(world.items[0].growthProgress as number).toBeGreaterThan(0.2)
     expect(world.ambientMotes[0].y).not.toBe(y0)

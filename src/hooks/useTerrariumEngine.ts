@@ -1,5 +1,6 @@
 import { useEffect, type RefObject } from 'react'
 import { ALL_CATALOG_DEFS, type CatalogId } from '@/data/catalog'
+import { isOwnSnapshot, registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { restoreWorld } from '@/engine/persistence'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
 import { tick } from '@/engine/simulation/tick'
@@ -25,11 +26,17 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
     const world = createWorld()
     const initial = useStudioStore.getState().worldSnapshot
     if (initial) restoreWorld(world, initial)
+    registerWorld(world)
     warmSpriteCache(ALL_CATALOG_DEFS.map((d) => d.id as CatalogId))
 
-    // External snapshot changes (e.g. a preset load) replace the world's persistable parts.
+    // External snapshot changes (e.g. a preset load) replace the world's persistable parts;
+    // snapshots the bridge wrote itself are skipped so mid-interaction item objects are not replaced.
     const unsubscribe = useStudioStore.subscribe((s, prev) => {
-      if (s.worldSnapshot && s.worldSnapshot !== prev.worldSnapshot)
+      if (
+        s.worldSnapshot &&
+        s.worldSnapshot !== prev.worldSnapshot &&
+        !isOwnSnapshot(s.worldSnapshot)
+      )
         restoreWorld(world, s.worldSnapshot)
     })
 
@@ -79,6 +86,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       document.removeEventListener('visibilitychange', onVisibility)
       stop()
       unsubscribe()
+      unregisterWorld()
     }
   }, [canvasRef])
 }

@@ -1,6 +1,7 @@
 import { render } from '@testing-library/react'
 import { useRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mutateWorld, getWorld, unregisterWorld } from '@/engine/engineBridge'
 import { configureSpriteCache } from '@/engine/sprites/spriteCache'
 import { useTerrariumEngine } from '@/hooks/useTerrariumEngine'
 import { useStudioStore } from '@/store/useStudioStore'
@@ -81,5 +82,26 @@ describe('useTerrariumEngine', () => {
     hidden.mockReturnValue(false)
     document.dispatchEvent(new Event('visibilitychange'))
     expect(callbacks.size).toBe(1)
+  })
+
+  it('registers its world, skips its own snapshots, applies external ones, and unregisters', () => {
+    const { unmount } = render(<Harness />)
+    const world = getWorld()
+    mutateWorld((w) => {
+      w.terrainContour[0] = 7
+    })
+    const own = world.terrainContour
+    expect(useStudioStore.getState().worldSnapshot?.terrainContour[0]).toBe(7)
+    // Own write: restoreWorld skipped, so the world's arrays are not replaced.
+    expect(world.terrainContour).toBe(own)
+
+    const external = { items: [], terrainContour: new Array<number>(21).fill(1) }
+    useStudioStore.getState().setWorldSnapshot(external)
+    expect(world.terrainContour[0]).toBe(1)
+    expect(world.terrainContour).not.toBe(own)
+
+    unmount()
+    expect(() => getWorld()).toThrow(/no world registered/)
+    unregisterWorld()
   })
 })

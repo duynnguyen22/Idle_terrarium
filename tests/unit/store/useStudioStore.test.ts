@@ -7,13 +7,36 @@ describe('studio store', () => {
   it('defaults equal the prototype defaults', () => {
     const s = createStudioStore(localStorage).getState()
     expect(s).toMatchObject({
-      vessel: 'paludarium_tank', hasLid: true, hasGrowLamp: true, hasFogger: true,
-      lighting: 'sunlight', autoLightSync: true, timeSpeed: 1, realTimeMode: true,
-      dayCount: 1, activeTab: 'vessel', activeTool: 'select', plantingStage: 'mature',
+      vessel: 'paludarium_tank',
+      hasLid: true,
+      hasGrowLamp: true,
+      hasFogger: true,
+      lighting: 'sunlight',
+      autoLightSync: true,
+      timeSpeed: 1,
+      realTimeMode: true,
+      dayCount: 1,
+      activeTab: 'vessel',
+      activeTool: 'select',
+      plantingStage: 'mature',
       soundPreset: 'stream',
-      substrates: { pebbles: 10, lavarock: 8, charcoal: 6, moss: 8, soil: 16, rivergravel: 16, sand: 0, water: 24 },
+      substrates: {
+        pebbles: 10,
+        lavarock: 8,
+        charcoal: 6,
+        moss: 8,
+        soil: 16,
+        rivergravel: 16,
+        sand: 0,
+        water: 24,
+      },
     })
-    expect(s.telemetry).toMatchObject({ humidity: 82, soilMoisture: 76, nutrients: 88, o2Balance: 96 })
+    expect(s.telemetry).toMatchObject({
+      humidity: 82,
+      soilMoisture: 76,
+      nutrients: 88,
+      o2Balance: 96,
+    })
   })
 
   it('partialize excludes transient fields', () => {
@@ -53,10 +76,16 @@ describe('studio store', () => {
   })
 
   it('imports a prototype save when the new key is absent', () => {
-    localStorage.setItem('existence_botanica_paludarium_v5', JSON.stringify({
-      vessel: 'paludarium_tank', hasLid: false, substrates: { sand: 9 },
-      items: [{ uid: 'a', id: 'fern', category: 'flora' }], dayCount: 4,
-    }))
+    localStorage.setItem(
+      'existence_botanica_paludarium_v5',
+      JSON.stringify({
+        vessel: 'paludarium_tank',
+        hasLid: false,
+        substrates: { sand: 9 },
+        items: [{ uid: 'a', id: 'fern', category: 'flora' }],
+        dayCount: 4,
+      }),
+    )
     const s = createStudioStore(localStorage).getState()
     expect(s.hasLid).toBe(false)
     expect(s.dayCount).toBe(4)
@@ -65,7 +94,10 @@ describe('studio store', () => {
   })
 
   it('does not import when the new key already exists', () => {
-    localStorage.setItem('existence_botanica_paludarium_v5', JSON.stringify({ items: [{ uid: 'a' }], dayCount: 9 }))
+    localStorage.setItem(
+      'existence_botanica_paludarium_v5',
+      JSON.stringify({ items: [{ uid: 'a' }], dayCount: 9 }),
+    )
     localStorage.setItem(STUDIO_STORAGE_KEY, JSON.stringify({ state: { dayCount: 2 }, version: 1 }))
     expect(createStudioStore(localStorage).getState().dayCount).toBe(2)
   })
