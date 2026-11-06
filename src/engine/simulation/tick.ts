@@ -31,7 +31,7 @@ export function syncChildren(world: EngineWorld): void {
 
 /**
  * Per-frame simulation step, in the prototype's order: pour spawn / siphon, clock, fauna AI, ambient motes,
- * growth, mold cleanup (all biology skipped at timeSpeed 0, motes excepted), then the draw-phase mutations
+ * growth, mold cleanup (all skipped at timeSpeed 0, ambient motes included, as the prototype early-returns), then the draw-phase mutations
  * (child sync, firefly drift, stream integration) and the throttled store flush.
  */
 export function tick(world: EngineWorld, dtMs: number, timestamp: number, deps: TickDeps = {}): void {
@@ -46,15 +46,13 @@ export function tick(world: EngineWorld, dtMs: number, timestamp: number, deps: 
     }
     advanceClock(store, deps.now)
     updateFauna(world, store, dtMs, timestamp, rng)
-  }
-  updateAmbientMotes(world, dtMs)
-  if (store.timeSpeed !== 0) {
+    updateAmbientMotes(world, dtMs)
     updateGrowth(world, store, dtMs)
     updateMold(world, store, dtMs)
   }
 
   syncChildren(world)
-  updateFireflies(world, dtMs)
+  if (store.lighting === 'night' || store.lighting === 'twilight') updateFireflies(world, dtMs)
   stepPourParticles(world, store, dtMs, rng)
   pushTelemetry(world, store, timestamp)
 }

@@ -172,7 +172,8 @@ describe('pouring', () => {
       stepPourParticles(world, store.getState(), FRAME_MS, rng)
     expect(world.fallingStreams.length).toBe(0)
     expect(world.surfaceGrains.length).toBe(200)
-    expect(world.terrainContour.some((c) => c > 0)).toBe(true)
+    expect(world.terrainContour[10]).toBeGreaterThan(0)
+    expect(world.terrainContour[10]).toBe(Math.max(...world.terrainContour))
     expect(Math.max(...world.terrainContour)).toBeLessThanOrEqual(18)
     pushTelemetry(world, store.getState(), 1000)
     expect(store.getState().substrates.soil).toBeGreaterThan(before)
@@ -244,7 +245,7 @@ describe('tick', () => {
     syncChildren(world)
     expect(world.items[1].x).toBe(0.1)
   })
-  it('timeSpeed 0 pauses biology but not motes; pouring spawns and lands via the store', () => {
+  it('timeSpeed 0 pauses biology and motes; pouring spawns and lands via the store', () => {
     const world = createWorld()
     world.items.push(item({ uid: 'p', id: 'boston_fern', category: 'flora', stage: 'sprout', growthProgress: 0.2 }))
     store.getState().setTimeSpeed(0)
@@ -253,7 +254,7 @@ describe('tick', () => {
     const y0 = world.ambientMotes[0].y
     tick(world, FRAME_MS, 1016, { store: store.getState(), rng })
     expect(world.items[0].growthProgress).toBe(0.2)
-    expect(world.ambientMotes[0].y).not.toBe(y0)
+    expect(world.ambientMotes[0].y).toBe(y0)
 
     store.getState().setTimeSpeed(1)
     store.getState().setActiveTool('pour')
@@ -262,5 +263,6 @@ describe('tick', () => {
     for (let i = 0; i < 120; i++) tick(world, FRAME_MS, 2000 + i * FRAME_MS, { store: store.getState(), rng })
     expect(world.fallingStreams.length + world.surfaceGrains.length).toBeGreaterThan(0)
     expect(world.items[0].growthProgress as number).toBeGreaterThan(0.2)
+    expect(world.ambientMotes[0].y).not.toBe(y0)
   })
 })

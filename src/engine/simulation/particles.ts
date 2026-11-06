@@ -58,7 +58,7 @@ function n(e: WorldEntity, k: string): number {
   return typeof v === 'number' ? v : 0
 }
 
-/** Ambient mote drift with vertical wrap (prototype 2621-2626). Runs even while paused. */
+/** Ambient mote drift with vertical wrap (prototype 2621-2626). Paused with the rest of the biology at timeSpeed 0. */
 export function updateAmbientMotes(world: EngineWorld, dtMs: number): void {
   const fs = frameScale(dtMs)
   for (const m of world.ambientMotes) {
