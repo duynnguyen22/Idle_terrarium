@@ -1,14 +1,16 @@
+import { ensureAudioContext } from '@/engine/audio/audioContext'
 import { mutateWorld } from '@/engine/engineBridge'
 import { applyPreset } from '@/engine/presets'
 import { selectAudioEnabled } from '@/store/selectors'
 import { showToast } from '@/store/toastStore'
 import { useStudioStore } from '@/store/useStudioStore'
 
-const enterRelax = () => {
-  // TODO(task-10): enter Relax Mode (hide chrome, show the relax dock).
-}
+const enterRelax = () => useStudioStore.getState().setRelaxMode(true)
 const toggleAudio = () => {
-  // TODO(task-10): toggle the ambient soundscape.
+  // The click is the user gesture that may create/resume the AudioContext (useAudio then starts the ambient loop).
+  ensureAudioContext()
+  const s = useStudioStore.getState()
+  s.setAudioEnabled(!s.audioEnabled)
 }
 const takeSnapshot = () => {
   // TODO(task-11): export the canvas as a PNG.

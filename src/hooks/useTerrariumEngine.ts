@@ -6,6 +6,7 @@ import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
 import { tick } from '@/engine/simulation/tick'
 import { warmSpriteCache } from '@/engine/sprites/spriteCache'
 import { createWorld, type EngineWorld } from '@/engine/world'
+import { play } from '@/hooks/useAudio'
 import { useStudioStore } from '@/store/useStudioStore'
 
 /** Longest simulated step; a backgrounded tab resumes with a clamped dt instead of a huge jump. */
@@ -57,7 +58,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       last = timestamp
 
       const state = useStudioStore.getState()
-      tick(world, dt, timestamp)
+      tick(world, dt, timestamp, { onCue: play })
 
       const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR)
       const W = canvas.width / dpr

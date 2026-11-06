@@ -1,4 +1,5 @@
 import { useStudioStore, type StudioStore } from '@/store/useStudioStore'
+import type { AsmrCue } from '../interaction'
 import type { EngineWorld } from '../world'
 import { advanceClock } from './clock'
 import type { Rng } from './constants'
@@ -13,6 +14,8 @@ export interface TickDeps {
   store?: StudioStore
   rng?: Rng
   now?: Date
+  /** Optional audio hook; the engine stays free of audio imports. */
+  onCue?: (cue: AsmrCue) => void
 }
 
 /** Child items follow their parent via offsetX/offsetY; orphans are detached (prototype 2361-2370). */
@@ -34,15 +37,27 @@ export function syncChildren(world: EngineWorld): void {
  * growth, mold cleanup (all skipped at timeSpeed 0, ambient motes included, as the prototype early-returns), then the draw-phase mutations
  * (child sync, firefly drift, stream integration) and the throttled store flush.
  */
-export function tick(world: EngineWorld, dtMs: number, timestamp: number, deps: TickDeps = {}): void {
+export function tick(
+  world: EngineWorld,
+  dtMs: number,
+  timestamp: number,
+  deps: TickDeps = {},
+): void {
   const store = deps.store ?? useStudioStore.getState()
   const rng = deps.rng ?? Math.random
-  if (world.ambientMotes.length === 0 && world.fireflies.length === 0) initWorldParticles(world, rng)
+  if (world.ambientMotes.length === 0 && world.fireflies.length === 0)
+    initWorldParticles(world, rng)
 
   if (store.timeSpeed !== 0) {
     if (world.isPouring && store.activeTool === 'pour' && store.activePourMaterial) {
       if (store.activePourMaterial === 'siphon') siphonStep(world, store)
-      else spawnPourStream(world, store.activePourMaterial, rng)
+      else {
+        spawnPourStream(world, store.activePourMaterial, rng)
+        // prototype 2575-2577: ~45% of spawn frames emit a scatter / water cue
+        if (deps.onCue && rng() > 0.55) {
+          deps.onCue(store.activePourMaterial === 'water' ? 'pour_water' : 'scatter')
+        }
+      }
     }
     advanceClock(store, deps.now)
     updateFauna(world, store, dtMs, timestamp, rng)

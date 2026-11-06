@@ -10,6 +10,7 @@ import {
   rotateItem,
   scaleItem,
 } from '@/engine/items'
+import { play } from '@/hooks/useAudio'
 import type { EngineWorld } from '@/engine/world'
 import { selectRelaxMode, selectSelectedId } from '@/store/selectors'
 import { useStudioStore } from '@/store/useStudioStore'
@@ -89,12 +90,16 @@ export function ItemInspector() {
     apply((w) => {
       uid = duplicateItem(w, item.uid, plantingStage, substrates)?.uid ?? null
     })
-    if (uid) selectItem(uid)
+    if (uid) {
+      selectItem(uid)
+      play('repot')
+    }
   }
 
   const onDelete = () => {
     apply((w) => deleteItem(w, item.uid))
     useStudioStore.getState().selectItem(null)
+    play('prune')
   }
 
   return (
@@ -177,7 +182,10 @@ export function ItemInspector() {
           <InspectorButton
             title="Advance Growth Stage"
             className="border border-emerald-200 bg-emerald-50 text-emerald-800"
-            onClick={() => apply((w) => advanceGrowth(w, item.uid))}
+            onClick={() => {
+              apply((w) => advanceGrowth(w, item.uid))
+              play('chime')
+            }}
           >
             <path d="M12 20V10" />
             <path d="M12 10C12 6 16 4 19 5C19 9 16 10 12 10Z" />

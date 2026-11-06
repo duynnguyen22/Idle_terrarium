@@ -10,8 +10,8 @@ export const SNAP_RADIUS = 0.045
 /** Hardscape mount points are expressed in units of this size times the host's scale. */
 export const MOUNT_HOST_SIZE = 0.18
 
-/** Cue names the prototype passes to playTactileASMR from the canvas tools (audio lands in Task 10). */
-export type AsmrCue = 'chime' | 'repot' | 'prune'
+/** Every cue name the prototype's playTactileASMR (1611-1665) defines. */
+export type AsmrCue = 'chime' | 'repot' | 'prune' | 'scatter' | 'pour_water'
 
 export interface ToolEffect {
   /** Increments for the store's telemetry (already capped against the current values). */

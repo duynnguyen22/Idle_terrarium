@@ -1,6 +1,7 @@
 import { CATALOG } from '@/data/catalog'
 import { mutateWorld } from '@/engine/engineBridge'
 import { addItem } from '@/engine/items'
+import { play } from '@/hooks/useAudio'
 import { useStudioStore } from '@/store/useStudioStore'
 import { CatalogCard } from './CatalogCard'
 
@@ -14,7 +15,10 @@ export function CatalogGrid({ category }: { category: CatalogCategory }) {
     mutateWorld((w) => {
       uid = addItem(w, defId, plantingStage, { substrates })?.uid ?? null
     })
-    if (uid) selectItem(uid)
+    if (uid) {
+      selectItem(uid)
+      play('repot')
+    }
   }
   return (
     <div className="grid grid-cols-2 gap-2.5" data-testid={`catalog-${category}`}>

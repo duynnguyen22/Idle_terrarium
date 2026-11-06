@@ -3,6 +3,7 @@ import { commitWorld, getWorld } from '@/engine/engineBridge'
 import { toNormalized } from '@/engine/geometry'
 import { applyTool, beginDrag, endDrag, hitTest, updateDrag } from '@/engine/interaction'
 import { computeVesselRect } from '@/engine/render/renderFrame'
+import { play } from '@/hooks/useAudio'
 import { useTerrariumEngine } from '@/hooks/useTerrariumEngine'
 import { showToast } from '@/store/toastStore'
 import { useStudioStore } from '@/store/useStudioStore'
@@ -133,7 +134,7 @@ export function TerrariumCanvas() {
           ...(d.nutrients !== undefined && { nutrients: t.nutrients + d.nutrients }),
         })
       }
-      // TODO(task-10): play effect.sound through the ASMR audio engine.
+      if (effect.sound) play(effect.sound)
       if (effect.toast) showToast(effect.toast)
       commitWorld()
       return

@@ -1,6 +1,7 @@
 import type { LightingId } from '@/data/types'
 import { advanceDay } from '@/engine/simulation/growth'
 import { mutateWorld } from '@/engine/engineBridge'
+import { play } from '@/hooks/useAudio'
 import { useLocalClock } from '@/hooks/useLocalClock'
 import { selectDayCount, selectLighting } from '@/store/selectors'
 import { showToast } from '@/store/toastStore'
@@ -47,7 +48,7 @@ export function ClockSpeedPill() {
   }
 
   const plusDay = () => {
-    // TODO(task-10): playTactileASMR('chime')
+    play('chime')
     mutateWorld((w) => advanceDay(w, useStudioStore.getState()))
     showToast('🌱 Advanced +24 Hours — plants grew lushly!')
   }

@@ -172,7 +172,8 @@
   body.relax-idle #relax-dock {
     opacity: 0 !important;
     pointer-events: none !important;
-    transform: translate(-50%, 12px);
+    /* Tailwind v4's -translate-x-1/2 uses the `translate` property, so only add the vertical drop here. */
+    transform: translateY(12px);
   }
   body.relax-idle {
     cursor: none !important;
