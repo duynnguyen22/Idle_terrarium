@@ -24,5 +24,5 @@ export function restoreWorld(world: EngineWorld, snapshot: WorldSnapshot): void 
     snapshot.terrainContour.length === TERRAIN_POINTS
       ? [...snapshot.terrainContour]
       : new Array<number>(TERRAIN_POINTS).fill(0)
-  if (snapshot.substrateGrains) world.surfaceGrains = structuredClone(snapshot.substrateGrains)
+  world.surfaceGrains = snapshot.substrateGrains ? structuredClone(snapshot.substrateGrains) : []
 }

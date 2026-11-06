@@ -23,4 +23,11 @@ describe('world persistence', () => {
     expect(w2.terrainContour).toEqual(w.terrainContour)
     expect(w2.fireflies).toEqual([])
   })
+
+  it('restoreWorld clears stale surface grains when the snapshot has none', () => {
+    const w = createWorld()
+    w.surfaceGrains.push({ x: 0.5 })
+    restoreWorld(w, { items: [], terrainContour: [] })
+    expect(w.surfaceGrains).toEqual([])
+  })
 })
