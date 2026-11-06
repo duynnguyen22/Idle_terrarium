@@ -5,12 +5,19 @@ import { restoreWorld } from '@/engine/persistence'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
 import { tick } from '@/engine/simulation/tick'
 import { warmSpriteCache } from '@/engine/sprites/spriteCache'
-import { createWorld } from '@/engine/world'
+import { createWorld, type EngineWorld } from '@/engine/world'
 import { useStudioStore } from '@/store/useStudioStore'
 
 /** Longest simulated step; a backgrounded tab resumes with a clamped dt instead of a huge jump. */
 const MAX_DT_MS = 100
 const MAX_DPR = 2
+
+declare global {
+  interface Window {
+    /** Dev/e2e debug handle; only present when `import.meta.env.DEV` (Playwright runs the dev server). */
+    __botanica?: { world: () => EngineWorld; store: typeof useStudioStore }
+  }
+}
 
 /**
  * Owns the EngineWorld and the single rAF loop for `canvasRef`. The hot path reads the store via
@@ -27,6 +34,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
     const initial = useStudioStore.getState().worldSnapshot
     if (initial) restoreWorld(world, initial)
     registerWorld(world)
+    if (import.meta.env.DEV) window.__botanica = { world: () => world, store: useStudioStore }
     warmSpriteCache(ALL_CATALOG_DEFS.map((d) => d.id as CatalogId))
 
     // External snapshot changes (e.g. a preset load) replace the world's persistable parts;
@@ -87,6 +95,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       stop()
       unsubscribe()
       unregisterWorld()
+      if (import.meta.env.DEV) delete window.__botanica
     }
   }, [canvasRef])
 }

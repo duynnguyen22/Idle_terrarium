@@ -2,11 +2,13 @@ import type { ReactNode } from 'react'
 import { CareToolbar } from '@/components/stage/CareToolbar'
 import { ItemInspector } from '@/components/stage/ItemInspector'
 import { Toast } from '@/components/stage/Toast'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { LeftSidebar } from './LeftSidebar'
 import { RightTelemetry } from './RightTelemetry'
 import { TopNav } from './TopNav'
 
 export function StudioLayout({ children }: { children: ReactNode }) {
+  useKeyboardShortcuts()
   return (
     <div className="flex h-screen w-screen select-none flex-col bg-cream text-ink-deep">
       <TopNav />
