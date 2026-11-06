@@ -21,6 +21,7 @@ describe('importPrototypeSave', () => {
     })
     expect(r?.worldSnapshot?.items).toEqual(items)
     expect(r?.worldSnapshot?.terrainContour).toEqual(contour)
+    expect(r?.worldSnapshot?.substrateGrains).toEqual([{ x: 1 }])
     expect(localStorage.getItem(KEY)).not.toBeNull()
   })
 
@@ -41,5 +42,25 @@ describe('importPrototypeSave', () => {
     expect(r?.hasLid).toBe(true)
     expect(r?.dayCount).toBe(1)
     expect(r?.worldSnapshot?.terrainContour).toHaveLength(21)
+  })
+
+  it('caps imported surfaceGrains at the last 180 entries', () => {
+    const grains = Array.from({ length: 200 }, (_, i) => ({ i }))
+    localStorage.setItem(KEY, JSON.stringify({ items: [{ uid: 'a', id: 'fern' }], surfaceGrains: grains }))
+    const g = importPrototypeSave(localStorage)?.worldSnapshot?.substrateGrains
+    expect(g).toHaveLength(180)
+    expect(g?.[0]).toEqual({ i: 20 })
+    expect(g?.[179]).toEqual({ i: 199 })
+  })
+
+  it('returns null when no item is a valid object with string uid and id', () => {
+    localStorage.setItem(KEY, JSON.stringify({ items: [null, 1, 'x', { uid: 'a' }, { id: 'b' }, { uid: 1, id: 2 }] }))
+    expect(importPrototypeSave(localStorage)).toBeNull()
+  })
+
+  it('keeps only valid items from a mixed array', () => {
+    const good = { uid: 'u1', id: 'fern', x: 0.1 }
+    localStorage.setItem(KEY, JSON.stringify({ items: [null, good, 5, { uid: 'z' }] }))
+    expect(importPrototypeSave(localStorage)?.worldSnapshot?.items).toEqual([good])
   })
 })

@@ -1,7 +1,8 @@
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
 import type { PlacedItem, SubstrateDepths } from '@/data/types'
 import { VESSELS_BY_ID, type VesselId } from '@/data/vessels'
-import { TERRAIN_POINTS } from '@/engine/world'
+import { MAX_PERSISTED_GRAINS } from '@/engine/persistence'
+import { TERRAIN_POINTS, type WorldEntity } from '@/engine/world'
 import type { StudioState } from './useStudioStore'
 
 export const PROTOTYPE_STORAGE_KEY = 'existence_botanica_paludarium_v5'
@@ -16,10 +17,15 @@ export function importPrototypeSave(storage: Storage): Partial<StudioState> | nu
     const raw = storage.getItem(PROTOTYPE_STORAGE_KEY)
     if (!raw) return null
     const saved: unknown = JSON.parse(raw)
-    if (!isRecord(saved) || !Array.isArray(saved.items) || saved.items.length === 0) return null
+    if (!isRecord(saved) || !Array.isArray(saved.items)) return null
+    const items = saved.items.filter(
+      (it): it is PlacedItem =>
+        isRecord(it) && typeof it.uid === 'string' && typeof it.id === 'string',
+    )
+    if (items.length === 0) return null
 
     const vessel =
-      typeof saved.vessel === 'string' && saved.vessel in VESSELS_BY_ID
+      typeof saved.vessel === 'string' && Object.hasOwn(VESSELS_BY_ID, saved.vessel)
         ? (saved.vessel as VesselId)
         : 'paludarium_tank'
 
@@ -48,7 +54,13 @@ export function importPrototypeSave(storage: Storage): Partial<StudioState> | nu
       hasFogger: typeof saved.hasFogger === 'boolean' ? saved.hasFogger : true,
       substrates,
       dayCount,
-      worldSnapshot: { items: saved.items as PlacedItem[], terrainContour: contour },
+      worldSnapshot: {
+        items,
+        terrainContour: contour,
+        ...(Array.isArray(saved.surfaceGrains)
+          ? { substrateGrains: saved.surfaceGrains.slice(-MAX_PERSISTED_GRAINS) as WorldEntity[] }
+          : {}),
+      },
     }
   } catch {
     return null

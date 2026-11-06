@@ -7,7 +7,7 @@ export interface WorldSnapshot {
   substrateGrains?: WorldEntity[]
 }
 
-const MAX_PERSISTED_GRAINS = 180
+export const MAX_PERSISTED_GRAINS = 180
 
 /** Deep copy of the persistable world parts. Particles are never included. */
 export function snapshotWorld(world: EngineWorld): WorldSnapshot {
