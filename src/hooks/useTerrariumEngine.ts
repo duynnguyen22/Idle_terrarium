@@ -1,6 +1,7 @@
 import { useEffect, type RefObject } from 'react'
 import { ALL_CATALOG_DEFS, type CatalogId } from '@/data/catalog'
 import { isOwnSnapshot, registerWorld, unregisterWorld } from '@/engine/engineBridge'
+import { seedInitialScene } from '@/engine/presets'
 import { restoreWorld } from '@/engine/persistence'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
 import { tick } from '@/engine/simulation/tick'
@@ -35,6 +36,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
     const initial = useStudioStore.getState().worldSnapshot
     if (initial) restoreWorld(world, initial)
     registerWorld(world)
+    seedInitialScene(world)
     if (import.meta.env.DEV) window.__botanica = { world: () => world, store: useStudioStore }
     warmSpriteCache(ALL_CATALOG_DEFS.map((d) => d.id as CatalogId))
 

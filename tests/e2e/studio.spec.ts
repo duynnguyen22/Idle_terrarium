@@ -9,6 +9,19 @@ const liveItemCount = (page: Page) =>
       ).__botanica?.world().items.length ?? 0,
   )
 
+test('first run seeds the Falls Lake scene without clicking Biome', async ({ page }) => {
+  await page.goto('/')
+  await expect.poll(() => liveItemCount(page)).toBe(15)
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const raw = localStorage.getItem('botanica_studio_v1')
+        return raw ? JSON.parse(raw).state.worldSnapshot?.items.length : -1
+      }),
+    )
+    .toBe(15)
+})
+
 test('studio journey: biome, 5x, relax, persistence', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Botanica' })).toBeVisible()

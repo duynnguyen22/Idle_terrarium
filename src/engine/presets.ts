@@ -2,8 +2,9 @@ import { BIOME_PRESETS, type PresetId } from '@/data/presets'
 import { findCatalogDef } from '@/data/catalog'
 import type { PlacedItem } from '@/data/types'
 import { getSoilSurfaceNormalizedY } from '@/engine/geometry'
+import { mutateWorld } from '@/engine/engineBridge'
 import { createItemId } from '@/lib/ids'
-import type { StudioStore } from '@/store/useStudioStore'
+import { useStudioStore, type StudioStore } from '@/store/useStudioStore'
 import { TERRAIN_POINTS, type EngineWorld } from './world'
 
 type PresetStore = Pick<StudioStore, 'setVessel' | 'toggleHardware' | 'setSubstrates'> &
@@ -68,4 +69,15 @@ export function applyPreset(world: EngineWorld, presetId: PresetId, state: Prese
     items.push(item)
   }
   world.items = items
+}
+
+/**
+ * First-run seeding (prototype window.onload ~3333-3336): when there is no saved scene or it has no items,
+ * load the Falls Lake preset through the same path as the Biome button. Returns true when it seeded.
+ * Call after the world is registered with the bridge.
+ */
+export function seedInitialScene(world: EngineWorld): boolean {
+  if (world.items.length > 0) return false
+  mutateWorld((w) => applyPreset(w, 'falls', useStudioStore.getState()))
+  return true
 }
