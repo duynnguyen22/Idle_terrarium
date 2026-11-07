@@ -1,7 +1,13 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
-import type { LightingId, PumpFlow, SoundPresetId, GrowthStage, SubstrateDepths } from '@/data/types'
+import type {
+  LightingId,
+  PumpFlow,
+  SoundPresetId,
+  GrowthStage,
+  SubstrateDepths,
+} from '@/data/types'
 import type { VesselId } from '@/data/vessels'
 import type { WorldSnapshot } from '@/engine/persistence'
 import { clamp } from '@/lib/clamp'

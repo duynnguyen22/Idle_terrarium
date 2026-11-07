@@ -65,7 +65,9 @@ describe('renderFrame', () => {
     const { ctx, calls } = makeRecordingContext()
     const R = computeVesselRect(800, 600)
     const state = createDefaultState()
-    expect(() => renderFrame(ctx, populatedWorld(), state, R, 1234, { w: 800, h: 600 })).not.toThrow()
+    expect(() =>
+      renderFrame(ctx, populatedWorld(), state, R, 1234, { w: 800, h: 600 }),
+    ).not.toThrow()
     expect(calls.filter((c) => c === 'clip')).toHaveLength(expectedClips(state))
     expect(calls.filter((c) => c === 'drawImage')).toHaveLength(ITEMS.length)
     expect(calls.filter((c) => c === 'save')).toHaveLength(
@@ -170,7 +172,10 @@ describe('v6 pool, hardware and glass', () => {
         for (const waterSplit of [0.32, 0]) {
           const { ctx } = makeRecordingContext()
           expect(() =>
-            renderFrame(ctx, w, { ...state, vessel, lighting, waterSplit }, R, 0, { w: 800, h: 600 }),
+            renderFrame(ctx, w, { ...state, vessel, lighting, waterSplit }, R, 0, {
+              w: 800,
+              h: 600,
+            }),
           ).not.toThrow()
         }
     const rec = record((ctx) => drawSubstrates(ctx, w, { ...state, waterSplit: 0 }, R, 0, 'water'))
@@ -180,7 +185,14 @@ describe('v6 pool, hardware and glass', () => {
   it('water phase fills the pool when there is one', () => {
     const w = populatedWorld()
     const rec = record((ctx) =>
-      drawSubstrates(ctx, w, { ...state, waterSplit: 0.32, substrates: { ...state.substrates, water: 45 } }, R, 0, 'water'),
+      drawSubstrates(
+        ctx,
+        w,
+        { ...state, waterSplit: 0.32, substrates: { ...state.substrates, water: 45 } },
+        R,
+        0,
+        'water',
+      ),
     )
     expect(rec.calls.filter((c) => c.name === 'fill').length).toBeGreaterThan(0)
   })
@@ -201,12 +213,14 @@ describe('v6 pool, hardware and glass', () => {
   it('lid is a cork on jars and absent on the tank', () => {
     const w = createWorld()
     expect(
-      record((ctx) => drawLid(ctx, w, { ...state, vessel: 'apothecary', hasLid: true }, R, 0))
-        .fillStyles.some((f) => /#[0-9a-f]{6}/i.test(String(f))),
+      record((ctx) =>
+        drawLid(ctx, w, { ...state, vessel: 'apothecary', hasLid: true }, R, 0),
+      ).fillStyles.some((f) => /#[0-9a-f]{6}/i.test(String(f))),
     ).toBe(true)
     expect(
-      record((ctx) => drawLid(ctx, w, { ...state, vessel: 'paludarium_tank', hasLid: true }, R, 0))
-        .calls.filter((c) => c.name === 'fill'),
+      record((ctx) =>
+        drawLid(ctx, w, { ...state, vessel: 'paludarium_tank', hasLid: true }, R, 0),
+      ).calls.filter((c) => c.name === 'fill'),
     ).toHaveLength(0)
   })
 })

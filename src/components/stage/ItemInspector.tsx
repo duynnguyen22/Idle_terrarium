@@ -137,10 +137,7 @@ export function ItemInspector() {
             </span>
           )}
         </div>
-        <div
-          data-testid="insp-meta"
-          className="text-[10px] font-semibold text-stone-light"
-        >
+        <div data-testid="insp-meta" className="text-[10px] font-semibold text-stone-light">
           {meta}
         </div>
       </div>
