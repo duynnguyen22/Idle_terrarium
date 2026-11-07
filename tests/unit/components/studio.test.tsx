@@ -82,6 +82,14 @@ describe('TopNav speed controls', () => {
     expect(world.items[0].scale).toBeCloseTo(1.06)
     expect(useToastStore.getState().message).toMatch(/^Day 2: plants grew/)
   })
+
+  it('+1 Day that finishes the cycle says the pool has cycled', async () => {
+    world.env.cycleProgress = 0.99
+    render(<TopNav />)
+    await user().click(screen.getByRole('button', { name: '+1 Day' }))
+    expect(world.env.cycleProgress).toBe(1)
+    expect(useToastStore.getState().message).toBe('Day 2: plants grew. The pool has cycled.')
+  })
 })
 
 describe('lighting', () => {

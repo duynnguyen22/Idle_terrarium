@@ -29,7 +29,7 @@ describe('environment model', () => {
       condensation: 0,
       mistBoost: 0,
       cycleProgress: 1,
-      bloomTimer: 700,
+      bloomTimer: 0,
     })
     expect(w.frame).toBe(0)
     expect(w.careIssues).toEqual([])

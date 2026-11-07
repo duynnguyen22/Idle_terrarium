@@ -50,9 +50,9 @@ export function advanceDay(
   store: Pick<StudioStore, 'advanceDay' | 'dayCount' | 'setupDay' | 'waterSplit' | 'substrates'>,
   rng: Rng = Math.random,
 ): void {
-  store.advanceDay()
   // `store` is a snapshot taken before the increment; the prototype tests the incremented day.
   const dayCount = store.dayCount + 1
+  store.advanceDay()
   for (const item of world.items) {
     if (item.category === 'flora') {
       item.scale = Math.min(1.5, (item.scale || 1) * 1.06)

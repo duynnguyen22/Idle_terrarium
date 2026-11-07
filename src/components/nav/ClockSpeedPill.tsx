@@ -52,10 +52,15 @@ export function ClockSpeedPill() {
     play('chime')
     let msg = ''
     mutateWorld((w) => {
+      const before = w.env.cycleProgress
       advanceDay(w, useStudioStore.getState())
       const s = useStudioStore.getState()
-      const cycling = hasPool(s.waterSplit) && w.env.cycleProgress < 1
-      msg = `Day ${s.dayCount}: plants grew${cycling ? ', pool still cycling' : ''}`
+      const after = w.env.cycleProgress
+      if (before < 1 && after >= 1) msg = `Day ${s.dayCount}: plants grew. The pool has cycled.`
+      else {
+        const cycling = hasPool(s.waterSplit) && after < 1
+        msg = `Day ${s.dayCount}: plants grew${cycling ? ', pool still cycling' : ''}`
+      }
     })
     showToast(msg)
   }

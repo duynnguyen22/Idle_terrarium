@@ -95,7 +95,7 @@ export function createWorld(): EngineWorld {
       condensation: 0,
       mistBoost: 0,
       cycleProgress: 1,
-      bloomTimer: 700,
+      bloomTimer: 0,
     },
     frame: 0,
     careIssues: [],
