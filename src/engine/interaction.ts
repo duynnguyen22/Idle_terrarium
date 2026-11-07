@@ -15,6 +15,8 @@ export type AsmrCue = 'mist' | 'chime' | 'repot' | 'prune' | 'scatter' | 'pour_w
 export interface ToolEffect {
   sound?: AsmrCue
   toast?: string
+  /** The press starts a hold (mist): the caller captures the pointer and ends it on release. */
+  hold?: boolean
 }
 
 export type CareTool = 'mist' | 'prune' | 'boost' | 'scrub'
@@ -86,7 +88,8 @@ export function endDrag(world: EngineWorld): void {
 /**
  * Applies a care tool at a pointer-down (prototype-v6 canvas pointerdown). Returns null when the tool does not
  * consume the press (select; prune with no flora under the pointer), so the caller falls through to select/drag.
- * Mist and boost act directly on `world.env` (mistBoost, soilMoisture, nutrients). Scrub removes the most recent
+ * Mist starts a hold-to-spray stroke (the tick sprays while `world.isMisting`; release via endMist).
+ * Boost acts directly on `world.env.nutrients`. Scrub removes the most recent
  * mold patch wherever the pointer is, exactly like the prototype.
  */
 export function applyTool(
@@ -97,9 +100,9 @@ export function applyTool(
 ): ToolEffect | null {
   switch (tool) {
     case 'mist':
-      world.env.mistBoost = Math.min(25, world.env.mistBoost + 8)
-      world.env.soilMoisture = Math.min(98, world.env.soilMoisture + 3)
-      return { sound: 'mist' }
+      world.isMisting = true
+      world.mistStartHumidity = world.env.humidity
+      return { hold: true }
     case 'boost':
       world.env.nutrients = Math.min(100, world.env.nutrients + 8)
       return { sound: 'chime' }

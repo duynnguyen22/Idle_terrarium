@@ -35,6 +35,8 @@ export interface EngineWorld {
   mistDroplets: WorldEntity[]
   fallingDrops: WorldEntity[]
   sprayParticles: WorldEntity[]
+  /** Spray droplets that landed on a leaf or the soil; they glisten and slowly evaporate. */
+  mistBeads: WorldEntity[]
   fireflies: WorldEntity[]
   morningMistClouds: WorldEntity[]
   substrateGrains: WorldEntity[]
@@ -46,6 +48,12 @@ export interface EngineWorld {
   isPouring: boolean
   /** Set when the last in-flight pour particle landed after the pour ended; the engine hook commits once and clears it. */
   pourSettled: boolean
+  /** Mist Spray trigger held: the tick emits droplets at the pointer every frame. */
+  isMisting: boolean
+  /** Humidity when the current mist stroke began, for the release toast. */
+  mistStartHumidity: number
+  /** Pointer is over the canvas; the spray bottle cursor only draws then. */
+  pointerInCanvas: boolean
   pointerNorm: Point
   lastTelemetryPush: number
   /** Timestamp of the last persisted env-seed write (at most one every ENV_SEED_INTERVAL_MS). */
@@ -74,6 +82,7 @@ export function createWorld(): EngineWorld {
     mistDroplets: [],
     fallingDrops: [],
     sprayParticles: [],
+    mistBeads: [],
     fireflies: [],
     morningMistClouds: [],
     substrateGrains: [],
@@ -84,6 +93,9 @@ export function createWorld(): EngineWorld {
     hoveredSnapTarget: null,
     isPouring: false,
     pourSettled: false,
+    isMisting: false,
+    mistStartHumidity: 0,
+    pointerInCanvas: false,
     pointerNorm: { x: 0.5, y: 0.35 },
     lastTelemetryPush: 0,
     lastEnvSeedPush: 0,

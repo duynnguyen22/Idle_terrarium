@@ -5,6 +5,7 @@ import { drawBackground } from './background'
 import { drawCondensation } from './condensation'
 import { drawLid, drawPaludariumFrontFrame } from './frame'
 import { drawLamp } from './lamp'
+import { drawMist } from './mist'
 import { drawParticles } from './particles'
 import { drawPouring } from './pouring'
 import { drawSpecimens } from './specimens'
@@ -54,6 +55,8 @@ export function renderFrame(
   drawSubstrates(ctx, world, state, R, timestamp, 'water')
   // 6B. Pour container cursor & falling material stream
   drawPouring(ctx, world, state, R, timestamp)
+  // 6C. Mist spray droplets, beads on leaves & soil, spray-bottle cursor
+  drawMist(ctx, world, state, R, timestamp)
   // 7. Ambient spores, micro-droplets & night fireflies
   drawParticles(ctx, world, state, R, timestamp)
   // 7B. Condensation fog & droplets on the inside of the glass

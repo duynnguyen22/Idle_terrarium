@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { commitWorld, getWorld } from '@/engine/engineBridge'
+import { commitWorld, getWorld, tryGetWorld } from '@/engine/engineBridge'
 import { toNormalized } from '@/engine/geometry'
 import { applyTool, beginDrag, endDrag, hitTest, updateDrag } from '@/engine/interaction'
 import { computeVesselRect } from '@/engine/render/renderFrame'
+import { endMist } from '@/engine/simulation/mist'
 import { registerTerrariumCanvas } from '@/lib/terrariumCanvas'
 import { play } from '@/hooks/useAudio'
 import { useTerrariumEngine } from '@/hooks/useTerrariumEngine'
@@ -16,7 +17,8 @@ const CURSOR_CLASS: Record<CursorKind, string> = {
   grab: 'cursor-grab',
   grabbing: 'cursor-grabbing',
   pour: 'cursor-crosshair',
-  mist: 'cursor-cell',
+  // The canvas draws a spray bottle at the pointer instead (artifact syncCareToolbarButtons).
+  mist: 'cursor-none',
   prune: 'cursor-alias',
   boost: 'cursor-copy',
   scrub: 'cursor-pointer',
@@ -96,6 +98,10 @@ export function TerrariumCanvas() {
         return
       }
       let changed = false
+      if (world.isMisting) {
+        showToast(endMist(world))
+        changed = true
+      }
       if (world.isPouring) {
         world.isPouring = false
         changed = true
@@ -123,6 +129,7 @@ export function TerrariumCanvas() {
     const world = getWorld()
     const { nx, ny } = norm(e.clientX, e.clientY)
     world.pointerNorm = { x: nx, y: ny }
+    world.pointerInCanvas = true
 
     if (store.activeTool === 'pour' && store.activePourMaterial) {
       world.isPouring = true
@@ -130,6 +137,10 @@ export function TerrariumCanvas() {
     }
 
     const effect = applyTool(world, store.activeTool, nx, ny)
+    if (effect?.hold) {
+      e.currentTarget.setPointerCapture?.(e.pointerId)
+      return
+    }
     if (effect) {
       if (effect.sound) play(effect.sound)
       if (effect.toast) showToast(effect.toast)
@@ -155,6 +166,14 @@ export function TerrariumCanvas() {
       role="application"
       data-cursor={cursor}
       onPointerDown={onPointerDown}
+      onPointerEnter={() => {
+        const world = tryGetWorld()
+        if (world) world.pointerInCanvas = true
+      }}
+      onPointerLeave={() => {
+        const world = tryGetWorld()
+        if (world) world.pointerInCanvas = false
+      }}
       className={`absolute inset-0 block h-full w-full touch-none ${CURSOR_CLASS[cursor]}`}
     />
   )

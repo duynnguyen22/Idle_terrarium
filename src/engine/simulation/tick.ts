@@ -8,6 +8,7 @@ import { updateEnvironment } from './environment'
 import { updateFauna } from './fauna'
 import { updateGrowth } from './growth'
 import { updateMold } from './mold'
+import { pointerInsideGlass, spraySpawn, stepMistParticles } from './mist'
 import { initWorldParticles, updateAmbientMotes, updateFireflies } from './particles'
 import { siphonStep, spawnPourStream, stepPourParticles } from './pouring'
 import { pushTelemetry } from './telemetry'
@@ -73,6 +74,18 @@ export function tick(
     updateGrowth(world, store, dtMs)
     updateMold(world, store, dtMs, rng, deps.onToast)
   }
+
+  // Hold-to-mist runs at any time speed, like the artifact's draw-phase spray.
+  if (
+    world.isMisting &&
+    store.activeTool === 'mist' &&
+    !store.relaxMode &&
+    pointerInsideGlass(world)
+  ) {
+    spraySpawn(world, dtMs, rng)
+    if (deps.onCue && rng() < 0.06) deps.onCue('pour_water')
+  }
+  stepMistParticles(world, store, dtMs, rng)
 
   syncChildren(world)
   if (!store.reducedMotion && (store.lighting === 'night' || store.lighting === 'twilight'))

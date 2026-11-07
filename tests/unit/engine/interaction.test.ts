@@ -105,12 +105,11 @@ describe('drag', () => {
 })
 
 describe('applyTool', () => {
-  it('mist raises mistBoost by 8 (cap 25) and moisture by 3 (cap 98); boost feeds +8 with chime', () => {
-    world.env.mistBoost = 20
-    world.env.soilMoisture = 97
-    expect(applyTool(world, 'mist', 0.5, 0.5)).toEqual({ sound: 'mist' })
-    expect(world.env.mistBoost).toBe(25)
-    expect(world.env.soilMoisture).toBe(98)
+  it('mist starts a hold stroke and remembers the starting humidity; boost feeds +8 with chime', () => {
+    world.env.humidity = 71
+    expect(applyTool(world, 'mist', 0.5, 0.5)).toEqual({ hold: true })
+    expect(world.isMisting).toBe(true)
+    expect(world.mistStartHumidity).toBe(71)
     world.env.nutrients = 95
     expect(applyTool(world, 'boost', 0.5, 0.5)).toEqual({ sound: 'chime' })
     expect(world.env.nutrients).toBe(100)
