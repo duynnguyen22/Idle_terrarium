@@ -72,26 +72,28 @@ Divided into four primary tabs:
 
 ---
 
-### 3.2 Tactile Scatter & Pour Containers (9 Substrate & Water Tools)
-Players can either adjust exact millimeter (`0–45 mm`) sliders or pick up an interactive container to **click and hold inside the enclosure** to scatter grains, sculpt custom terrain mounds, or pour a lake:
+### 3.2 Tactile Scatter & Pour Containers (8 Substrate & Water Tools)
+The tank is split into **land** and a **pool**. Land layers stack bottom to top under the land side; the pool side holds a gravel bed and water. Players can either adjust exact millimeter sliders (land `0–60 mm`, pool gravel `0–30 mm`, pool water `0–80 mm`, plus the **Pool width** slider, `0–60 %`) or pick up an interactive container to **click and hold inside the enclosure** to scatter grains, sculpt custom terrain mounds, or pour into the pool:
 
-| Layer ID | Material Name | Container Tool | Role & Behavior |
-| :--- | :--- | :--- | :--- |
-| `pebbles` | **Drainage Pebbles** | *Pebble Scoop Jar* | Coarse grey river pebbles for bottom false-bottom drainage. |
-| `lavarock` | **Red Lava Rock** | *Volcanic Grit Tin* | Porous red scoria granules for aeration and beneficial bacteria. |
-| `charcoal` | **Activated Charcoal** | *Carbon Shaker* | Dark horticultural carbon layer that filters toxins and odors. |
-| `moss` | **Sphagnum Moss** | *Moss Basket* | Spongy green barrier that retains moisture above drainage layers. |
-| `soil` | **Rainforest Soil** | *Humus Trowel Bag* | Rich dark organic tropical substrate for root systems. |
-| `rivergravel` | **Golden River Gravel** | *Amber Gravel Can* | Warm multi-tone tan/amber riverbed pebbles for stream banks. |
-| `sand` | **Silica & Desert Sand** | *Quartz Sand Bottle* | Fine cream-white silica sand for sculpting desert dunes and paths. |
-| `water` | **Semi-Aquatic Lake** | *Glass Water Pitcher* | Pours a live stream of water to raise the paludarium lake table. |
-| `siphon` | **Siphon / Scoop Out** | *Siphon & Scoop* | Lowers the water level or scoops away excess top substrate and grains. |
+| Layer ID | Material Name | Container Tool | Side | Role & Behavior |
+| :--- | :--- | :--- | :--- | :--- |
+| `pebbles` | **Drainage layer (LECA)** | *LECA Scoop Jar* | Land | Clay balls under the mesh hold excess water away from roots. |
+| `charcoal` | **Activated charcoal** | *Carbon Shaker* | Land | Absorbs odours and gases from decaying matter. |
+| `soil` | **Tropical substrate** | *Substrate Bag* | Land | Coir, bark and peat-free mix where roots grow. |
+| `sand` | **Silica sand** | *Quartz Sand Bottle* | Land | Top dressing for arid builds and paths. |
+| `leaflitter` | **Leaf litter** | *Leaf Litter Bag* | Land | Magnolia and oak leaves: food and cover for the cleanup crew (boosts nutrient recycling and soil moisture). |
+| `rivergravel` | **Pool gravel** | *River Gravel Can* | Pool | Rounded gravel for the pool bed and shoreline. |
+| `water` | **Pool water** | *Glass Water Pitcher* | Pool | Fresh water for the pool section. |
+| `siphon` | **Siphon / scoop out** | *Siphon & Scoop* | Tool | Lowers the water or scoops out the top layer. |
+
+* **Mesh barrier**: A dashed fibreglass mesh sits above the drainage layer (drawn in the tank and noted between the charcoal and drainage sliders) to keep soil out of the drainage.
+* **Land / pool split**: The land depth readout (`mm of land`) sums only the land layers; pool gravel and water are excluded. With **Pool width** at `0` the build is all land and pool layers have no effect on the scene.
 
 #### One-Click Biome Recipes
-* **`🌊 Falls Lake`**: Builds the signature Semi-Aquatic Rainforest Paludarium complete with the Living Moss Wall, Root & Slate Waterfall, Golden River Boulders, mounted epiphytes, and swimming fauna.
-* **`🌴 Rainforest`**: Deep tropical humus and sphagnum moss foundation.
-* **`💧 Lagoon`**: High freshwater table over golden river gravel.
-* **`🌵 Arid Sand`**: Deep silica sand and red lava rock for desert succulents.
+* **`🌊 Falls Lake`**: The signature paludarium: 32 % pool on gentle pump flow (already cycled), Living Moss Wall, Root & Slate Waterfall, Golden River Boulders, mounted epiphytes and swimming fauna. Toast: *Falls Lake: 30% pool, waterfall and moss wall*.
+* **`🌴 Rainforest`**: All land under a sealed lid, deep tropical substrate and leaf litter. Toast: *Rainforest: all land, sealed lid*.
+* **`💧 Lagoon`**: A 45 % pool (already cycled) over deeper pool gravel for fish and shrimp. Toast: *Lagoon: 45% pool for fish and shrimp*.
+* **`🌵 Arid Sand`**: All land, open top, fogger off, silica sand over a shallow substrate. Toast: *Arid: open top, sand, no fogger*.
 
 ---
 
@@ -169,6 +171,29 @@ All fauna run an autonomous **4-state AI state machine** (`Wandering 🐾`, `Res
   1. **Active Care**: Select the **`🧽 Scrub Mold`** tool in the bottom bar and click inside the enclosure to wipe spores away with tactile audio feedback.
   2. **Passive Biological Balance**: Introduce detritivores (*Dairy Cow Isopods*, *Rubber Ducky Isopods*, *Springtails*, *Cherry Shrimp*, or *Vampire Crabs*), which automatically shrink and eliminate mold patches over time.
 
+### 4.4 Pool and Pump
+* **Divider**: `waterSplit` (`0–0.6`) is the fraction of the tank given to the pool, on the left. The divider sits at normalized x `0.15 + 0.7 × min(0.6, waterSplit)`; a pool exists once `waterSplit > 0.02`, and holds water once pool water is above `4 mm`.
+* **Bank**: A sloping bank `6 %` of the tank wide (`BANK_W = 0.06`) runs from the pool bed (top of the pool gravel) up to the land surface at the divider. Items rest on the pool bed, the bank slope, or the land, depending on their x; land items scatter only to the right of the divider.
+* **Waterfall pump** (`pumpFlow`: `off` / `gentle` / `strong`, disabled with no pool, which reads *No pool in this build*):
+  * Ripples on the water line scale with flow (amplitude `0.4` off, `1.5` gentle, `2.8` strong; strong also moves twice as fast).
+  * With a waterfall placed and a watered pool, any flow other than `off` adds `+3 %` to the humidity target (the pool itself adds up to `+12 %`, scaled by pool width and water depth).
+  * `off` slows the nitrogen cycle to `40 %` speed; `strong` stresses tree frogs and cherry shrimp (see the care report).
+* **21-day water cycle**: A new pool starts at `cycleProgress = 0` and advances to `1` over about 21 in-game days (`CYCLE_DAYS = 21`; **+1 Day** steps it a day at a time). Readings follow `cycleChemistry(p)`: ammonia peaks near `3.5 ppm` around 30 % of the cycle (`3.5·e^-((p-0.3)/0.18)²`), nitrite peaks near `2.5 ppm` around 62 % (`2.5·e^-((p-0.62)/0.15)²`), and both read `0` once cycled. The Water cycle row reads *Cycling, day N of ~21* and then *Cycled · ammonia 0 ppm*; reaching the end toasts *The pool has cycled. Ammonia and nitrite read 0.*
+* **Pool creation rule**: Dragging **Pool width** from no pool to a pool restarts the cycle, tops pool water up to at least `40 mm`, and toasts *New pool: it cycles for about 3 weeks before fish and shrimp are safe*. Pouring the first water into an existing dry pool also restarts the cycle.
+
+### 4.5 Care Report
+The telemetry sidebar lists the current issues (humidity and temperature per species against their ideal ranges, predation and tankmates, pump flow, vessel height, fogged glass, dry substrate and low nutrients). Most issues carry a one-click action; each toasts its result:
+
+| Action ID | Button label(s) | What it changes | Toast |
+| :--- | :--- | :--- | :--- |
+| `mist` | *Mist now* | Mist boost `+10` (max `25`) and soil moisture `+4` (max `98`). | *Misted the plants* |
+| `openLid` | *Crack the lid open*, *Vent the heat* | Removes the lid (`hasLid = false`). | *Lid cracked open to vent moisture* |
+| `closeLid` | *Seal the lid* | Seals the lid (`hasLid = true`). | *Lid sealed; humidity will rise* |
+| `fogOff` | *Turn the fogger off* | Turns the fogger off. | *Fogger off* |
+| `pumpGentle` | *Set pump to gentle*, *Run the pump* | Sets `pumpFlow` to `gentle`. | *Pump set to gentle flow* |
+| `feed` | *Add bio-feed* | Nutrients `+15` (max `100`), with the feed chime. | *Added organic bio-feed* |
+| `widenPool` | *Add a pool* | Sets `waterSplit` to `0.3`, pool water to at least `40 mm`, and restarts the cycle. | *Added a pool. New water cycles for about 3 weeks.* |
+
 ---
 
 ## 5. Sensory & Biophilic "Relax Mode" (`🍃`)
@@ -193,4 +218,4 @@ Activated via the **`🍃 Relax Mode`** button in the top bar or by pressing **`
   * Dynamically scales the main canvas backing store by `Math.min(window.devicePixelRatio || 1, 2)` and applies `ctx.setTransform(dpr, 0, 0, dpr, 0, 0)` with `imageSmoothingQuality = 'high'`.
   * All 30+ flora, hardscape, and fauna sprites are pre-rendered at startup onto `256×256` offscreen `<canvas>` buffers (`canvasSpriteCache`), guaranteeing zero broken image links and crisp vector scaling at any zoom level.
 * **Automatic Persistence (`localStorage`)**:
-  * Saves vessel selection, hardware toggles, substrate depths, 21-point terrain contours, scattered surface grains, placed specimens (with parent-child rock attachments), and telemetry metrics under the key `existence_botanica_paludarium_v5`.
+  * Saves vessel selection, hardware toggles, substrate depths, 21-point terrain contours, scattered surface grains, placed specimens (with parent-child rock attachments), and telemetry metrics under the key `botanica_studio_v1` (persist `version: 2`). The v6 build fields `pumpFlow`, `waterSplit` and `cycleProgress` (plus `setupDay`) persist alongside them, so the pool width, pump setting and cycle progress survive a reload.

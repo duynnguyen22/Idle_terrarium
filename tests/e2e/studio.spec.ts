@@ -9,9 +9,12 @@ const liveItemCount = (page: Page) =>
       ).__botanica?.world().items.length ?? 0,
   )
 
+/** Items in the v6 Falls Lake scene: moss wall, falls, boulders, 9 flora, 5 fauna. */
+const FALLS_ITEM_COUNT = 17
+
 test('first run seeds the Falls Lake scene without clicking Biome', async ({ page }) => {
   await page.goto('/')
-  await expect.poll(() => liveItemCount(page)).toBe(15)
+  await expect.poll(() => liveItemCount(page)).toBe(FALLS_ITEM_COUNT)
   await expect
     .poll(() =>
       page.evaluate(() => {
@@ -19,7 +22,7 @@ test('first run seeds the Falls Lake scene without clicking Biome', async ({ pag
         return raw ? JSON.parse(raw).state.worldSnapshot?.items.length : -1
       }),
     )
-    .toBe(15)
+    .toBe(FALLS_ITEM_COUNT)
 })
 
 test('studio journey: biome, 5x, relax, persistence', async ({ page }) => {
@@ -40,7 +43,21 @@ test('studio journey: biome, 5x, relax, persistence', async ({ page }) => {
 
   await page.screenshot({ path: 'test-results/studio-journey.png' })
 
-  const count = 15
+  // Falls Lake ships a 32 % pool on gentle flow; switch the pump to strong before reloading.
+  const pump = page.getByRole('radiogroup', { name: 'Waterfall pump' })
+  await pump.getByRole('radio', { name: 'Strong' }).click()
+  await expect(pump.getByRole('radio', { name: 'Strong' })).toBeChecked()
+  await expect(page.getByLabel('Pool width')).toHaveValue('32')
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const raw = localStorage.getItem('botanica_studio_v1')
+        return raw ? JSON.parse(raw).state.pumpFlow : null
+      }),
+    )
+    .toBe('strong')
+
+  const count = FALLS_ITEM_COUNT
   expect(await liveItemCount(page)).toBe(count)
   await expect
     .poll(() =>
@@ -54,10 +71,21 @@ test('studio journey: biome, 5x, relax, persistence', async ({ page }) => {
   await page.reload()
   const persisted = await page.evaluate(() => {
     const raw = localStorage.getItem('botanica_studio_v1')
-    return raw ? JSON.parse(raw).state.worldSnapshot.items.length : -1
+    if (!raw) return null
+    const { version, state } = JSON.parse(raw)
+    return {
+      version,
+      items: state.worldSnapshot.items.length,
+      pumpFlow: state.pumpFlow,
+      waterSplit: state.waterSplit,
+    }
   })
-  expect(persisted).toBe(count)
+  expect(persisted).toEqual({ version: 2, items: count, pumpFlow: 'strong', waterSplit: 0.32 })
   await expect.poll(() => liveItemCount(page)).toBe(count)
+  await expect(
+    page.getByRole('radiogroup', { name: 'Waterfall pump' }).getByRole('radio', { name: 'Strong' }),
+  ).toBeChecked()
+  await expect(page.getByLabel('Pool width')).toHaveValue('32')
 })
 
 for (const size of [
