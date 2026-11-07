@@ -10,10 +10,13 @@ export type CatalogCategory = keyof typeof CATALOG
 /** Click a card to place the item at the prototype's default position and select it. */
 export function CatalogGrid({ category }: { category: CatalogCategory }) {
   const place = (defId: string) => {
-    const { plantingStage, substrates, selectItem } = useStudioStore.getState()
+    const { plantingStage, substrates, waterSplit, selectItem } = useStudioStore.getState()
     let uid: string | null = null
     mutateWorld((w) => {
-      uid = addItem(w, defId, plantingStage, { substrates })?.uid ?? null
+      uid =
+        addItem(w, defId, plantingStage, {
+          terrain: { substrates, waterSplit, terrainContour: w.terrainContour },
+        })?.uid ?? null
     })
     if (uid) {
       selectItem(uid)

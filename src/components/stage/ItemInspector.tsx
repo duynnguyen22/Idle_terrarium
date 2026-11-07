@@ -85,10 +85,15 @@ export function ItemInspector() {
   }
 
   const onDuplicate = () => {
-    const { plantingStage, substrates, selectItem } = useStudioStore.getState()
+    const { plantingStage, substrates, waterSplit, selectItem } = useStudioStore.getState()
     let uid: string | null = null
     apply((w) => {
-      uid = duplicateItem(w, item.uid, plantingStage, substrates)?.uid ?? null
+      uid =
+        duplicateItem(w, item.uid, plantingStage, {
+          substrates,
+          waterSplit,
+          terrainContour: w.terrainContour,
+        })?.uid ?? null
     })
     if (uid) {
       selectItem(uid)

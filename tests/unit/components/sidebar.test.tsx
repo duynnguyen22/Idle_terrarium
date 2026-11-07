@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CareToolbar } from '@/components/stage/CareToolbar'
 import { ItemInspector } from '@/components/stage/ItemInspector'
 import { LeftSidebar } from '@/components/layout/LeftSidebar'
+import { DEFAULT_SUBSTRATES } from '@/data/substrates'
 import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { addItem } from '@/engine/items'
 import { configureSpriteCache } from '@/engine/sprites/spriteCache'
@@ -10,6 +11,7 @@ import { createWorld, type EngineWorld } from '@/engine/world'
 import { useToastStore } from '@/store/toastStore'
 import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
 
+const TERRAIN = { substrates: DEFAULT_SUBSTRATES, waterSplit: 0.32 }
 let world: EngineWorld
 const click = (el: HTMLElement) => act(() => void fireEvent.click(el))
 const state = () => useStudioStore.getState()
@@ -204,7 +206,7 @@ describe('ItemInspector', () => {
   })
 
   const select = () => {
-    const it = addItem(world, 'peacock_fern', 'mature')!
+    const it = addItem(world, 'peacock_fern', 'mature', { terrain: TERRAIN })!
     act(() => state().selectItem(it.uid))
     return it
   }
@@ -232,7 +234,7 @@ describe('ItemInspector', () => {
   })
 
   it('hides the grow button for non-flora', () => {
-    const it = addItem(world, 'dragon_peak', 'mature')!
+    const it = addItem(world, 'dragon_peak', 'mature', { terrain: TERRAIN })!
     act(() => state().selectItem(it.uid))
     render(<ItemInspector />)
     expect(screen.queryByRole('button', { name: 'Advance Growth Stage' })).not.toBeInTheDocument()
