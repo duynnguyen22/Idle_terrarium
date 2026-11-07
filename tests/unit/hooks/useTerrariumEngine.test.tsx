@@ -2,6 +2,7 @@ import { render } from '@testing-library/react'
 import { useRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mutateWorld, getWorld, unregisterWorld } from '@/engine/engineBridge'
+import { hasPool } from '@/engine/geometry'
 import { configureSpriteCache } from '@/engine/sprites/spriteCache'
 import { useTerrariumEngine } from '@/hooks/useTerrariumEngine'
 import { useStudioStore } from '@/store/useStudioStore'
@@ -59,7 +60,9 @@ describe('useTerrariumEngine', () => {
     runFrame(16)
     runFrame(32)
     expect(callbacks.size).toBe(1)
-    expect(ctxCalls.filter((c) => c === 'clip').length).toBe(2)
+    // Two frames; each clips the vessel, plus the bank cut and gravel bed when there is a pool.
+    const clipsPerFrame = 1 + (hasPool(useStudioStore.getState().waterSplit) ? 2 : 0)
+    expect(ctxCalls.filter((c) => c === 'clip').length).toBe(2 * clipsPerFrame)
     unmount()
     expect(callbacks.size).toBe(0)
     expect(cancel).toHaveBeenCalled()

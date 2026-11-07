@@ -2,6 +2,7 @@ import type { Rect } from '@/data/types'
 import type { StudioState } from '@/store/useStudioStore'
 import type { EngineWorld } from '../world'
 import { drawBackground } from './background'
+import { drawCondensation } from './condensation'
 import { drawLid, drawPaludariumFrontFrame } from './frame'
 import { drawLamp } from './lamp'
 import { drawParticles } from './particles'
@@ -9,7 +10,6 @@ import { drawPouring } from './pouring'
 import { drawSpecimens } from './specimens'
 import { drawSubstrates } from './substrates'
 import { beginVesselClip, drawVesselRim } from './vessel'
-import { drawWater } from './water'
 
 /** Prototype stage layout: vessel centred horizontally, slightly below the vertical middle. */
 
@@ -47,16 +47,18 @@ export function renderFrame(
   // 3. Everything inside the glass is clipped to the vessel path
   ctx.save()
   beginVesselClip(ctx, world, state, R, timestamp)
-  // 4. Soil & gravel substrates
-  drawSubstrates(ctx, world, state, R, timestamp)
+  // 4. Land strata, pool gravel bed, bank, surface grains, moss & mold
+  drawSubstrates(ctx, world, state, R, timestamp, 'soil')
   // 5. Placed flora, waterfall hardscapes & fauna
   drawSpecimens(ctx, world, state, R, timestamp)
-  // 6. Translucent water table overlay
-  drawWater(ctx, world, state, R, timestamp)
+  // 6. Translucent pool water with pump-driven ripples (nothing when there is no pool)
+  drawSubstrates(ctx, world, state, R, timestamp, 'water')
   // 6B. Pour container cursor & falling material stream
   drawPouring(ctx, world, state, R, timestamp)
   // 7. Ambient spores, micro-droplets & night fireflies
   drawParticles(ctx, world, state, R, timestamp)
+  // 7B. Condensation fog & droplets on the inside of the glass
+  drawCondensation(ctx, world, state, R, timestamp)
   ctx.restore()
 
   // 8. Glass rim, paludarium front frame, cork lid
