@@ -20,10 +20,15 @@ import {
   updateAmbientMotes,
   updateFireflies,
 } from '@/engine/simulation/particles'
-import { siphonStep, spawnPourStream, stepPourParticles } from '@/engine/simulation/pouring'
+import {
+  MAX_CONTOUR_MM,
+  siphonStep,
+  spawnPourStream,
+  stepPourParticles,
+} from '@/engine/simulation/pouring'
 import { pushTelemetry, TELEMETRY_INTERVAL_MS } from '@/engine/simulation/telemetry'
 import { syncChildren, tick } from '@/engine/simulation/tick'
-import { createWorld } from '@/engine/world'
+import { createWorld, type EngineWorld, type WorldEntity } from '@/engine/world'
 import { createStudioStore } from '@/store/useStudioStore'
 
 function mulberry32(seed: number) {
@@ -368,7 +373,7 @@ describe('pouring', () => {
     expect(Math.max(...world.terrainContour)).toBeLessThanOrEqual(18)
     pushTelemetry(world, store.getState(), 1000)
     expect(store.getState().substrates.soil).toBeGreaterThan(before)
-    expect(store.getState().substrates.soil).toBeLessThanOrEqual(45)
+    expect(store.getState().substrates.soil).toBeLessThanOrEqual(60)
   })
   it('water landings raise water and the mist boost (capped at 20)', () => {
     const rng = mulberry32(2)
@@ -404,20 +409,92 @@ describe('pouring', () => {
     for (let i = 0; i < 600; i++) stepPourParticles(world, store.getState(), FRAME_MS, rng)
     expect(world.surfaceGrains.length).toBe(220)
   })
-  it('siphonStep never drops anything below 0 and drains water first', () => {
+  it('siphonStep never drops anything below 0', () => {
     const world = createWorld()
     for (let i = 0; i < 3000; i++) siphonStep(world, store.getState())
     pushTelemetry(world, store.getState(), 1000)
     const s = store.getState().substrates
     for (const v of Object.values(s)) expect(v).toBeGreaterThanOrEqual(0)
     expect(s.water).toBe(0)
-    const w2 = createWorld()
-    siphonStep(w2, {
-      waterSplit: store.getState().waterSplit,
-      substrates: { ...store.getState().substrates, water: 24 },
-    })
-    expect(w2.pendingSubstrates.water).toBeCloseTo(-0.35)
-    expect(w2.pendingSubstrates.soil).toBeUndefined()
+  })
+
+  const landed = (w: EngineWorld, material: string, x: number) => {
+    w.fallingStreams = [{ x, y: 0.99, vx: 0, vy: 0.01, r: 3, color: '#000', materialId: material }]
+  }
+  it('water landing raises water by 0.14 up to 80 and starts a pool when none exists', () => {
+    const w = createWorld()
+    w.env.cycleProgress = 0.5
+    const s = { ...st, waterSplit: 0 }
+    landed(w, 'water', 0.5)
+    stepPourParticles(w, s, 1000 / 60, () => 0.5)
+    expect(w.pendingSubstrates.water).toBeCloseTo(0.14, 6)
+    expect(w.pendingWaterSplit).toBe(0.3)
+    expect(w.env.cycleProgress).toBe(0)
+    const full = createWorld()
+    landed(full, 'water', 0.5)
+    stepPourParticles(
+      full,
+      { ...st, substrates: { ...st.substrates, water: 80 } },
+      1000 / 60,
+      () => 0.5,
+    )
+    expect(full.pendingSubstrates.water ?? 0).toBe(0)
+    expect(full.pendingWaterSplit).toBeUndefined()
+  })
+  it('gravel landing left of the divider raises rivergravel by 0.06 up to 30', () => {
+    const w = createWorld()
+    landed(w, 'rivergravel', 0.2)
+    stepPourParticles(w, st, 1000 / 60, () => 0.5)
+    expect(w.pendingSubstrates.rivergravel).toBeCloseTo(0.06, 6)
+    const p = createWorld()
+    landed(p, 'pebbles', 0.2)
+    stepPourParticles(p, st, 1000 / 60, () => 0.5)
+    expect(p.pendingSubstrates.rivergravel).toBeCloseTo(0.06, 6)
+    expect(p.pendingSubstrates.pebbles).toBeUndefined()
+    const capped = createWorld()
+    landed(capped, 'rivergravel', 0.2)
+    stepPourParticles(
+      capped,
+      { ...st, substrates: { ...st.substrates, rivergravel: 30 } },
+      1000 / 60,
+      () => 0.5,
+    )
+    expect(capped.pendingSubstrates.rivergravel ?? 0).toBe(0)
+  })
+  it('land landing raises its layer by 0.08 up to 60 and bumps the contour', () => {
+    const w = createWorld()
+    landed(w, 'soil', 0.5)
+    stepPourParticles(w, st, 1000 / 60, () => 0.5)
+    expect(w.pendingSubstrates.soil).toBeCloseTo(0.08, 6)
+    expect(w.terrainContour[10]).toBeCloseTo(0.22, 6)
+    expect(w.terrainContour[9]).toBeCloseTo(0.11, 6)
+    expect(w.surfaceGrains).toHaveLength(1)
+    w.terrainContour[10] = MAX_CONTOUR_MM
+    landed(w, 'soil', 0.5)
+    stepPourParticles(w, st, 1000 / 60, () => 0.5)
+    expect(w.terrainContour[10]).toBe(18)
+    const capped = createWorld()
+    landed(capped, 'soil', 0.5)
+    stepPourParticles(
+      capped,
+      { ...st, substrates: { ...st.substrates, soil: 60 } },
+      1000 / 60,
+      () => 0.5,
+    )
+    expect(capped.pendingSubstrates.soil ?? 0).toBe(0)
+  })
+  it('siphon drains water first, then the top land layer', () => {
+    const w = createWorld()
+    siphonStep(w, { substrates: { ...st.substrates, water: 10 } })
+    expect(w.pendingSubstrates.water).toBeCloseTo(-0.35, 6)
+    const dry = createWorld()
+    dry.surfaceGrains = [{ x: 0.5, y: 0.5 } as WorldEntity]
+    siphonStep(dry, { substrates: { ...st.substrates, water: 0 } })
+    expect(dry.pendingSubstrates.leaflitter).toBeCloseTo(-0.25, 6)
+    expect(dry.surfaceGrains).toHaveLength(0)
+    const noLitter = createWorld()
+    siphonStep(noLitter, { substrates: { ...st.substrates, water: 0, leaflitter: 0, sand: 0 } })
+    expect(noLitter.pendingSubstrates.soil).toBeCloseTo(-0.25, 6)
   })
 })
 

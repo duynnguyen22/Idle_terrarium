@@ -1,16 +1,29 @@
-import { SUBSTRATE_LAYERS } from '@/data/substrates'
+import { LAND_LAYER_IDS, SUBSTRATE_LAYERS } from '@/data/substrates'
 import type { StudioState } from '@/store/useStudioStore'
-import { CONTOUR_X_MAX, CONTOUR_X_MIN, getSoilSurfaceNormalizedY } from '../geometry'
+import {
+  BANK_W,
+  CONTOUR_X_MAX,
+  CONTOUR_X_MIN,
+  getDividerNormX,
+  getSoilSurfaceNormalizedY,
+  getWaterTopNormY,
+  hasPool,
+} from '../geometry'
 import type { EngineWorld, WorldEntity } from '../world'
 import { frameScale, type Rng } from './constants'
 import { effectiveSubstrate, effectiveSubstrates, setEffectiveSubstrate } from './telemetry'
 
 export const GRAVITY = 0.00085
-const MAX_SURFACE_GRAINS = 220
-const MAX_DEPTH_MM = 45
-const MAX_CONTOUR_MM = 18
+export const MAX_WATER_MM = 80
+export const MAX_GRAVEL_MM = 30
+export const MAX_LAND_MM = 60
+export const MAX_CONTOUR_MM = 18
+export const MAX_SURFACE_GRAINS = 220
+/** Water split a first water landing sets when the build has no pool yet (prototype 2625). */
+const NEW_POOL_SPLIT = 0.3
 
 type PourState = Pick<StudioState, 'substrates' | 'waterSplit'>
+type SiphonState = Pick<StudioState, 'substrates'>
 
 function num(e: WorldEntity, k: string): number {
   const v = e[k]
@@ -41,33 +54,28 @@ export function spawnPourStream(
   }
 }
 
-/** Siphon tool (prototype 2549-2560): drains water first, then scoops the topmost substrate layer. */
-export function siphonStep(world: EngineWorld, state: PourState): void {
+/** Siphon tool (prototype 3148-3155): drains water first, then scoops the topmost land layer. */
+export function siphonStep(world: EngineWorld, state: SiphonState): void {
   const water = effectiveSubstrate(world, state.substrates, 'water')
   if (water > 0) {
     setEffectiveSubstrate(world, state.substrates, 'water', Math.max(0, water - 0.35))
     return
   }
-  const rev = [...SUBSTRATE_LAYERS]
+  const top = [...LAND_LAYER_IDS]
     .reverse()
-    .find(
-      (l) =>
-        l.id !== 'water' &&
-        l.id !== 'siphon' &&
-        effectiveSubstrate(world, state.substrates, l.id) > 0,
-    )
-  if (rev) {
+    .find((id) => effectiveSubstrate(world, state.substrates, id) > 0)
+  if (top) {
     setEffectiveSubstrate(
       world,
       state.substrates,
-      rev.id,
-      Math.max(0, effectiveSubstrate(world, state.substrates, rev.id) - 0.25),
+      top,
+      Math.max(0, effectiveSubstrate(world, state.substrates, top) - 0.25),
     )
   }
   if (world.surfaceGrains.length > 0) world.surfaceGrains.pop()
 }
 
-/** Gravity integration and landing for falling streams (prototype 2242-2332). */
+/** Gravity integration and pool-aware landing for falling streams (prototype 2620-2654). */
 export function stepPourParticles(
   world: EngineWorld,
   state: PourState,
@@ -83,32 +91,57 @@ export function stepPourParticles(
     p.vy = num(p, 'vy') + GRAVITY * fs
 
     const px = num(p, 'x')
-    const surface = getSoilSurfaceNormalizedY(
-      {
-        substrates: effectiveSubstrates(world, state.substrates),
-        waterSplit: state.waterSplit,
-        terrainContour: world.terrainContour,
-      },
-      px,
-    )
-    if (num(p, 'y') < surface) continue
-
     const mat = String(p.materialId)
+    // A pool started earlier this step (pending store flush) already counts.
+    const waterSplit = world.pendingWaterSplit ?? state.waterSplit
+    const terrain = {
+      substrates: effectiveSubstrates(world, state.substrates),
+      waterSplit,
+      terrainContour: world.terrainContour,
+    }
+    const inPool = hasPool(waterSplit) && px < getDividerNormX(waterSplit) - BANK_W * 0.5
+    const landingY =
+      mat === 'water' && inPool ? getWaterTopNormY(terrain) : getSoilSurfaceNormalizedY(terrain, px)
+    if (num(p, 'y') < landingY) continue
+
+    const r = num(p, 'r')
     if (mat === 'water') {
-      setEffectiveSubstrate(
-        world,
-        state.substrates,
-        'water',
-        Math.min(MAX_DEPTH_MM, effectiveSubstrate(world, state.substrates, 'water') + 0.14),
-      )
+      if (!hasPool(waterSplit)) {
+        world.pendingWaterSplit = NEW_POOL_SPLIT
+        world.env.cycleProgress = 0
+      }
+      const before = effectiveSubstrate(world, state.substrates, 'water')
+      const next = Math.min(MAX_WATER_MM, before + 0.14)
+      setEffectiveSubstrate(world, state.substrates, 'water', next)
+      if (before < 1 && next >= 1) world.env.cycleProgress = 0
       // prototype 2633: landings feed the mist boost, which the environment model eases into humidity
       world.env.mistBoost = Math.min(20, world.env.mistBoost + 0.05)
+    } else if (inPool) {
+      if (mat === 'rivergravel' || mat === 'pebbles') {
+        setEffectiveSubstrate(
+          world,
+          state.substrates,
+          'rivergravel',
+          Math.min(
+            MAX_GRAVEL_MM,
+            effectiveSubstrate(world, state.substrates, 'rivergravel') + 0.06,
+          ),
+        )
+      }
+      world.surfaceGrains.push({
+        x: Math.max(0.16, px),
+        yOffset: (rng() - 0.5) * 0.01,
+        rx: r * 1.15,
+        ry: r * 0.75,
+        rot: rng() * Math.PI,
+        color: p.color,
+      })
     } else {
       setEffectiveSubstrate(
         world,
         state.substrates,
         mat,
-        Math.min(MAX_DEPTH_MM, effectiveSubstrate(world, state.substrates, mat) + 0.08),
+        Math.min(MAX_LAND_MM, effectiveSubstrate(world, state.substrates, mat) + 0.08),
       )
       const c = world.terrainContour
       const clampedX = Math.max(CONTOUR_X_MIN, Math.min(CONTOUR_X_MAX, px))
@@ -120,7 +153,6 @@ export function stepPourParticles(
         if (cIdx > 0) c[cIdx - 1] = Math.min(MAX_CONTOUR_MM, c[cIdx - 1] + 0.11)
         if (cIdx < c.length - 1) c[cIdx + 1] = Math.min(MAX_CONTOUR_MM, c[cIdx + 1] + 0.11)
       }
-      const r = num(p, 'r')
       world.surfaceGrains.push({
         x: Math.max(0.16, Math.min(0.84, px + (rng() - 0.5) * 0.02)),
         yOffset: (rng() - 0.5) * 0.012,
@@ -129,8 +161,8 @@ export function stepPourParticles(
         rot: rng() * Math.PI,
         color: p.color,
       })
-      if (world.surfaceGrains.length > MAX_SURFACE_GRAINS) world.surfaceGrains.shift()
     }
+    if (world.surfaceGrains.length > MAX_SURFACE_GRAINS) world.surfaceGrains.shift()
     world.fallingStreams.splice(i, 1)
   }
   if (hadParticles && world.fallingStreams.length === 0 && !world.isPouring)
