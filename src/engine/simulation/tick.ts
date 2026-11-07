@@ -1,4 +1,5 @@
 import { useStudioStore, type StudioStore } from '@/store/useStudioStore'
+import { computeCareReport } from '../care'
 import type { AsmrCue } from '../interaction'
 import type { EngineWorld } from '../world'
 import { advanceClock } from './clock'
@@ -39,7 +40,7 @@ export function syncChildren(world: EngineWorld): void {
  * Per-frame simulation step, in the prototype's order: frame counter, pour spawn / siphon, clock, environment,
  * fauna AI, ambient motes,
  * growth, mold cleanup (all skipped at timeSpeed 0, ambient motes included, as the prototype early-returns), then the draw-phase mutations
- * (child sync, firefly drift, stream integration) and the throttled store flush.
+ * (child sync, firefly drift, stream integration), the care report refresh and the throttled store flush.
  */
 export function tick(
   world: EngineWorld,
@@ -76,5 +77,9 @@ export function tick(
   if (!store.reducedMotion && (store.lighting === 'night' || store.lighting === 'twilight'))
     updateFireflies(world, dtMs)
   stepPourParticles(world, store, dtMs, rng)
+  // Care report every 30 frames (prototype 3138, 3307); every frame while paused so edits show at once.
+  // Assign a fresh array: telemetry flushes careIssues by reference.
+  if (world.frame % 30 === 0 || store.timeSpeed === 0)
+    world.careIssues = computeCareReport({ ...store, ...world.env, items: world.items })
   pushTelemetry(world, store, timestamp)
 }

@@ -353,3 +353,13 @@ describe('tick', () => {
     expect(world.ambientMotes[0].y).not.toBe(y0)
   })
 })
+
+describe('care report in the tick', () => {
+  it('tick refreshes the care report every 30 frames', () => {
+    const w = createWorld()
+    w.env.humidity = 95
+    w.items = [item({ uid: 'tree_frog', id: 'tree_frog', category: 'fauna' })]
+    for (let i = 0; i < 30; i++) tick(w, 1000 / 60, i * 16, { store: store.getState() })
+    expect(w.careIssues.some((c) => c.text.startsWith('Red-Eyed Tree Frog prefers'))).toBe(true)
+  })
+})
