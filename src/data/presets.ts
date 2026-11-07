@@ -8,8 +8,12 @@ export interface PresetItem {
   scale: number
   flipX: boolean
   zIndex: number
-  /** Where `yOffset` is measured from; defaults to the land surface. */
-  anchor?: 'land' | 'bed' | 'waterTop'
+  /**
+   * Where `yOffset` is measured from. 'land' (default) is the land surface at the scene reference x 0.6
+   * (prototype `sY`); 'surface' is the resting surface at the item's own x (land, bank or pool bed);
+   * 'bed' is the pool bed; 'waterTop' is the water line.
+   */
+  anchor?: 'land' | 'surface' | 'bed' | 'waterTop'
   stage?: GrowthStage
   /** Index into the same `items` array of the item this one is mounted on. */
   parentIndex?: number
@@ -58,11 +62,11 @@ const FALLS_ITEMS: readonly PresetItem[] = [
   { defId: 'pogostemon_star', x: 0.55, yOffset: -0.035, scale: 1.0, flipX: false, zIndex: 12, stage: M },
   { defId: 'subwassertang', x: 0.24, yOffset: -0.03, scale: 1.0, flipX: true, zIndex: 13, stage: M, anchor: 'bed' },
   { defId: 'frogbit_pads', x: 0.21, yOffset: 0, scale: 0.95, flipX: false, zIndex: 14, stage: M, anchor: 'waterTop' },
-  { defId: 'cherry_shrimp', x: 0.22, yOffset: 0, scale: 0.72, flipX: false, zIndex: 20, anchor: 'waterTop' },
-  { defId: 'cherry_shrimp', x: 0.27, yOffset: 0, scale: 0.72, flipX: false, zIndex: 21, anchor: 'waterTop' },
-  { defId: 'vampire_crab', x: 0.4, yOffset: -0.03, scale: 0.8, flipX: false, zIndex: 22 },
-  { defId: 'springtails', x: 0.66, yOffset: -0.03, scale: 0.62, flipX: false, zIndex: 23 },
-  { defId: 'isopod', x: 0.58, yOffset: -0.03, scale: 0.66, flipX: false, zIndex: 24 },
+  { defId: 'cherry_shrimp', x: 0.22, yOffset: -0.03, scale: 0.72, flipX: false, zIndex: 20, anchor: 'surface' },
+  { defId: 'cherry_shrimp', x: 0.27, yOffset: -0.03, scale: 0.72, flipX: false, zIndex: 21, anchor: 'surface' },
+  { defId: 'vampire_crab', x: 0.4, yOffset: -0.03, scale: 0.8, flipX: false, zIndex: 22, anchor: 'surface' },
+  { defId: 'springtails', x: 0.66, yOffset: -0.03, scale: 0.62, flipX: false, zIndex: 23, anchor: 'surface' },
+  { defId: 'isopod', x: 0.58, yOffset: -0.03, scale: 0.66, flipX: false, zIndex: 24, anchor: 'surface' },
 ]
 
 export const BIOME_PRESETS = [

@@ -1,8 +1,33 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
-import { seedInitialScene } from '@/engine/presets'
-import { createWorld } from '@/engine/world'
-import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+import { applyPreset, seedInitialScene } from '@/engine/presets'
+import {
+  getLandSurfaceNormY,
+  getPoolBedNormY,
+  getSoilSurfaceNormalizedY,
+  getWaterTopNormY,
+} from '@/engine/geometry'
+import { createWorld, type EngineWorld } from '@/engine/world'
+import {
+  createDefaultState,
+  createStudioStore,
+  useStudioStore,
+  type StudioStoreHook,
+} from '@/store/useStudioStore'
+
+function makeMemoryStorage(): Storage {
+  const m = new Map<string, string>()
+  return {
+    get length() {
+      return m.size
+    },
+    clear: () => m.clear(),
+    getItem: (k) => m.get(k) ?? null,
+    key: (i) => [...m.keys()][i] ?? null,
+    removeItem: (k) => void m.delete(k),
+    setItem: (k, v) => void m.set(k, String(v)),
+  }
+}
 
 beforeEach(() => {
   unregisterWorld()
@@ -25,5 +50,111 @@ describe('seedInitialScene', () => {
     const snap = useStudioStore.getState().worldSnapshot
     expect(seedInitialScene(world)).toBe(false)
     expect(useStudioStore.getState().worldSnapshot).toBe(snap)
+  })
+})
+
+describe('applyPreset', () => {
+  let w: EngineWorld
+  let store: StudioStoreHook
+
+  beforeEach(() => {
+    w = createWorld()
+    store = createStudioStore(makeMemoryStorage())
+  })
+
+  it('falls preset builds the v6 scene', () => {
+    const toast = applyPreset(w, 'falls', store.getState())
+    expect(toast).toBe('Falls Lake: 30% pool, waterfall and moss wall')
+    expect(store.getState()).toMatchObject({
+      vessel: 'paludarium_tank',
+      pumpFlow: 'gentle',
+      waterSplit: 0.32,
+      cycleProgress: 1,
+      hasLid: true,
+      hasGrowLamp: true,
+      hasFogger: true,
+    })
+    expect(w.items).toHaveLength(17)
+    expect(
+      w.items
+        .filter((i) => i.category === 'flora')
+        .every((i) => i.stage === 'mature' && i.growthProgress === 0.85 && i.vitality === 98),
+    ).toBe(true)
+    expect(w.terrainContour[15]).toBeCloseTo(Math.max(0, Math.sin(15 * 0.45) * 2.5 + 1.8), 5)
+    expect(w.env.bloomTimer).toBe(700)
+    const frogbit = w.items.find((i) => i.id === 'frogbit_pads')!
+    expect(frogbit.y).toBeCloseTo(
+      getWaterTopNormY({
+        substrates: store.getState().substrates,
+        waterSplit: 0.32,
+        terrainContour: w.terrainContour,
+      }),
+      5,
+    )
+  })
+
+  it('falls resets the build clock, env cycle and per-scene transients', () => {
+    store.setState({ dayCount: 9, setupDay: 1, cycleProgress: 0.2, waterSplit: 0, hasLid: false })
+    w.env.cycleProgress = 0.2
+    w.moldPatches.push({ x: 0.5, size: 10 })
+    w.surfaceGrains.push({ x: 0.5 })
+    w.pendingSubstrates = { soil: 3 }
+    w.pendingWaterSplit = 0.1
+    applyPreset(w, 'falls', store.getState())
+    expect(store.getState().setupDay).toBe(9)
+    expect(w.env.cycleProgress).toBe(1)
+    expect(w.moldPatches).toHaveLength(0)
+    expect(w.surfaceGrains).toHaveLength(0)
+    expect(w.pendingSubstrates).toEqual({})
+    expect(w.pendingWaterSplit).toBeUndefined()
+  })
+
+  it('falls places items by the prototype anchors', () => {
+    applyPreset(w, 'falls', store.getState())
+    const t = {
+      substrates: store.getState().substrates,
+      waterSplit: 0.32,
+      terrainContour: w.terrainContour,
+    }
+    const sY = getLandSurfaceNormY(t, 0.6)
+    const byId = (id: string) => w.items.filter((i) => i.id === id)
+    expect(byId('moss_wall_cliff')[0].y).toBeCloseTo(sY - 0.25, 6)
+    expect(byId('golden_river_boulders')[0].y).toBeCloseTo(sY - 0.03, 6)
+    expect(byId('root_slate_waterfall')[0].isWaterfall).toBe(true)
+    expect(byId('pogostemon_star')[0].y).toBeCloseTo(sY - 0.035, 6)
+    expect(byId('subwassertang')[0].y).toBeCloseTo(getPoolBedNormY(t.substrates) - 0.03, 6)
+    for (const f of w.items.filter((i) => i.category === 'fauna')) {
+      expect(f.y).toBeCloseTo(getSoilSurfaceNormalizedY(t, f.x) - 0.03, 6)
+      expect(f).toMatchObject({ vx: 0.0003, vy: 0, aiState: 'wandering', aiTimer: 120 })
+    }
+    const moss = byId('moss_wall_cliff')[0]
+    expect(byId('cryptanthus_pink')[0]).toMatchObject({
+      parentUid: moss.uid,
+      offsetX: 0.12,
+      offsetY: -0.17,
+    })
+  })
+
+  it('desert recipe clears the pool and the fogger', () => {
+    applyPreset(w, 'falls', store.getState())
+    w.surfaceGrains.push({ x: 0.5 })
+    expect(applyPreset(w, 'desert', store.getState())).toBe('Arid: open top, sand, no fogger')
+    expect(store.getState().waterSplit).toBe(0)
+    expect(store.getState().hasFogger).toBe(false)
+    expect(store.getState().hasLid).toBe(false)
+    expect(w.surfaceGrains).toHaveLength(0)
+    expect(w.terrainContour.every((v) => v === 0)).toBe(true)
+    expect(w.items).toHaveLength(17)
+  })
+
+  it('lagoon recipe sets the pool and a cycled env without touching the bloom timer', () => {
+    w.env.cycleProgress = 0
+    w.env.bloomTimer = 0
+    expect(applyPreset(w, 'paludarium', store.getState())).toBe(
+      'Lagoon: 45% pool for fish and shrimp',
+    )
+    expect(store.getState()).toMatchObject({ waterSplit: 0.45, cycleProgress: 1, hasLid: true })
+    expect(w.env.cycleProgress).toBe(1)
+    expect(w.env.bloomTimer).toBe(0)
   })
 })
