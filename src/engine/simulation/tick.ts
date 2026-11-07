@@ -76,7 +76,7 @@ export function tick(
   syncChildren(world)
   if (!store.reducedMotion && (store.lighting === 'night' || store.lighting === 'twilight'))
     updateFireflies(world, dtMs)
-  stepPourParticles(world, store, dtMs, rng)
+  stepPourParticles(world, store, dtMs, rng, deps.onToast)
   // Care report every 30 frames (prototype 3138, 3307); every frame while paused so edits show at once.
   // Assign a fresh array: telemetry flushes careIssues by reference.
   if (world.frame % 30 === 0 || store.timeSpeed === 0)

@@ -425,21 +425,47 @@ describe('pouring', () => {
     const w = createWorld()
     w.env.cycleProgress = 0.5
     const s = { ...st, waterSplit: 0 }
+    const toasts: string[] = []
     landed(w, 'water', 0.5)
-    stepPourParticles(w, s, 1000 / 60, () => 0.5)
-    expect(w.pendingSubstrates.water).toBeCloseTo(0.14, 6)
+    w.fallingStreams.push({ ...w.fallingStreams[0], x: 0.6 })
+    stepPourParticles(
+      w,
+      s,
+      1000 / 60,
+      () => 0.5,
+      (m) => toasts.push(m),
+    )
+    expect(w.pendingSubstrates.water).toBeCloseTo(0.28, 6)
     expect(w.pendingWaterSplit).toBe(0.3)
     expect(w.env.cycleProgress).toBe(0)
+    expect(toasts).toEqual(['Started a pool on the left. New water cycles for about 3 weeks.'])
     const full = createWorld()
+    const fullToasts: string[] = []
     landed(full, 'water', 0.5)
     stepPourParticles(
       full,
       { ...st, substrates: { ...st.substrates, water: 80 } },
       1000 / 60,
       () => 0.5,
+      (m) => fullToasts.push(m),
     )
     expect(full.pendingSubstrates.water ?? 0).toBe(0)
     expect(full.pendingWaterSplit).toBeUndefined()
+    expect(fullToasts).toHaveLength(0)
+  })
+  it('water crossing 1 mm in an existing pool restarts the nitrogen cycle', () => {
+    const w = createWorld()
+    w.env.cycleProgress = 0.7
+    landed(w, 'water', 0.5)
+    stepPourParticles(
+      w,
+      { ...st, substrates: { ...st.substrates, water: 0.9 } },
+      1000 / 60,
+      () => 0.5,
+    )
+    expect(w.pendingSubstrates.water).toBeCloseTo(0.14, 6)
+    expect(w.pendingWaterSplit).toBeUndefined()
+    expect(w.env.cycleProgress).toBe(0)
   })
   it('gravel landing left of the divider raises rivergravel by 0.06 up to 30', () => {
     const w = createWorld()
@@ -485,8 +511,11 @@ describe('pouring', () => {
   })
   it('siphon drains water first, then the top land layer', () => {
     const w = createWorld()
+    w.surfaceGrains = [{ x: 0.5, y: 0.5 } as WorldEntity]
     siphonStep(w, { substrates: { ...st.substrates, water: 10 } })
     expect(w.pendingSubstrates.water).toBeCloseTo(-0.35, 6)
+    expect(w.pendingSubstrates.leaflitter).toBeUndefined()
+    expect(w.surfaceGrains).toHaveLength(1)
     const dry = createWorld()
     dry.surfaceGrains = [{ x: 0.5, y: 0.5 } as WorldEntity]
     siphonStep(dry, { substrates: { ...st.substrates, water: 0 } })

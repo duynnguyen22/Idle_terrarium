@@ -21,6 +21,7 @@ export const MAX_CONTOUR_MM = 18
 export const MAX_SURFACE_GRAINS = 220
 /** Water split a first water landing sets when the build has no pool yet (prototype 2625). */
 const NEW_POOL_SPLIT = 0.3
+export const NEW_POOL_TOAST = 'Started a pool on the left. New water cycles for about 3 weeks.'
 
 type PourState = Pick<StudioState, 'substrates' | 'waterSplit'>
 type SiphonState = Pick<StudioState, 'substrates'>
@@ -81,6 +82,7 @@ export function stepPourParticles(
   state: PourState,
   dtMs: number,
   rng: Rng = Math.random,
+  onToast?: (msg: string) => void,
 ): void {
   const fs = frameScale(dtMs)
   const hadParticles = world.fallingStreams.length > 0
@@ -109,6 +111,7 @@ export function stepPourParticles(
       if (!hasPool(waterSplit)) {
         world.pendingWaterSplit = NEW_POOL_SPLIT
         world.env.cycleProgress = 0
+        onToast?.(NEW_POOL_TOAST)
       }
       const before = effectiveSubstrate(world, state.substrates, 'water')
       const next = Math.min(MAX_WATER_MM, before + 0.14)
