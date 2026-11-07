@@ -84,7 +84,10 @@ describe('fauna', () => {
       item({ uid: 'w', id: walker!.id, category: 'fauna', x: 0.5, y: 0.6 }),
     )
     const state = store.getState()
-    const surface = getSoilSurfaceNormalizedY({ substrates: state.substrates, waterSplit: state.waterSplit })
+    const surface = getSoilSurfaceNormalizedY({
+      substrates: state.substrates,
+      waterSplit: state.waterSplit,
+    })
     for (let i = 0; i < 10_000; i++) {
       updateFauna(world, state, FRAME_MS, i * FRAME_MS, rng)
       for (const f of world.items) {
@@ -216,16 +219,15 @@ describe('pouring', () => {
     expect(store.getState().substrates.soil).toBeGreaterThan(before)
     expect(store.getState().substrates.soil).toBeLessThanOrEqual(45)
   })
-  it('water landings raise water, humidity and moisture (capped at 99)', () => {
+  it('water landings raise water and the mist boost (capped at 20)', () => {
     const rng = mulberry32(2)
     const world = createWorld()
     for (let i = 0; i < 40; i++) spawnPourStream(world, 'water', rng)
     for (let i = 0; i < 600; i++) stepPourParticles(world, store.getState(), FRAME_MS, rng)
-    const h = store.getState().telemetry.humidity
     pushTelemetry(world, store.getState(), 1000)
     expect(store.getState().substrates.water).toBeGreaterThan(24)
-    expect(store.getState().telemetry.humidity).toBeGreaterThan(h)
-    expect(store.getState().telemetry.humidity).toBeLessThanOrEqual(99)
+    expect(world.env.mistBoost).toBeGreaterThan(0)
+    expect(world.env.mistBoost).toBeLessThanOrEqual(20)
   })
   it('flags pourSettled only once the pour has ended and the last particle landed', () => {
     const rng = mulberry32(3)
@@ -262,7 +264,6 @@ describe('pouring', () => {
     siphonStep(w2, {
       waterSplit: store.getState().waterSplit,
       substrates: { ...store.getState().substrates, water: 24 },
-      telemetry: store.getState().telemetry,
     })
     expect(w2.pendingSubstrates.water).toBeCloseTo(-0.35)
     expect(w2.pendingSubstrates.soil).toBeUndefined()
@@ -284,6 +285,17 @@ describe('pushTelemetry', () => {
     expect(writes).toBe(1) // moldCount changed once; later flushes are no-ops
     expect(store.getState().telemetry.moldCount).toBe(1)
     expect(store.getState().telemetry.cleanupCrewCount).toBe(0)
+  })
+  it('pushTelemetry flushes env, cycle progress and pending water split', () => {
+    const w = createWorld()
+    w.env.temperature = 30
+    w.env.cycleProgress = 0.3
+    w.pendingWaterSplit = 0.3
+    pushTelemetry(w, store.getState(), 1000)
+    expect(store.getState().telemetry.temperature).toBe(30)
+    expect(store.getState().cycleProgress).toBe(0.3)
+    expect(store.getState().waterSplit).toBe(0.3)
+    expect(w.pendingWaterSplit).toBeUndefined()
   })
 })
 

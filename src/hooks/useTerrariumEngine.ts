@@ -14,6 +14,7 @@ import { tick } from '@/engine/simulation/tick'
 import { warmSpriteCache } from '@/engine/sprites/spriteCache'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { play } from '@/hooks/useAudio'
+import { showToast } from '@/store/toastStore'
 import { useStudioStore } from '@/store/useStudioStore'
 
 /** Longest simulated step; a backgrounded tab resumes with a clamped dt instead of a huge jump. */
@@ -25,6 +26,20 @@ declare global {
     /** Dev/e2e debug handle; only present when `import.meta.env.DEV` (Playwright runs the dev server). */
     __botanica?: { world: () => EngineWorld; store: typeof useStudioStore }
   }
+}
+
+/** The environment is not part of the world snapshot; it resumes from the persisted store telemetry. */
+function seedEnv(world: EngineWorld): void {
+  const { telemetry: t, cycleProgress } = useStudioStore.getState()
+  Object.assign(world.env, {
+    humidity: t.humidity,
+    temperature: t.temperature,
+    soilMoisture: t.soilMoisture,
+    nutrients: t.nutrients,
+    o2: t.o2Balance,
+    condensation: t.condensation,
+    cycleProgress,
+  })
 }
 
 /**
@@ -39,6 +54,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
     if (!ctx) return
 
     const world = createWorld()
+    seedEnv(world)
     const initial = useStudioStore.getState().worldSnapshot
     if (initial) restoreWorld(world, initial)
     registerWorld(world)
@@ -66,7 +82,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       last = timestamp
 
       const state = useStudioStore.getState()
-      tick(world, dt, timestamp, { onCue: play })
+      tick(world, dt, timestamp, { onCue: play, onToast: showToast })
       if (world.pourSettled) {
         // Pointer-up committed before the last particles landed; commit once more outside the frame.
         world.pourSettled = false

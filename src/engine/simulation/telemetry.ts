@@ -1,5 +1,5 @@
 import type { SubstrateDepths } from '@/data/types'
-import type { StudioState, StudioStore, Telemetry } from '@/store/useStudioStore'
+import type { StudioState, StudioStore } from '@/store/useStudioStore'
 import type { EngineWorld } from '../world'
 import { countCleanupCrew } from './mold'
 
@@ -16,7 +16,10 @@ export function effectiveSubstrate(
   return (substrates[key] || 0) + (world.pendingSubstrates[key] || 0)
 }
 
-export function effectiveSubstrates(world: EngineWorld, substrates: SubstrateDepths): SubstrateDepths {
+export function effectiveSubstrates(
+  world: EngineWorld,
+  substrates: SubstrateDepths,
+): SubstrateDepths {
   const out = { ...substrates }
   for (const k of Object.keys(world.pendingSubstrates) as (keyof SubstrateDepths)[]) {
     out[k] = (out[k] || 0) + (world.pendingSubstrates[k] || 0)
@@ -36,29 +39,17 @@ export function setEffectiveSubstrate(
   world.pendingSubstrates[key] = (world.pendingSubstrates[key] || 0) + (next - current)
 }
 
-/** Queues a humidity / soilMoisture bump capped at `cap` against the effective value. */
-export function bumpTelemetry(
-  world: EngineWorld,
-  telemetry: Pick<Telemetry, 'humidity' | 'soilMoisture'>,
-  key: 'humidity' | 'soilMoisture',
-  amount: number,
-  cap = 99,
-): void {
-  const current = telemetry[key] + world.pendingTelemetry[key]
-  const next = Math.min(cap, current + amount)
-  world.pendingTelemetry[key] += next - current
-}
-
 /**
- * Throttled store flush: at most once per TELEMETRY_INTERVAL_MS. Writes pending substrate deltas and the
- * derived telemetry (mold count, cleanup crew, pour-driven humidity/moisture) only when something changed.
+ * Throttled store flush: at most once per TELEMETRY_INTERVAL_MS. Writes pending substrate deltas, the
+ * environment gauges plus derived telemetry (mold count, cleanup crew, care issues), cycle progress and a
+ * pending water split. The store's per-key diff keeps unchanged values from re-rendering.
  * Returns true when the throttle window elapsed (flush attempted).
  */
 export function pushTelemetry(
   world: EngineWorld,
   store: StudioStore,
   now: number,
-  state: Pick<StudioState, 'substrates' | 'telemetry'> = store,
+  state: Pick<StudioState, 'substrates' | 'cycleProgress'> = store,
 ): boolean {
   if (now - world.lastTelemetryPush < TELEMETRY_INTERVAL_MS) return false
   world.lastTelemetryPush = now
@@ -69,15 +60,22 @@ export function pushTelemetry(
   }
   world.pendingSubstrates = {}
 
-  const t = state.telemetry
-  const partial: Partial<Telemetry> = {
+  const env = world.env
+  store.setTelemetry({
+    humidity: env.humidity,
+    temperature: env.temperature,
+    soilMoisture: env.soilMoisture,
+    nutrients: env.nutrients,
+    o2Balance: env.o2,
+    condensation: env.condensation,
     moldCount: world.moldPatches.length,
     cleanupCrewCount: countCleanupCrew(world),
+    careIssues: world.careIssues,
+  })
+  if (env.cycleProgress !== state.cycleProgress) store.setCycleProgress(env.cycleProgress)
+  if (world.pendingWaterSplit !== undefined) {
+    store.setWaterSplit(world.pendingWaterSplit)
+    world.pendingWaterSplit = undefined
   }
-  if (world.pendingTelemetry.humidity) partial.humidity = t.humidity + world.pendingTelemetry.humidity
-  if (world.pendingTelemetry.soilMoisture)
-    partial.soilMoisture = t.soilMoisture + world.pendingTelemetry.soilMoisture
-  world.pendingTelemetry = { humidity: 0, soilMoisture: 0 }
-  store.setTelemetry(partial)
   return true
 }

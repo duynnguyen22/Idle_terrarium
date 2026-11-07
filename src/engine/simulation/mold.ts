@@ -1,8 +1,7 @@
 import { findCatalogDef } from '@/data/catalog'
 import type { StudioState } from '@/store/useStudioStore'
 import type { EngineWorld } from '../world'
-import { frameScale, type Rng } from './constants'
-import { growthSpeedMult } from './growth'
+import { frameScale, simSpeedMult, type Rng } from './constants'
 
 export function countCleanupCrew(world: EngineWorld): number {
   return world.items.filter((i) => {
@@ -22,7 +21,7 @@ export function updateMold(
 ): void {
   const crew = countCleanupCrew(world)
   if (crew === 0 || world.moldPatches.length === 0) return
-  const dec = 0.012 * crew * growthSpeedMult(state.timeSpeed) * frameScale(dtMs)
+  const dec = 0.012 * crew * simSpeedMult(state.timeSpeed) * frameScale(dtMs)
   for (let i = world.moldPatches.length - 1; i >= 0; i--) {
     const patch = world.moldPatches[i]
     const size = (typeof patch.size === 'number' ? patch.size : 12) - dec

@@ -3,19 +3,14 @@ import type { StudioState } from '@/store/useStudioStore'
 import { CONTOUR_X_MAX, CONTOUR_X_MIN, getSoilSurfaceNormalizedY } from '../geometry'
 import type { EngineWorld, WorldEntity } from '../world'
 import { frameScale, type Rng } from './constants'
-import {
-  bumpTelemetry,
-  effectiveSubstrate,
-  effectiveSubstrates,
-  setEffectiveSubstrate,
-} from './telemetry'
+import { effectiveSubstrate, effectiveSubstrates, setEffectiveSubstrate } from './telemetry'
 
 export const GRAVITY = 0.00085
 const MAX_SURFACE_GRAINS = 220
 const MAX_DEPTH_MM = 45
 const MAX_CONTOUR_MM = 18
 
-type PourState = Pick<StudioState, 'substrates' | 'telemetry' | 'waterSplit'>
+type PourState = Pick<StudioState, 'substrates' | 'waterSplit'>
 
 function num(e: WorldEntity, k: string): number {
   const v = e[k]
@@ -106,8 +101,8 @@ export function stepPourParticles(
         'water',
         Math.min(MAX_DEPTH_MM, effectiveSubstrate(world, state.substrates, 'water') + 0.14),
       )
-      bumpTelemetry(world, state.telemetry, 'humidity', 0.08)
-      bumpTelemetry(world, state.telemetry, 'soilMoisture', 0.12)
+      // prototype 2633: landings feed the mist boost, which the environment model eases into humidity
+      world.env.mistBoost = Math.min(20, world.env.mistBoost + 0.05)
     } else {
       setEffectiveSubstrate(
         world,
