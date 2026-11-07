@@ -27,16 +27,22 @@ describe('getTotalSubstrateDepth', () => {
 
 describe('getSoilSurfaceNormalizedY', () => {
   it('matches the prototype formula for default substrates', () => {
-    expect(getSoilSurfaceNormalizedY({ substrates: DEFAULT_SUBSTRATES, waterSplit: 0 })).toBeCloseTo(0.92 - (56 / 130) * 0.42, 10)
+    expect(
+      getSoilSurfaceNormalizedY({ substrates: DEFAULT_SUBSTRATES, waterSplit: 0 }),
+    ).toBeCloseTo(0.92 - (56 / 130) * 0.42, 10)
   })
   it('is monotonic in depth (more substrate = higher surface = smaller y)', () => {
-    const ys = [0, 20, 60, 130, 200, 1000].map((soil) => getSoilSurfaceNormalizedY({ substrates: { soil }, waterSplit: 0 }))
+    const ys = [0, 20, 60, 130, 200, 1000].map((soil) =>
+      getSoilSurfaceNormalizedY({ substrates: { soil }, waterSplit: 0 }),
+    )
     for (let i = 1; i < ys.length; i++) expect(ys[i]).toBeLessThanOrEqual(ys[i - 1])
     expect(ys[0]).toBe(0.92)
   })
   it('subtracts contour height at x', () => {
     const contour = new Array(21).fill(13)
-    expect(getSoilSurfaceNormalizedY({ substrates: {}, waterSplit: 0, terrainContour: contour }, 0.5)).toBeCloseTo(0.92 - 0.042, 10)
+    expect(
+      getSoilSurfaceNormalizedY({ substrates: {}, waterSplit: 0, terrainContour: contour }, 0.5),
+    ).toBeCloseTo(0.92 - 0.042, 10)
   })
 })
 
@@ -70,8 +76,13 @@ describe('traceVesselPath', () => {
     'begins a path for %s',
     (vessel) => {
       const ctx = {
-        beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), bezierCurveTo: vi.fn(),
-        closePath: vi.fn(), arc: vi.fn(), roundRect: vi.fn(),
+        beginPath: vi.fn(),
+        moveTo: vi.fn(),
+        lineTo: vi.fn(),
+        bezierCurveTo: vi.fn(),
+        closePath: vi.fn(),
+        arc: vi.fn(),
+        roundRect: vi.fn(),
       } as unknown as CanvasRenderingContext2D
       traceVesselPath(ctx, vessel, R)
       expect(ctx.beginPath).toHaveBeenCalledTimes(1)
@@ -85,7 +96,18 @@ describe('traceVesselPath', () => {
 })
 
 describe('v6 pool geometry', () => {
-  const t = { substrates: { pebbles: 12, charcoal: 5, soil: 34, sand: 0, leaflitter: 5, rivergravel: 6, water: 45 }, waterSplit: 0.32 }
+  const t = {
+    substrates: {
+      pebbles: 12,
+      charcoal: 5,
+      soil: 34,
+      sand: 0,
+      leaflitter: 5,
+      rivergravel: 6,
+      water: 45,
+    },
+    waterSplit: 0.32,
+  }
   it('divider and bed follow the spec', () => {
     expect(getDividerNormX(0.32)).toBeCloseTo(0.374, 3)
     expect(getDividerNormX(0.9)).toBeCloseTo(0.57, 3)
@@ -102,14 +124,21 @@ describe('v6 pool geometry', () => {
   })
   it('water top is clamped to the bank lip (brief literal used water 1, which the Math.max spec formula cannot satisfy)', () => {
     const lip = getLandSurfaceNormY(t, getDividerNormX(0.32)) + 0.015
-    expect(getWaterTopNormY({ ...t, substrates: { ...t.substrates, water: 80 } })).toBeCloseTo(lip, 5)
-    expect(getWaterTopNormY({ ...t, substrates: { ...t.substrates, water: 1 } })).toBeCloseTo(getPoolBedNormY(t.substrates) - MM_TO_NORM, 5)
+    expect(getWaterTopNormY({ ...t, substrates: { ...t.substrates, water: 80 } })).toBeCloseTo(
+      lip,
+      5,
+    )
+    expect(getWaterTopNormY({ ...t, substrates: { ...t.substrates, water: 1 } })).toBeCloseTo(
+      getPoolBedNormY(t.substrates) - MM_TO_NORM,
+      5,
+    )
   })
   it('waterSplit 0 with water > 0 is all land and finite', () => {
     const noPool = { ...t, waterSplit: 0 }
     expect(hasPool(0)).toBe(false)
     expect(poolHasWater(noPool)).toBe(false)
-    for (const x of [0.15, 0.2, 0.5, 0.85]) expect(Number.isFinite(getSoilSurfaceNormalizedY(noPool, x))).toBe(true)
+    for (const x of [0.15, 0.2, 0.5, 0.85])
+      expect(Number.isFinite(getSoilSurfaceNormalizedY(noPool, x))).toBe(true)
     expect(getSoilSurfaceNormalizedY(noPool, 0.2)).toBeCloseTo(getLandSurfaceNormY(noPool, 0.2), 5)
   })
   it('total depth ignores water and gravel', () => {

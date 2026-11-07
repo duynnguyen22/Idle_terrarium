@@ -108,10 +108,22 @@ describe('studio store', () => {
 
   it('setEnvSeed rounds to 1 decimal and persists', () => {
     const store = createStudioStore(localStorage)
-    store.getState().setEnvSeed({ humidity: 61.26, temperature: 22.04, soilMoisture: 50, nutrients: 30.449 })
-    expect(store.getState().envSeed).toEqual({ humidity: 61.3, temperature: 22, soilMoisture: 50, nutrients: 30.4 })
+    store
+      .getState()
+      .setEnvSeed({ humidity: 61.26, temperature: 22.04, soilMoisture: 50, nutrients: 30.449 })
+    expect(store.getState().envSeed).toEqual({
+      humidity: 61.3,
+      temperature: 22,
+      soilMoisture: 50,
+      nutrients: 30.4,
+    })
     const stored = JSON.parse(localStorage.getItem(STUDIO_STORAGE_KEY) ?? '{}')
-    expect(stored.state.envSeed).toEqual({ humidity: 61.3, temperature: 22, soilMoisture: 50, nutrients: 30.4 })
+    expect(stored.state.envSeed).toEqual({
+      humidity: 61.3,
+      temperature: 22,
+      soilMoisture: 50,
+      nutrients: 30.4,
+    })
   })
 
   it('envSeed survives a rehydrate from the serialised storage', () => {
@@ -142,7 +154,11 @@ describe('studio store', () => {
     expect(store.getState().waterSplit).toBe(0.6)
     store.getState().setPumpFlow('strong')
     store.getState().setCycleProgress(0.4)
-    expect(partialize(store.getState())).toMatchObject({ waterSplit: 0.6, pumpFlow: 'strong', cycleProgress: 0.4 })
+    expect(partialize(store.getState())).toMatchObject({
+      waterSplit: 0.6,
+      pumpFlow: 'strong',
+      cycleProgress: 0.4,
+    })
     store.getState().setWaterSplit(-1)
     expect(store.getState().waterSplit).toBe(0)
   })
@@ -167,14 +183,37 @@ describe('studio store', () => {
       JSON.stringify({
         state: {
           dayCount: 7,
-          substrates: { pebbles: 10, lavarock: 8, charcoal: 6, moss: 8, soil: 16, rivergravel: 16, sand: 0, water: 24 },
+          substrates: {
+            pebbles: 10,
+            lavarock: 8,
+            charcoal: 6,
+            moss: 8,
+            soil: 16,
+            rivergravel: 16,
+            sand: 0,
+            water: 24,
+          },
         },
         version: 1,
       }),
     )
     const s = createStudioStore(localStorage).getState()
-    expect(s.substrates).toEqual({ pebbles: 18, charcoal: 6, soil: 24, sand: 0, leaflitter: 0, rivergravel: 16, water: 24 })
-    expect(s).toMatchObject({ dayCount: 7, setupDay: 1, pumpFlow: 'gentle', waterSplit: 0.32, cycleProgress: 1 })
+    expect(s.substrates).toEqual({
+      pebbles: 18,
+      charcoal: 6,
+      soil: 24,
+      sand: 0,
+      leaflitter: 0,
+      rivergravel: 16,
+      water: 24,
+    })
+    expect(s).toMatchObject({
+      dayCount: 7,
+      setupDay: 1,
+      pumpFlow: 'gentle',
+      waterSplit: 0.32,
+      cycleProgress: 1,
+    })
     expect(s.substrates).not.toHaveProperty('lavarock')
   })
 })

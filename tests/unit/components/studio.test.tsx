@@ -8,7 +8,11 @@ import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { showToast, useToastStore } from '@/store/toastStore'
 import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
-import { createDefaultTelemetry, useTelemetryStore, type Telemetry } from '@/store/useTelemetryStore'
+import {
+  createDefaultTelemetry,
+  useTelemetryStore,
+  type Telemetry,
+} from '@/store/useTelemetryStore'
 import type { PlacedItem } from '@/data/types'
 import type { CareIssue } from '@/engine/care'
 
@@ -152,7 +156,17 @@ describe('utility actions', () => {
 
 describe('GaugeBar', () => {
   it('fill width spans value within min..max and shows the text', () => {
-    render(<GaugeBar gaugeKey="humidity" icon="💧" label="Humidity" value={78} min={0} max={100} text="78%" />)
+    render(
+      <GaugeBar
+        gaugeKey="humidity"
+        icon="💧"
+        label="Humidity"
+        value={78}
+        min={0}
+        max={100}
+        text="78%"
+      />,
+    )
     expect(screen.getByTestId('gauge-fill')).toHaveStyle({ width: '78%' })
     expect(screen.getByText('78%')).toBeInTheDocument()
   })

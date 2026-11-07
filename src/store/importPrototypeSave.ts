@@ -35,7 +35,9 @@ function readV6Substrates(raw: unknown): SubstrateDepths {
 /** Pool, pump and cycle fields of a v6 save, with the prototype's load defaults. */
 function readV6PoolFields(saved: Record<string, unknown>) {
   return {
-    pumpFlow: PUMP_FLOWS.includes(saved.pumpFlow as PumpFlow) ? (saved.pumpFlow as PumpFlow) : 'gentle',
+    pumpFlow: PUMP_FLOWS.includes(saved.pumpFlow as PumpFlow)
+      ? (saved.pumpFlow as PumpFlow)
+      : 'gentle',
     waterSplit: clamp(finiteOr(saved.waterSplit, 0.32), 0, MAX_WATER_SPLIT),
     cycleProgress: clamp(finiteOr(saved.cycleProgress, 1), 0, 1),
     setupDay: typeof saved.setupDay === 'number' && saved.setupDay >= 1 ? saved.setupDay : 1,
@@ -100,8 +102,7 @@ function readPrototypeSave(
         ? (saved.terrainContour as number[])
         : new Array<number>(TERRAIN_POINTS).fill(0)
 
-    const dayCount =
-      typeof saved.dayCount === 'number' && saved.dayCount >= 1 ? saved.dayCount : 1
+    const dayCount = typeof saved.dayCount === 'number' && saved.dayCount >= 1 ? saved.dayCount : 1
 
     return {
       vessel,
