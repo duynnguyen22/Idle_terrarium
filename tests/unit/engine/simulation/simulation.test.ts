@@ -1,10 +1,18 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { FAUNA } from '@/data/catalog'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { FAUNA, FAUNA_BY_ID } from '@/data/catalog'
+import { DEFAULT_SUBSTRATES } from '@/data/substrates'
 import type { PlacedItem } from '@/data/types'
-import { getSoilSurfaceNormalizedY } from '@/engine/geometry'
+import {
+  BANK_W,
+  getDividerNormX,
+  getPoolBedNormY,
+  getSoilSurfaceNormalizedY,
+  getWaterTopNormY,
+} from '@/engine/geometry'
+import { addItem } from '@/engine/items'
 import { advanceClock, lightingForHour } from '@/engine/simulation/clock'
 import { FRAME_MS } from '@/engine/simulation/constants'
-import { updateFauna } from '@/engine/simulation/fauna'
+import { faunaZone, updateFauna } from '@/engine/simulation/fauna'
 import { advanceDay, updateGrowth } from '@/engine/simulation/growth'
 import { addSporePatch, updateMold } from '@/engine/simulation/mold'
 import {
@@ -12,11 +20,17 @@ import {
   updateAmbientMotes,
   updateFireflies,
 } from '@/engine/simulation/particles'
-import { siphonStep, spawnPourStream, stepPourParticles } from '@/engine/simulation/pouring'
+import {
+  MAX_CONTOUR_MM,
+  siphonStep,
+  spawnPourStream,
+  stepPourParticles,
+} from '@/engine/simulation/pouring'
 import { pushTelemetry, TELEMETRY_INTERVAL_MS } from '@/engine/simulation/telemetry'
 import { syncChildren, tick } from '@/engine/simulation/tick'
-import { createWorld } from '@/engine/world'
+import { createWorld, type EngineWorld, type WorldEntity } from '@/engine/world'
 import { createStudioStore } from '@/store/useStudioStore'
+import { createDefaultTelemetry, useTelemetryStore } from '@/store/useTelemetryStore'
 
 function mulberry32(seed: number) {
   let a = seed
@@ -41,10 +55,34 @@ const item = (
   ...o,
 })
 
+const st = {
+  timeSpeed: 1,
+  substrates: DEFAULT_SUBSTRATES,
+  waterSplit: 0.32,
+  lighting: 'sunlight',
+} as const
+const terrain = { substrates: st.substrates, waterSplit: st.waterSplit }
+
+function makeMemoryStorage(): Storage {
+  const m = new Map<string, string>()
+  return {
+    get length() {
+      return m.size
+    },
+    clear: () => m.clear(),
+    getItem: (k) => m.get(k) ?? null,
+    key: (i) => [...m.keys()][i] ?? null,
+    removeItem: (k) => void m.delete(k),
+    setItem: (k, v) => void m.set(k, String(v)),
+  }
+}
+const memoryStorage = makeMemoryStorage()
+
 let store: ReturnType<typeof createStudioStore>
 beforeEach(() => {
   localStorage.clear()
   store = createStudioStore()
+  useTelemetryStore.setState({ telemetry: createDefaultTelemetry() })
 })
 
 describe('lightingForHour', () => {
@@ -73,28 +111,69 @@ describe('lightingForHour', () => {
 })
 
 describe('fauna', () => {
-  it('stays inside its habitat band for 10,000 steps', () => {
-    const rng = mulberry32(7)
-    const swimmer = FAUNA.find((f) => 'swimsInWater' in f && f.swimsInWater)
-    const walker = FAUNA.find((f) => !('swimsInWater' in f && f.swimsInWater))
-    expect(swimmer && walker).toBeTruthy()
-    const world = createWorld()
-    world.items.push(
-      item({ uid: 's', id: swimmer!.id, category: 'fauna', x: 0.5, y: 0.7 }),
-      item({ uid: 'w', id: walker!.id, category: 'fauna', x: 0.5, y: 0.6 }),
-    )
-    const state = store.getState()
-    const surface = getSoilSurfaceNormalizedY(state.substrates)
-    for (let i = 0; i < 10_000; i++) {
-      updateFauna(world, state, FRAME_MS, i * FRAME_MS, rng)
-      for (const f of world.items) {
-        expect(f.x).toBeGreaterThanOrEqual(0.24)
-        expect(f.x).toBeLessThanOrEqual(0.76)
-      }
-      expect(world.items[0].y).toBeGreaterThanOrEqual(surface + 0.04 - 0.015 - 1e-9)
-      expect(world.items[0].y).toBeLessThanOrEqual(surface + 0.04 + 0.015 + 1e-9)
-      expect(world.items[1].y).toBe(0.6)
+  it('zones follow the divider', () => {
+    const d = getDividerNormX(0.32)
+    expect(faunaZone(FAUNA_BY_ID.cherry_shrimp, st, false)).toEqual({
+      minX: 0.17,
+      maxX: d - BANK_W - 0.01,
+    })
+    expect(faunaZone(FAUNA_BY_ID.vampire_crab, st, false)).toEqual({
+      minX: Math.max(0.17, d - BANK_W - 0.06),
+      maxX: Math.min(0.8, d + 0.05),
+    })
+    expect(faunaZone(FAUNA_BY_ID.vampire_crab, st, true)).toEqual({ minX: d - 0.02, maxX: 0.8 })
+    expect(faunaZone(FAUNA_BY_ID.isopod, st, false)).toEqual({ minX: d + 0.01, maxX: 0.8 })
+    expect(faunaZone(FAUNA_BY_ID.isopod, { ...st, waterSplit: 0 }, false)).toEqual({
+      minX: 0.2,
+      maxX: 0.8,
+    })
+  })
+  it('nocturnal land fauna hide by day and move at dusk', () => {
+    const w = createWorld()
+    const frog = addItem(w, 'tree_frog', 'mature', { terrain, rng: () => 0.5 })!
+    for (let i = 0; i < 200; i++) updateFauna(w, st, 1000 / 60, i * 16, () => 0.5)
+    expect(frog.aiState).toBe('hiding')
+    expect(frog.vx).toBe(0)
+    expect(frog.zIndex).toBe(0.5)
+    expect(frog.y).toBeCloseTo(getSoilSurfaceNormalizedY(terrain, frog.x) - 0.11, 2)
+    frog.aiTimer = 0
+    updateFauna(w, { ...st, lighting: 'twilight' }, 1000 / 60, 0, () => 0.5)
+    expect(frog.zIndex).toBe(40)
+    expect(['wandering', 'resting', 'foraging', 'exploring']).toContain(frog.aiState)
+  })
+  it('water fauna bob between water top and bed', () => {
+    const w = createWorld()
+    const shrimp = addItem(w, 'cherry_shrimp', 'mature', { terrain, rng: () => 0.5 })!
+    const ys: number[] = []
+    for (let i = 0; i < 100; i++) {
+      updateFauna(w, st, 1000 / 60, i * 16, () => 0.5)
+      ys.push(shrimp.y)
     }
+    expect(shrimp.y).toBeGreaterThanOrEqual(getWaterTopNormY(terrain))
+    expect(shrimp.y).toBeLessThanOrEqual(getPoolBedNormY(terrain.substrates))
+    expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(1e-4)
+  })
+  it('fauna glide back into zone when the pool is removed', () => {
+    // Review Focus 3
+    const w = createWorld()
+    const shrimp = addItem(w, 'cherry_shrimp', 'mature', { terrain, rng: () => 0.5 })!
+    shrimp.x = 0.1
+    let prev = shrimp.x
+    for (let i = 0; i < 300; i++) {
+      updateFauna(w, { ...st, waterSplit: 0 }, 1000 / 60, i * 16, () => 0.5)
+      expect(Number.isFinite(shrimp.x)).toBe(true)
+      expect(shrimp.x).toBeGreaterThanOrEqual(prev - 1e-9)
+      prev = shrimp.x
+    }
+    expect(shrimp.x).toBeGreaterThanOrEqual(0.2 - 0.01)
+    expect(shrimp.x).toBeLessThanOrEqual(0.8)
+    expect(shrimp.x).toBeGreaterThan(0.1)
+  })
+  it('frogbit floats to the water top inside the pool', () => {
+    const w = createWorld()
+    const pad = addItem(w, 'frogbit_pads', 'mature', { terrain, x: 0.2, y: 0.9 })!
+    for (let i = 0; i < 200; i++) updateFauna(w, st, 1000 / 60, i * 16, () => 0.5)
+    expect(pad.y).toBeCloseTo(getWaterTopNormY(terrain) - 0.005, 3)
   })
   it('skips the dragged item', () => {
     const world = createWorld()
@@ -153,22 +232,104 @@ describe('growth', () => {
     updateGrowth(w, { timeSpeed: 5 }, FRAME_MS)
     expect(w.items[0].growthProgress).toBeCloseTo(0.2 + 0.00025 * 3.5)
   })
+  it('vitality drifts by humidity range', () => {
+    const w = createWorld()
+    const fern = addItem(w, 'peacock_fern', 'mature', { terrain })!
+    fern.vitality = 50
+    w.env.humidity = 50
+    updateGrowth(w, { timeSpeed: 1 }, 1000 / 60)
+    expect(fern.vitality).toBeCloseTo(50 - 0.003, 6)
+    w.env.humidity = 80
+    updateGrowth(w, { timeSpeed: 1 }, 1000 / 60)
+    expect(fern.vitality).toBeCloseTo(50 - 0.003 + 0.004, 6)
+    fern.vitality = 30
+    w.env.humidity = 50
+    updateGrowth(w, { timeSpeed: 1 }, 1000 / 60)
+    expect(fern.vitality).toBe(30)
+  })
+  it('+1 Day advances the cycle, feeds mold chance and costs nutrients', () => {
+    const store = createStudioStore(memoryStorage)
+    const w = createWorld()
+    w.env.cycleProgress = 0
+    w.env.nutrients = 88
+    const fern = addItem(w, 'peacock_fern', 'mature', { terrain })!
+    fern.scale = 1.45
+    advanceDay(w, store.getState(), () => 0.5)
+    expect(store.getState().dayCount).toBe(2)
+    expect(w.env.cycleProgress).toBeCloseTo(1 / 21, 6)
+    expect(w.env.nutrients).toBe(86)
+    expect(fern.scale).toBe(1.5)
+    expect(fern.stage).toBe('lush')
+    expect(w.moldPatches).toHaveLength(1)
+    advanceDay(w, store.getState(), () => 0.7)
+    expect(w.moldPatches).toHaveLength(1)
+    store.getState().setSetupDay(-10)
+    advanceDay(w, store.getState(), () => 0.1)
+    expect(w.moldPatches).toHaveLength(1)
+    const noPool = createStudioStore(memoryStorage)
+    noPool.getState().setWaterSplit(0)
+    const w2 = createWorld()
+    advanceDay(w2, noPool.getState(), () => 0.9)
+    expect(w2.env.cycleProgress).toBe(1)
+  })
 })
 
 describe('mold', () => {
-  const crew = FAUNA.find((f) => f.cleansMold)!
-  it('shrinks and clears with a detritivore, stays put without', () => {
+  it('a fresh world never blooms (bloomTimer idles at 0 until a new build arms it)', () => {
+    const w = createWorld()
+    const toasts: string[] = []
+    updateMold(
+      w,
+      st,
+      1000 / 60,
+      () => 0.5,
+      (m) => toasts.push(m),
+    )
+    expect([w.env.bloomTimer, w.moldPatches.length, toasts.length]).toEqual([0, 0, 0])
+  })
+  it('mold bloom fires once when bloomTimer hits 0 and the crew clears it', () => {
+    const w = createWorld()
+    w.env.bloomTimer = 1
+    const toasts: string[] = []
+    updateMold(
+      w,
+      st,
+      1000 / 60,
+      () => 0.5,
+      (m) => toasts.push(m),
+    )
+    expect(w.moldPatches).toHaveLength(3)
+    expect(toasts).toEqual([
+      'A little white mold appeared. That is normal in a new build; the springtails will clear it.',
+    ])
+    updateMold(
+      w,
+      st,
+      1000 / 60,
+      () => 0.5,
+      (m) => toasts.push(m),
+    )
+    expect(w.moldPatches).toHaveLength(3)
+    expect(toasts).toHaveLength(1)
+    addItem(w, 'springtails', 'mature', { terrain })
+    addItem(w, 'isopod', 'mature', { terrain })
+    const before = w.moldPatches[0].size as number
+    updateMold(w, st, 1000 / 60, () => 0.5)
+    expect(w.moldPatches[0].size).toBeCloseTo(before - 0.005, 6)
+    w.moldPatches[0].size = 3
+    updateMold(w, st, 1000 / 60, () => 0.5)
+    expect(w.moldPatches).toHaveLength(2)
+  })
+  it('+Spore places a patch on land and a lone crew member eats 0.0025 per frame', () => {
     const world = createWorld()
-    addSporePatch(world, mulberry32(3))
-    addSporePatch(world, mulberry32(4))
-    const sizes = world.moldPatches.map((p) => p.size)
-    updateMold(world, { timeSpeed: 1 }, FRAME_MS)
-    expect(world.moldPatches.map((p) => p.size)).toEqual(sizes)
-    world.items.push(item({ uid: 'c', id: crew.id, category: 'fauna' }))
-    updateMold(world, { timeSpeed: 1 }, FRAME_MS)
-    expect(world.moldPatches[0].size as number).toBeCloseTo((sizes[0] as number) - 0.012)
-    for (let i = 0; i < 1500; i++) updateMold(world, { timeSpeed: 1 }, FRAME_MS)
-    expect(world.moldPatches.length).toBe(0)
+    world.env.bloomTimer = 0
+    addSporePatch(world, st, () => 0)
+    expect(world.moldPatches[0]).toEqual({ x: getDividerNormX(0.32) + 0.03, size: 11 })
+    updateMold(world, st, FRAME_MS, () => 0.5)
+    expect(world.moldPatches[0].size).toBe(11)
+    addItem(world, 'springtails', 'mature', { terrain })
+    updateMold(world, st, FRAME_MS, () => 0.5)
+    expect(world.moldPatches[0].size as number).toBeCloseTo(11 - 0.0025, 9)
   })
 })
 
@@ -214,18 +375,17 @@ describe('pouring', () => {
     expect(Math.max(...world.terrainContour)).toBeLessThanOrEqual(18)
     pushTelemetry(world, store.getState(), 1000)
     expect(store.getState().substrates.soil).toBeGreaterThan(before)
-    expect(store.getState().substrates.soil).toBeLessThanOrEqual(45)
+    expect(store.getState().substrates.soil).toBeLessThanOrEqual(60)
   })
-  it('water landings raise water, humidity and moisture (capped at 99)', () => {
+  it('water landings raise water and the mist boost (capped at 20)', () => {
     const rng = mulberry32(2)
     const world = createWorld()
     for (let i = 0; i < 40; i++) spawnPourStream(world, 'water', rng)
     for (let i = 0; i < 600; i++) stepPourParticles(world, store.getState(), FRAME_MS, rng)
-    const h = store.getState().telemetry.humidity
     pushTelemetry(world, store.getState(), 1000)
     expect(store.getState().substrates.water).toBeGreaterThan(24)
-    expect(store.getState().telemetry.humidity).toBeGreaterThan(h)
-    expect(store.getState().telemetry.humidity).toBeLessThanOrEqual(99)
+    expect(world.env.mistBoost).toBeGreaterThan(0)
+    expect(world.env.mistBoost).toBeLessThanOrEqual(20)
   })
   it('flags pourSettled only once the pour has ended and the last particle landed', () => {
     const rng = mulberry32(3)
@@ -251,38 +411,211 @@ describe('pouring', () => {
     for (let i = 0; i < 600; i++) stepPourParticles(world, store.getState(), FRAME_MS, rng)
     expect(world.surfaceGrains.length).toBe(220)
   })
-  it('siphonStep never drops anything below 0 and drains water first', () => {
+  it('siphonStep never drops anything below 0', () => {
     const world = createWorld()
     for (let i = 0; i < 3000; i++) siphonStep(world, store.getState())
     pushTelemetry(world, store.getState(), 1000)
     const s = store.getState().substrates
     for (const v of Object.values(s)) expect(v).toBeGreaterThanOrEqual(0)
     expect(s.water).toBe(0)
-    const w2 = createWorld()
-    siphonStep(w2, {
-      substrates: { ...store.getState().substrates, water: 24 },
-      telemetry: store.getState().telemetry,
-    })
-    expect(w2.pendingSubstrates.water).toBeCloseTo(-0.35)
-    expect(w2.pendingSubstrates.soil).toBeUndefined()
+  })
+
+  const landed = (w: EngineWorld, material: string, x: number) => {
+    w.fallingStreams = [{ x, y: 0.99, vx: 0, vy: 0.01, r: 3, color: '#000', materialId: material }]
+  }
+  it('water landing raises water by 0.14 up to 80 and starts a pool when none exists', () => {
+    const w = createWorld()
+    w.env.cycleProgress = 0.5
+    const s = { ...st, waterSplit: 0 }
+    const toasts: string[] = []
+    landed(w, 'water', 0.5)
+    w.fallingStreams.push({ ...w.fallingStreams[0], x: 0.6 })
+    stepPourParticles(
+      w,
+      s,
+      1000 / 60,
+      () => 0.5,
+      (m) => toasts.push(m),
+    )
+    expect(w.pendingSubstrates.water).toBeCloseTo(0.28, 6)
+    expect(w.pendingWaterSplit).toBe(0.3)
+    expect(w.env.cycleProgress).toBe(0)
+    expect(toasts).toEqual(['Started a pool on the left. New water cycles for about 3 weeks.'])
+    const full = createWorld()
+    const fullToasts: string[] = []
+    landed(full, 'water', 0.5)
+    stepPourParticles(
+      full,
+      { ...st, substrates: { ...st.substrates, water: 80 } },
+      1000 / 60,
+      () => 0.5,
+      (m) => fullToasts.push(m),
+    )
+    expect(full.pendingSubstrates.water ?? 0).toBe(0)
+    expect(full.pendingWaterSplit).toBeUndefined()
+    expect(fullToasts).toHaveLength(0)
+  })
+  it('water crossing 1 mm in an existing pool restarts the nitrogen cycle', () => {
+    const w = createWorld()
+    w.env.cycleProgress = 0.7
+    landed(w, 'water', 0.5)
+    stepPourParticles(
+      w,
+      { ...st, substrates: { ...st.substrates, water: 0.9 } },
+      1000 / 60,
+      () => 0.5,
+    )
+    expect(w.pendingSubstrates.water).toBeCloseTo(0.14, 6)
+    expect(w.pendingWaterSplit).toBeUndefined()
+    expect(w.env.cycleProgress).toBe(0)
+  })
+  it('gravel landing left of the divider raises rivergravel by 0.06 up to 30', () => {
+    const w = createWorld()
+    landed(w, 'rivergravel', 0.2)
+    stepPourParticles(w, st, 1000 / 60, () => 0.5)
+    expect(w.pendingSubstrates.rivergravel).toBeCloseTo(0.06, 6)
+    const p = createWorld()
+    landed(p, 'pebbles', 0.2)
+    stepPourParticles(p, st, 1000 / 60, () => 0.5)
+    expect(p.pendingSubstrates.rivergravel).toBeCloseTo(0.06, 6)
+    expect(p.pendingSubstrates.pebbles).toBeUndefined()
+    const capped = createWorld()
+    landed(capped, 'rivergravel', 0.2)
+    stepPourParticles(
+      capped,
+      { ...st, substrates: { ...st.substrates, rivergravel: 30 } },
+      1000 / 60,
+      () => 0.5,
+    )
+    expect(capped.pendingSubstrates.rivergravel ?? 0).toBe(0)
+  })
+  it('land landing raises its layer by 0.08 up to 60 and bumps the contour', () => {
+    const w = createWorld()
+    landed(w, 'soil', 0.5)
+    stepPourParticles(w, st, 1000 / 60, () => 0.5)
+    expect(w.pendingSubstrates.soil).toBeCloseTo(0.08, 6)
+    expect(w.terrainContour[10]).toBeCloseTo(0.22, 6)
+    expect(w.terrainContour[9]).toBeCloseTo(0.11, 6)
+    expect(w.surfaceGrains).toHaveLength(1)
+    w.terrainContour[10] = MAX_CONTOUR_MM
+    landed(w, 'soil', 0.5)
+    stepPourParticles(w, st, 1000 / 60, () => 0.5)
+    expect(w.terrainContour[10]).toBe(18)
+    const capped = createWorld()
+    landed(capped, 'soil', 0.5)
+    stepPourParticles(
+      capped,
+      { ...st, substrates: { ...st.substrates, soil: 60 } },
+      1000 / 60,
+      () => 0.5,
+    )
+    expect(capped.pendingSubstrates.soil ?? 0).toBe(0)
+  })
+  it('siphon drains water first, then the top land layer', () => {
+    const w = createWorld()
+    w.surfaceGrains = [{ x: 0.5, y: 0.5 } as WorldEntity]
+    siphonStep(w, { substrates: { ...st.substrates, water: 10 } })
+    expect(w.pendingSubstrates.water).toBeCloseTo(-0.35, 6)
+    expect(w.pendingSubstrates.leaflitter).toBeUndefined()
+    expect(w.surfaceGrains).toHaveLength(1)
+    const dry = createWorld()
+    dry.surfaceGrains = [{ x: 0.5, y: 0.5 } as WorldEntity]
+    siphonStep(dry, { substrates: { ...st.substrates, water: 0 } })
+    expect(dry.pendingSubstrates.leaflitter).toBeCloseTo(-0.25, 6)
+    expect(dry.surfaceGrains).toHaveLength(0)
+    const noLitter = createWorld()
+    siphonStep(noLitter, { substrates: { ...st.substrates, water: 0, leaflitter: 0, sand: 0 } })
+    expect(noLitter.pendingSubstrates.soil).toBeCloseTo(-0.25, 6)
   })
 })
 
 describe('pushTelemetry', () => {
+  const telemetry = () => useTelemetryStore.getState().telemetry
   it('writes at most 4x per simulated second and skips unchanged values', () => {
     const world = createWorld()
     world.moldPatches.push({ x: 0.3, size: 12 })
     let writes = 0
-    const unsub = store.subscribe(() => writes++)
+    const unsub = useTelemetryStore.subscribe(() => writes++)
+    let studioWrites = 0
+    const unsubStudio = store.subscribe(() => studioWrites++)
     let flushes = 0
     for (let t = 1000; t < 2000; t += FRAME_MS)
       if (pushTelemetry(world, store.getState(), t)) flushes++
     unsub()
+    unsubStudio()
     expect(flushes).toBeLessThanOrEqual(1000 / TELEMETRY_INTERVAL_MS)
     expect(flushes).toBeGreaterThanOrEqual(3)
     expect(writes).toBe(1) // moldCount changed once; later flushes are no-ops
-    expect(store.getState().telemetry.moldCount).toBe(1)
-    expect(store.getState().telemetry.cleanupCrewCount).toBe(0)
+    expect(studioWrites).toBe(0)
+    expect(telemetry().moldCount).toBe(1)
+    expect(telemetry().cleanupCrewCount).toBe(0)
+  })
+  it('pushTelemetry flushes env, cycle progress and pending water split', () => {
+    const w = createWorld()
+    w.env.temperature = 30
+    w.env.cycleProgress = 0.3
+    w.pendingWaterSplit = 0.3
+    pushTelemetry(w, store.getState(), 1000)
+    expect(telemetry().temperature).toBe(30)
+    expect(store.getState().cycleProgress).toBe(0.3)
+    expect(store.getState().waterSplit).toBe(0.3)
+    expect(w.pendingWaterSplit).toBeUndefined()
+  })
+  it('50 flushes of moving gauges write no storage when no persisted field changed', () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
+    const w = createWorld()
+    w.env.cycleProgress = 100.5 / 210 // mid-bucket, so the drift below never crosses a 1/210 step
+    store.getState().setCycleProgress(Math.floor(w.env.cycleProgress * 210) / 210)
+    setItem.mockClear()
+    let t = 1000
+    w.lastEnvSeedPush = t
+    for (let i = 0; i < 50; i++) {
+      // Float drift on every gauge; the env seed's 1-decimal rounding hides all of it.
+      w.env.humidity = 82 + i * 0.0007
+      w.env.temperature = 24.5 - i * 0.0009
+      w.env.soilMoisture = 74 + Math.sin(i) * 0.03
+      w.env.nutrients = 88 - i * 0.0004
+      w.env.o2 = 96 - i * 0.37
+      w.env.condensation = (i % 7) / 10
+      w.env.cycleProgress += 0.00001
+      t += TELEMETRY_INTERVAL_MS
+      expect(pushTelemetry(w, store.getState(), t)).toBe(true)
+    }
+    expect(telemetry().o2Balance).toBeCloseTo(96 - 49 * 0.37, 6)
+    expect(setItem).not.toHaveBeenCalled()
+    setItem.mockRestore()
+  })
+  it('quantises cycle progress to 1/210 before writing it', () => {
+    const w = createWorld()
+    w.env.cycleProgress = 0.31
+    pushTelemetry(w, store.getState(), 1000)
+    expect(store.getState().cycleProgress).toBe(Math.floor(0.31 * 210) / 210)
+    let writes = 0
+    const unsub = store.subscribe(() => writes++)
+    w.env.cycleProgress = 0.3101
+    pushTelemetry(w, store.getState(), 2000)
+    expect(writes).toBe(0)
+    w.env.cycleProgress = 0.32
+    pushTelemetry(w, store.getState(), 3000)
+    unsub()
+    expect(writes).toBe(1)
+    expect(store.getState().cycleProgress).toBe(Math.floor(0.32 * 210) / 210)
+  })
+  it('writes the env seed at most once every 5 s, rounded to 1 decimal', () => {
+    const w = createWorld()
+    let seedWrites = 0
+    const unsub = store.subscribe((s, prev) => {
+      if (s.envSeed !== prev.envSeed) seedWrites++
+    })
+    w.lastEnvSeedPush = 0
+    for (let t = 250; t <= 12_500; t += TELEMETRY_INTERVAL_MS) {
+      w.env.nutrients = 88 - t / 1000 // drops 0.25 per flush
+      pushTelemetry(w, store.getState(), t)
+    }
+    unsub()
+    expect(seedWrites).toBe(2) // at 5 s and 10 s
+    expect(store.getState().envSeed.nutrients).toBe(78)
+    expect(w.lastEnvSeedPush).toBe(10_000)
   })
 })
 
@@ -338,5 +671,15 @@ describe('tick', () => {
     expect(world.fallingStreams.length + world.surfaceGrains.length).toBeGreaterThan(0)
     expect(world.items[0].growthProgress as number).toBeGreaterThan(0.2)
     expect(world.ambientMotes[0].y).not.toBe(y0)
+  })
+})
+
+describe('care report in the tick', () => {
+  it('tick refreshes the care report every 30 frames', () => {
+    const w = createWorld()
+    w.env.humidity = 95
+    w.items = [item({ uid: 'tree_frog', id: 'tree_frog', category: 'fauna' })]
+    for (let i = 0; i < 30; i++) tick(w, 1000 / 60, i * 16, { store: store.getState() })
+    expect(w.careIssues.some((c) => c.text.startsWith('Red-Eyed Tree Frog prefers'))).toBe(true)
   })
 })

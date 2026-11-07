@@ -12,8 +12,15 @@ afterEach(() => {
 })
 
 describe('playCue', () => {
-  it('knows every prototype cue', () => {
-    expect([...ASMR_CUES].sort()).toEqual(['chime', 'pour_water', 'prune', 'repot', 'scatter'])
+  it('knows every cue', () => {
+    expect([...ASMR_CUES].sort()).toEqual([
+      'chime',
+      'mist',
+      'pour_water',
+      'prune',
+      'repot',
+      'scatter',
+    ])
   })
   it.each(ASMR_CUES)(
     '%s creates and starts an oscillator, then disconnects when it ends',

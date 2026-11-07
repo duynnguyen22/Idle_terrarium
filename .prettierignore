@@ -1,6 +1,6 @@
 dist
 coverage
-package-lock.json
+pnpm-lock.yaml
 .claude
 .superpowers
 docs

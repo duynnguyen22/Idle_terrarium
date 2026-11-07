@@ -1,6 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { FLORA } from '@/data/catalog'
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
-import { getSoilSurfaceNormalizedY } from '@/engine/geometry'
+import {
+  BANK_W,
+  getDividerNormX,
+  getPoolBedNormY,
+  getSoilSurfaceNormalizedY,
+  getWaterTopNormY,
+} from '@/engine/geometry'
 import {
   addItem,
   advanceGrowth,
@@ -12,30 +19,67 @@ import {
   scaleItem,
   setFloraStage,
 } from '@/engine/items'
-import { createWorld } from '@/engine/world'
+import { createWorld, type EngineWorld } from '@/engine/world'
 
-const surface = getSoilSurfaceNormalizedY(DEFAULT_SUBSTRATES)
+const terrain = { substrates: DEFAULT_SUBSTRATES, waterSplit: 0.32 }
+const fernDef = FLORA.find((f) => f.id === 'peacock_fern')!
 
 describe('addItem', () => {
+  let pw: EngineWorld
+  beforeEach(() => {
+    pw = createWorld()
+  })
+
+  it('water fauna are placed mid-water inside the pool', () => {
+    const it = addItem(pw, 'cherry_shrimp', 'mature', { terrain, rng: () => 0.5 })!
+    const d = getDividerNormX(0.32)
+    expect(it.x).toBeGreaterThanOrEqual(0.17)
+    expect(it.x).toBeLessThanOrEqual(d - BANK_W - 0.02)
+    expect(it.y).toBeCloseTo(
+      (getWaterTopNormY(terrain) + getPoolBedNormY(terrain.substrates)) / 2,
+      5,
+    )
+  })
+
+  it('floating flora sit on the water top; land items sit on the surface', () => {
+    expect(addItem(pw, 'frogbit_pads', 'mature', { terrain })!.y).toBeCloseTo(
+      getWaterTopNormY(terrain),
+      5,
+    )
+    const iso = addItem(pw, 'isopod', 'mature', { terrain, rng: () => 0 })!
+    expect(iso.y).toBeCloseTo(getSoilSurfaceNormalizedY(terrain, iso.x) - 0.03, 5)
+    const fern = addItem(pw, 'peacock_fern', 'mature', { terrain, rng: () => 0 })!
+    expect(fern.y).toBeCloseTo(getSoilSurfaceNormalizedY(terrain, fern.x) - 0.05, 5)
+  })
+
+  it('sprouts start at 0.62 scale and 0.2 progress; mature at baseScale, 0.8 and vitality 98', () => {
+    const s = addItem(pw, 'peacock_fern', 'sprout', { terrain })!
+    expect(s.scale).toBeCloseTo(fernDef.baseScale * 0.62, 5)
+    expect(s.growthProgress).toBe(0.2)
+    const m = addItem(pw, 'peacock_fern', 'mature', { terrain })!
+    expect(m.scale).toBe(fernDef.baseScale)
+    expect(m.growthProgress).toBe(0.8)
+    expect(m.vitality).toBe(98)
+  })
+
   it('places mature flora at base scale near the soil surface', () => {
     const w = createWorld()
-    const it = addItem(w, 'peacock_fern', 'mature')!
+    const it = addItem(w, 'peacock_fern', 'mature', { terrain })!
     expect(w.items).toHaveLength(1)
     expect(it.category).toBe('flora')
     expect(it.scale).toBe(1.05)
     expect(it.stage).toBe('mature')
     expect(it.growthProgress).toBe(0.8)
     expect(it.vitality).toBe(98)
-    expect(it.y).toBeCloseTo(surface - 0.04)
-    expect(it.x).toBeGreaterThanOrEqual(0.36)
-    expect(it.x).toBeLessThanOrEqual(0.64)
+    expect(it.y).toBeCloseTo(getSoilSurfaceNormalizedY(terrain, it.x) - 0.05)
+    expect(it.x).toBeGreaterThan(getDividerNormX(0.32))
     expect(it.zIndex).toBe(1)
     expect(it.parentUid).toBeNull()
   })
 
   it('places sprout flora at 62% scale with 0.2 growth', () => {
     const w = createWorld()
-    const it = addItem(w, 'peacock_fern', 'sprout')!
+    const it = addItem(w, 'peacock_fern', 'sprout', { terrain })!
     expect(it.scale).toBeCloseTo(1.05 * 0.62)
     expect(it.stage).toBe('sprout')
     expect(it.growthProgress).toBe(0.2)
@@ -43,7 +87,7 @@ describe('addItem', () => {
 
   it('ignores stage for fauna and initialises runtime fields', () => {
     const w = createWorld()
-    const it = addItem(w, 'cherry_shrimp', 'sprout')!
+    const it = addItem(w, 'cherry_shrimp', 'sprout', { terrain })!
     expect(it.category).toBe('fauna')
     expect(it.stage).toBe('mature')
     expect(it.vy).toBe(0)
@@ -55,11 +99,11 @@ describe('addItem', () => {
 
   it('marks waterfalls, honours explicit position and returns null for unknown ids', () => {
     const w = createWorld()
-    expect(addItem(w, 'root_slate_waterfall', 'mature')!.isWaterfall).toBe(true)
-    const p = addItem(w, 'peacock_fern', 'mature', { x: 0.3, y: 0.6 })!
+    expect(addItem(w, 'root_slate_waterfall', 'mature', { terrain })!.isWaterfall).toBe(true)
+    const p = addItem(w, 'peacock_fern', 'mature', { terrain, x: 0.3, y: 0.6 })!
     expect([p.x, p.y]).toEqual([0.3, 0.6])
     expect(p.zIndex).toBe(2)
-    expect(addItem(w, 'nope', 'mature')).toBeNull()
+    expect(addItem(w, 'nope', 'mature', { terrain })).toBeNull()
     expect(w.items).toHaveLength(2)
   })
 })
@@ -67,7 +111,7 @@ describe('addItem', () => {
 describe('inspector operations', () => {
   const setup = () => {
     const w = createWorld()
-    const it = addItem(w, 'peacock_fern', 'mature')!
+    const it = addItem(w, 'peacock_fern', 'mature', { terrain })!
     return { w, it }
   }
 
@@ -115,20 +159,20 @@ describe('inspector operations', () => {
     advanceGrowth(w, it.uid)
     advanceGrowth(w, it.uid)
     expect(it.scale).toBe(1.65)
-    const rock = addItem(w, 'dragon_peak', 'mature')!
+    const rock = addItem(w, 'dragon_peak', 'mature', { terrain })!
     advanceGrowth(w, rock.uid)
     expect(rock.stage).toBe('mature')
   })
 
   it('duplicates 0.05 to the right at the same y as a new item', () => {
     const { w, it } = setup()
-    const copy = duplicateItem(w, it.uid, 'mature')!
+    const copy = duplicateItem(w, it.uid, 'mature', terrain)!
     expect(w.items).toHaveLength(2)
     expect(copy.uid).not.toBe(it.uid)
     expect(copy.id).toBe(it.id)
     expect(copy.x).toBeCloseTo(it.x + 0.05)
     expect(copy.y).toBe(it.y)
-    expect(duplicateItem(w, 'missing', 'mature')).toBeNull()
+    expect(duplicateItem(w, 'missing', 'mature', terrain)).toBeNull()
   })
 
   it('deletes an item', () => {

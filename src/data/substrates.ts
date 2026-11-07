@@ -1,34 +1,109 @@
 import type { SubstrateDepths, SubstrateLayerDef } from './types'
 
 export const SUBSTRATE_LAYERS = [
-  { id: 'pebbles', name: 'Drainage Pebbles', containerName: 'Pebble Scoop Jar', icon: '🪨', color: '#8c9298', secondaryColor: '#646a70', defaultHeight: 10, desc: 'Scatter coarse river pebbles for bottom drainage' },
-  { id: 'lavarock', name: 'Red Lava Rock', containerName: 'Volcanic Grit Tin', icon: '🌋', color: '#7c3626', secondaryColor: '#522116', defaultHeight: 8, desc: 'Sprinkle porous red scoria bio-filter granules' },
-  { id: 'charcoal', name: 'Activated Charcoal', containerName: 'Carbon Shaker', icon: '🖤', color: '#26292b', secondaryColor: '#141618', defaultHeight: 6, desc: 'Dust horticultural charcoal to purify water' },
-  { id: 'moss', name: 'Sphagnum Moss', containerName: 'Moss Basket', icon: '🌿', color: '#5c8a32', secondaryColor: '#3f631f', defaultHeight: 8, desc: 'Layer spongy moisture-retaining moss fibers' },
-  { id: 'soil', name: 'Rainforest Soil', containerName: 'Humus Trowel Bag', icon: '🌱', color: '#543b2a', secondaryColor: '#3b281b', defaultHeight: 16, desc: 'Pour rich organic tropical potting substrate' },
-  { id: 'rivergravel', name: 'Golden River Gravel', containerName: 'Amber Gravel Can', icon: '✨', color: '#d4a359', secondaryColor: '#a67633', defaultHeight: 16, desc: 'Scatter warm golden stream pebbles & banks' },
-  { id: 'sand', name: 'Silica & Desert Sand', containerName: 'Quartz Sand Bottle', icon: '⏳', color: '#e3d7bf', secondaryColor: '#c7b89b', defaultHeight: 0, desc: 'Trickle fine silica sand to sculpt dunes & paths' },
-  { id: 'water', name: 'Semi-Aquatic Lake', containerName: 'Glass Water Pitcher', icon: 'Pitcher', color: '#38bdf8', secondaryColor: '#0284c7', defaultHeight: 24, desc: 'Pour fresh spring water to fill a paludarium lake' },
-  { id: 'siphon', name: 'Siphon / Scoop Out', containerName: 'Siphon & Scoop', icon: '🥣', color: '#f43f5e', secondaryColor: '#be123c', defaultHeight: 0, desc: 'Lower water level or scoop out excess top substrate' },
+  {
+    id: 'pebbles',
+    name: 'Drainage layer (LECA)',
+    containerName: 'LECA Scoop Jar',
+    icon: '🪨',
+    color: '#9b8e80',
+    secondaryColor: '#6b6056',
+    defaultHeight: 12,
+    desc: 'Clay balls under the mesh hold excess water away from roots',
+  },
+  {
+    id: 'charcoal',
+    name: 'Activated charcoal',
+    containerName: 'Carbon Shaker',
+    icon: '🖤',
+    color: '#2a2d2f',
+    secondaryColor: '#16181a',
+    defaultHeight: 5,
+    desc: 'Absorbs odours and gases from decaying matter',
+  },
+  {
+    id: 'soil',
+    name: 'Tropical substrate',
+    containerName: 'Substrate Bag',
+    icon: '🌱',
+    color: '#543b2a',
+    secondaryColor: '#3b281b',
+    defaultHeight: 34,
+    desc: 'Coir, bark and peat-free mix where roots grow',
+  },
+  {
+    id: 'sand',
+    name: 'Silica sand',
+    containerName: 'Quartz Sand Bottle',
+    icon: '⏳',
+    color: '#e3d7bf',
+    secondaryColor: '#c7b89b',
+    defaultHeight: 0,
+    desc: 'Top dressing for arid builds and paths',
+  },
+  {
+    id: 'leaflitter',
+    name: 'Leaf litter',
+    containerName: 'Leaf Litter Bag',
+    icon: '🍂',
+    color: '#8a5a2b',
+    secondaryColor: '#5e3b1a',
+    defaultHeight: 5,
+    desc: 'Magnolia and oak leaves: food and cover for the cleanup crew',
+  },
+  {
+    id: 'rivergravel',
+    name: 'Pool gravel',
+    containerName: 'River Gravel Can',
+    icon: '✨',
+    color: '#d4a359',
+    secondaryColor: '#a67633',
+    defaultHeight: 6,
+    desc: 'Rounded gravel for the pool bed and shoreline',
+  },
+  {
+    id: 'water',
+    name: 'Pool water',
+    containerName: 'Glass Water Pitcher',
+    icon: 'Pitcher',
+    color: '#38bdf8',
+    secondaryColor: '#0284c7',
+    defaultHeight: 45,
+    desc: 'Fresh water for the pool section',
+  },
+  {
+    id: 'siphon',
+    name: 'Siphon / scoop out',
+    containerName: 'Siphon & Scoop',
+    icon: '🥣',
+    color: '#f43f5e',
+    secondaryColor: '#be123c',
+    defaultHeight: 0,
+    desc: 'Lower the water or scoop out the top layer',
+  },
 ] as const satisfies readonly SubstrateLayerDef[]
 
 export type SubstrateId = (typeof SUBSTRATE_LAYERS)[number]['id']
 
-/** The prototype renders its pour-container grid from every substrate layer (incl. water and siphon). */
+/** Layers poured on the land side of the tank (bottom to top). */
+export const LAND_LAYER_IDS = ['pebbles', 'charcoal', 'soil', 'sand', 'leaflitter'] as const
+
+/** The pour-container grid renders every substrate layer (incl. water and siphon). */
 export const POUR_CONTAINERS = SUBSTRATE_LAYERS
 
-export const SUBSTRATES_BY_ID: Readonly<Record<SubstrateId, SubstrateLayerDef>> = Object.fromEntries(
-  SUBSTRATE_LAYERS.map((l) => [l.id, l]),
-) as Record<SubstrateId, SubstrateLayerDef>
+export const SUBSTRATES_BY_ID: Readonly<Record<SubstrateId, SubstrateLayerDef>> =
+  Object.fromEntries(SUBSTRATE_LAYERS.map((l) => [l.id, l])) as Record<
+    SubstrateId,
+    SubstrateLayerDef
+  >
 
-/** Initial `state.substrates` of the prototype (mm). */
+/** Initial `state.substrates` (mm). */
 export const DEFAULT_SUBSTRATES: Readonly<SubstrateDepths> = {
-  pebbles: 10,
-  lavarock: 8,
-  charcoal: 6,
-  moss: 8,
-  soil: 16,
-  rivergravel: 16,
+  pebbles: 12,
+  charcoal: 5,
+  soil: 34,
   sand: 0,
-  water: 24,
+  leaflitter: 5,
+  rivergravel: 6,
+  water: 45,
 }

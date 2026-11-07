@@ -1,7 +1,16 @@
 import { findCatalogDef } from '@/data/catalog'
-import { DEFAULT_SUBSTRATES } from '@/data/substrates'
-import type { GrowthStage, PlacedItem, SubstrateDepths } from '@/data/types'
-import { getSoilSurfaceNormalizedY } from '@/engine/geometry'
+import type { GrowthStage, PlacedItem } from '@/data/types'
+import {
+  BANK_W,
+  getDividerNormX,
+  getPoolBedNormY,
+  getSoilSurfaceNormalizedY,
+  getWaterTopNormY,
+  hasPool,
+  randomLandX,
+  type TerrainInput,
+} from '@/engine/geometry'
+import type { Rng } from './simulation/constants'
 import { clamp } from '@/lib/clamp'
 import { createItemId } from '@/lib/ids'
 import type { EngineWorld } from './world'
@@ -17,10 +26,11 @@ export const DUPLICATE_OFFSET_X = 0.05
 export const SPROUT_SCALE = 0.62
 
 export interface AddItemOptions {
-  /** Substrate depths used to find the soil surface (defaults to the prototype's initial depths). */
-  substrates?: SubstrateDepths
+  /** Terrain used to find the soil surface, divider and water level. */
+  terrain: TerrainInput
   x?: number
   y?: number
+  rng?: Rng
 }
 
 function find(world: EngineWorld, uid: string): PlacedItem | undefined {
@@ -35,13 +45,28 @@ export function addItem(
   world: EngineWorld,
   defId: string,
   stage: GrowthStage,
-  options: AddItemOptions = {},
+  options: AddItemOptions,
 ): PlacedItem | null {
   const def = findCatalogDef(defId)
   if (!def) return null
-  const surfaceY = getSoilSurfaceNormalizedY(options.substrates ?? DEFAULT_SUBSTRATES)
-  const spreadX = (Math.random() - 0.5) * 0.28
-  const swims = def.category === 'fauna' && !!def.swimsInWater
+  const { terrain } = options
+  const rng = options.rng ?? Math.random
+  const pooled = hasPool(terrain.waterSplit)
+  const inWater = def.category === 'fauna' && def.habitat === 'water' && pooled
+  const floats = def.category === 'flora' && !!def.floatsOnWater && pooled
+  const poolX = () =>
+    0.17 + rng() * Math.max(0.02, getDividerNormX(terrain.waterSplit) - BANK_W - 0.19)
+  let x = options.x
+  let y = options.y
+  if (inWater || floats) {
+    x ??= poolX()
+    y ??= inWater
+      ? (getWaterTopNormY(terrain) + getPoolBedNormY(terrain.substrates)) / 2
+      : getWaterTopNormY(terrain)
+  } else {
+    x ??= randomLandX(terrain, rng)
+    y ??= getSoilSurfaceNormalizedY(terrain, x) - (def.category === 'fauna' ? 0.03 : 0.05)
+  }
   const isFlora = def.category === 'flora'
   const sprout = isFlora && stage === 'sprout'
 
@@ -50,11 +75,11 @@ export function addItem(
     id: def.id,
     category: def.category,
     isWaterfall: def.category === 'hardscape' && !!def.isWaterfall,
-    x: options.x ?? 0.5 + spreadX,
-    y: options.y ?? (swims ? surfaceY + 0.05 : surfaceY - 0.04),
+    x,
+    y,
     scale: sprout ? def.baseScale * SPROUT_SCALE : def.baseScale,
     rotation: 0,
-    flipX: Math.random() > 0.5,
+    flipX: rng() > 0.5,
     stage: isFlora ? stage : 'mature',
     growthProgress: sprout ? 0.2 : 0.8,
     vitality: 98,
@@ -64,10 +89,10 @@ export function addItem(
     zIndex: world.items.length + 1,
   }
   if (def.category === 'fauna') {
-    item.vx = (Math.random() - 0.5) * 0.0004
+    item.vx = (rng() - 0.5) * 0.0004
     item.vy = 0
     item.aiState = 'wandering'
-    item.aiTimer = 100 + Math.random() * 120
+    item.aiTimer = 100 + rng() * 120
   }
   world.items.push(item)
   return item
@@ -110,11 +135,11 @@ export function duplicateItem(
   world: EngineWorld,
   uid: string,
   stage: GrowthStage,
-  substrates?: SubstrateDepths,
+  terrain: TerrainInput,
 ): PlacedItem | null {
   const it = find(world, uid)
   if (!it) return null
-  return addItem(world, it.id, stage, { substrates, x: it.x + DUPLICATE_OFFSET_X, y: it.y })
+  return addItem(world, it.id, stage, { terrain, x: it.x + DUPLICATE_OFFSET_X, y: it.y })
 }
 
 export function deleteItem(world: EngineWorld, uid: string): void {

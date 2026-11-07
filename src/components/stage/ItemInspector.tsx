@@ -1,5 +1,6 @@
 import { useReducer, type ReactNode } from 'react'
 import { findCatalogDef } from '@/data/catalog'
+import type { CatalogDef, PlacedItem } from '@/data/types'
 import { mutateWorld, tryGetWorld } from '@/engine/engineBridge'
 import {
   advanceGrowth,
@@ -57,6 +58,24 @@ function InspectorButton({
   )
 }
 
+const HABITAT_NAMES: Record<string, string> = {
+  water: 'in the pool',
+  shore: 'pool and shore',
+  land: 'on land',
+}
+
+/** Sentence-case meta line under the name (prototype updateInspectorUI). */
+function inspectorMeta(item: PlacedItem, def: CatalogDef | null): string {
+  if (item.category === 'flora') {
+    return `Plant · ${item.stage || 'mature'} · ${Math.round(item.vitality || 98)}% health`
+  }
+  if (item.category === 'fauna') {
+    const habitat = (def?.category === 'fauna' && HABITAT_NAMES[def.habitat]) || 'on land'
+    return `Animal · ${habitat} · ${item.aiState || 'wandering'}`
+  }
+  return 'Hardscape'
+}
+
 /**
  * Floating specimen inspector. It reads the selected item from the live (mutable) world and re-renders after
  * each UI mutation (local tick plus the store snapshot mutateWorld commits), never per engine frame.
@@ -77,18 +96,18 @@ export function ItemInspector() {
     bump()
   }
 
-  let meta: string = item.category.toUpperCase()
-  if (item.category === 'flora') {
-    meta += ` · ${(item.stage || 'mature').toUpperCase()} · ${Math.round(item.vitality || 98)}% HEALTH`
-  } else if (item.category === 'fauna') {
-    meta += ` · ${(item.aiState || 'wandering').toUpperCase()}`
-  }
+  const meta = inspectorMeta(item, def)
 
   const onDuplicate = () => {
-    const { plantingStage, substrates, selectItem } = useStudioStore.getState()
+    const { plantingStage, substrates, waterSplit, selectItem } = useStudioStore.getState()
     let uid: string | null = null
     apply((w) => {
-      uid = duplicateItem(w, item.uid, plantingStage, substrates)?.uid ?? null
+      uid =
+        duplicateItem(w, item.uid, plantingStage, {
+          substrates,
+          waterSplit,
+          terrainContour: w.terrainContour,
+        })?.uid ?? null
     })
     if (uid) {
       selectItem(uid)
@@ -118,10 +137,7 @@ export function ItemInspector() {
             </span>
           )}
         </div>
-        <div
-          data-testid="insp-meta"
-          className="text-[10px] font-semibold uppercase tracking-wider text-stone-light"
-        >
+        <div data-testid="insp-meta" className="text-[10px] font-semibold text-stone-light">
           {meta}
         </div>
       </div>

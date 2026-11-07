@@ -81,8 +81,8 @@ describe('useAudio', () => {
     play('chime')
     expect(factory).not.toHaveBeenCalled()
 
-    fireEvent.pointerDown(screen.getByLabelText('Toggle Ambient Soundscape'))
-    fireEvent.click(screen.getByLabelText('Toggle Ambient Soundscape'))
+    fireEvent.pointerDown(screen.getByLabelText('Ambient sound'))
+    fireEvent.click(screen.getByLabelText('Ambient sound'))
     expect(useStudioStore.getState().audioEnabled).toBe(true)
     expect(factory).toHaveBeenCalledTimes(1)
     act(() => void vi.advanceTimersByTime(520))
@@ -92,7 +92,7 @@ describe('useAudio', () => {
     play('chime')
     expect(oscs.length).toBe(n + 1)
 
-    fireEvent.click(screen.getByLabelText('Toggle Ambient Soundscape'))
+    fireEvent.click(screen.getByLabelText('Ambient sound'))
     expect(useStudioStore.getState().audioEnabled).toBe(false)
     const after = oscs.length
     act(() => void vi.advanceTimersByTime(1000))
@@ -116,7 +116,7 @@ describe('useAudio', () => {
     setAudioContextFactory(factory)
     useStudioStore.setState({ audioEnabled: true })
     render(<UtilityActions />)
-    fireEvent.click(screen.getByLabelText('Toggle Ambient Soundscape'))
+    fireEvent.click(screen.getByLabelText('Ambient sound'))
     expect(useStudioStore.getState().audioEnabled).toBe(false)
     expect(factory).not.toHaveBeenCalled()
   })
@@ -127,7 +127,7 @@ describe('useAudio', () => {
     setAudioContextFactory(factory)
     // No useAudio mounted: only the click handler can have started the context and the loop.
     render(<UtilityActions />)
-    fireEvent.click(screen.getByText('Relax Mode'))
+    fireEvent.click(screen.getByText('Relax'))
     expect(factory).toHaveBeenCalledTimes(1)
     act(() => void vi.advanceTimersByTime(520))
     expect(oscs.length).toBeGreaterThanOrEqual(2)

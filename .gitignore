@@ -7,3 +7,6 @@ test-results
 *.local
 .DS_Store
 *.tsbuildinfo
+
+# Claude Code worktrees
+.claude/worktrees/

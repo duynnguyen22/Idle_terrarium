@@ -1,4 +1,5 @@
 import { traceVesselPath } from '../geometry'
+import { isLampOn } from '../simulation/clock'
 import { vesselMetrics, type RenderFn } from './metrics'
 
 /**
@@ -17,7 +18,7 @@ export const beginVesselClip: RenderFn = (ctx, _world, state, R) => {
   ctx.fillRect(cx - r, cy - r, r * 2, r * 2)
 
   // Halo LED Lamp light cone inside enclosure
-  if (state.hasGrowLamp) {
+  if (isLampOn(state)) {
     const coneGrad = ctx.createRadialGradient(cx, cy - r * 0.85, 10, cx, cy - r * 0.1, r * 0.95)
     coneGrad.addColorStop(0, 'rgba(255, 255, 255, 0.26)')
     coneGrad.addColorStop(0.5, 'rgba(224, 242, 254, 0.10)')

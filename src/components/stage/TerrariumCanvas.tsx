@@ -129,17 +129,8 @@ export function TerrariumCanvas() {
       return
     }
 
-    const effect = applyTool(world, store, store.activeTool, nx, ny)
+    const effect = applyTool(world, store.activeTool, nx, ny)
     if (effect) {
-      if (effect.telemetryDelta) {
-        const t = store.telemetry
-        const d = effect.telemetryDelta
-        store.setTelemetry({
-          ...(d.humidity !== undefined && { humidity: t.humidity + d.humidity }),
-          ...(d.soilMoisture !== undefined && { soilMoisture: t.soilMoisture + d.soilMoisture }),
-          ...(d.nutrients !== undefined && { nutrients: t.nutrients + d.nutrients }),
-        })
-      }
       if (effect.sound) play(effect.sound)
       if (effect.toast) showToast(effect.toast)
       commitWorld()
