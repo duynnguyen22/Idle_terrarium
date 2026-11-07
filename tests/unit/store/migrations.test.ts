@@ -4,8 +4,25 @@ import { mapLegacySubstrates, migrate } from '@/store/migrations'
 describe('mapLegacySubstrates', () => {
   it('folds lavarock into pebbles and moss into soil, leaflitter starts at 0', () => {
     expect(
-      mapLegacySubstrates({ pebbles: 10, lavarock: 8, charcoal: 6, moss: 8, soil: 16, rivergravel: 16, sand: 2, water: 24 }),
-    ).toEqual({ pebbles: 18, charcoal: 6, soil: 24, sand: 2, leaflitter: 0, rivergravel: 16, water: 24 })
+      mapLegacySubstrates({
+        pebbles: 10,
+        lavarock: 8,
+        charcoal: 6,
+        moss: 8,
+        soil: 16,
+        rivergravel: 16,
+        sand: 2,
+        water: 24,
+      }),
+    ).toEqual({
+      pebbles: 18,
+      charcoal: 6,
+      soil: 24,
+      sand: 2,
+      leaflitter: 0,
+      rivergravel: 16,
+      water: 24,
+    })
   })
 
   it('mapLegacySubstrates never yields NaN', () => {
@@ -15,8 +32,23 @@ describe('mapLegacySubstrates', () => {
 
   it('non-finite and non-numeric depths become 0 and missing keys become 0', () => {
     expect(
-      mapLegacySubstrates({ pebbles: Infinity, lavarock: 4, soil: NaN, moss: 3, charcoal: '6', water: null }),
-    ).toEqual({ pebbles: 4, charcoal: 0, soil: 3, sand: 0, leaflitter: 0, rivergravel: 0, water: 0 })
+      mapLegacySubstrates({
+        pebbles: Infinity,
+        lavarock: 4,
+        soil: NaN,
+        moss: 3,
+        charcoal: '6',
+        water: null,
+      }),
+    ).toEqual({
+      pebbles: 4,
+      charcoal: 0,
+      soil: 3,
+      sand: 0,
+      leaflitter: 0,
+      rivergravel: 0,
+      water: 0,
+    })
   })
 
   it('passes through a finite leaflitter depth from a v6-shaped record', () => {
@@ -27,11 +59,36 @@ describe('mapLegacySubstrates', () => {
 describe('migrate', () => {
   it('maps a v1 save into v2', () => {
     const out = migrate(
-      { substrates: { pebbles: 10, lavarock: 8, charcoal: 6, moss: 8, soil: 16, rivergravel: 16, sand: 0, water: 24 }, dayCount: 7 },
+      {
+        substrates: {
+          pebbles: 10,
+          lavarock: 8,
+          charcoal: 6,
+          moss: 8,
+          soil: 16,
+          rivergravel: 16,
+          sand: 0,
+          water: 24,
+        },
+        dayCount: 7,
+      },
       1,
     )
-    expect(out.substrates).toEqual({ pebbles: 18, charcoal: 6, soil: 24, sand: 0, leaflitter: 0, rivergravel: 16, water: 24 })
-    expect(out).toMatchObject({ pumpFlow: 'gentle', waterSplit: 0.32, cycleProgress: 1, setupDay: 7 })
+    expect(out.substrates).toEqual({
+      pebbles: 18,
+      charcoal: 6,
+      soil: 24,
+      sand: 0,
+      leaflitter: 0,
+      rivergravel: 16,
+      water: 24,
+    })
+    expect(out).toMatchObject({
+      pumpFlow: 'gentle',
+      waterSplit: 0.32,
+      cycleProgress: 1,
+      setupDay: 7,
+    })
   })
 
   it('a v1 save with no water gets no pool', () => {
@@ -54,7 +111,12 @@ describe('migrate', () => {
   it('leaves substrates absent when the save has none and defaults setupDay to 1', () => {
     const out = migrate({}, 1)
     expect(out).not.toHaveProperty('substrates')
-    expect(out).toMatchObject({ pumpFlow: 'gentle', waterSplit: 0.32, cycleProgress: 1, setupDay: 1 })
+    expect(out).toMatchObject({
+      pumpFlow: 'gentle',
+      waterSplit: 0.32,
+      cycleProgress: 1,
+      setupDay: 1,
+    })
   })
 
   it('v0 (unversioned) saves share the v1 shape and migrate the same way', () => {

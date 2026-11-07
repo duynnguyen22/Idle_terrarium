@@ -41,7 +41,8 @@ export function legacyPoolFields(
     pumpFlow: 'gentle',
     waterSplit: water > POOL_WATER_THRESHOLD_MM ? LEGACY_POOL_SPLIT : 0,
     cycleProgress: 1,
-    setupDay: typeof dayCount === 'number' && Number.isFinite(dayCount) && dayCount >= 1 ? dayCount : 1,
+    setupDay:
+      typeof dayCount === 'number' && Number.isFinite(dayCount) && dayCount >= 1 ? dayCount : 1,
   }
 }
 
