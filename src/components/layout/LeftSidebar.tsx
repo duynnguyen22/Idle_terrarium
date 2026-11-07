@@ -1,45 +1,17 @@
 import { CatalogGrid } from '@/components/catalog/CatalogGrid'
 import { PlantingStageToggle } from '@/components/catalog/PlantingStageToggle'
 import { VesselTab } from '@/components/catalog/VesselTab'
+import { LineIcon, type IconName } from '@/components/ui/LineIcon'
 import { selectActiveTab } from '@/store/selectors'
 import { useStudioStore } from '@/store/useStudioStore'
 
-/** Line icons from the v6 prototype's tab bar (24-unit viewBox, stroked). */
+/** Tab bar entries with their v6 line icons. */
 const TABS = [
-  {
-    id: 'vessel',
-    icon: 'M8 3h8M7 6h10v13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM7 11h10',
-    label: 'Vessel & Soil',
-  },
-  {
-    id: 'flora',
-    icon: 'M12 21v-9M12 12c0-4 3-6 7-6c0 4-3 6-7 6zM12 14c0-3-2-5-6-5c0 3 2 5 6 5z',
-    label: 'Flora',
-  },
-  { id: 'hardscape', icon: 'M3 18l3-8l5-3l6 2l4 9zM3 18h18', label: 'Hardscape' },
-  {
-    id: 'fauna',
-    icon: 'M7 14a5 4 0 1 0 10 0a5 4 0 1 0-10 0zM8.5 9a1.5 1.5 0 1 0 .01 0M15.5 9a1.5 1.5 0 1 0 .01 0M5 18l-2 2M19 18l2 2',
-    label: 'Fauna',
-  },
-] as const
-
-function TabIcon({ d }: { d: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="h-4 w-4 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d={d} />
-    </svg>
-  )
-}
+  { id: 'vessel', icon: 'jar', label: 'Vessel & Soil' },
+  { id: 'flora', icon: 'sprout', label: 'Flora' },
+  { id: 'hardscape', icon: 'rock', label: 'Hardscape' },
+  { id: 'fauna', icon: 'bug', label: 'Fauna' },
+] as const satisfies readonly { id: string; icon: IconName; label: string }[]
 
 const BLURB = 'text-[11px] leading-relaxed text-stone'
 const STRONG = 'font-semibold text-forest-deep'
@@ -91,7 +63,7 @@ export function LeftSidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
     <aside
       id="left-sidebar"
       data-drawer-open={drawerOpen}
-      className={`z-20 max-lg:z-40 flex w-80 shrink-0 flex-col border-r border-sand-border bg-paper md:w-96 max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:max-w-[85vw] max-lg:shadow-xl max-lg:transition-[transform,visibility] motion-reduce:max-lg:transition-none ${
+      className={`z-20 max-lg:z-40 flex w-80 shrink-0 flex-col border-r border-sand-border bg-paper max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:max-w-[85vw] max-lg:shadow-xl max-lg:transition-[transform,visibility] motion-reduce:max-lg:transition-none ${
         drawerOpen ? '' : 'max-lg:invisible max-lg:-translate-x-full'
       }`}
     >
@@ -117,7 +89,7 @@ export function LeftSidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
               }`}
             >
               <span className="mb-1 inline-flex">
-                <TabIcon d={t.icon} />
+                <LineIcon name={t.icon} />
               </span>
               <span className="whitespace-nowrap text-[11px]">{t.label}</span>
             </button>

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Toast } from '@/components/stage/Toast'
 import { RightTelemetry } from '@/components/layout/RightTelemetry'
 import { TopNav } from '@/components/layout/TopNav'
+import { LightingControls } from '@/components/nav/LightingControls'
 import { GaugeBar } from '@/components/telemetry/GaugeBar'
 import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { createWorld, type EngineWorld } from '@/engine/world'
@@ -84,7 +85,7 @@ describe('TopNav speed controls', () => {
   it('+1 Day advances the day, grows flora and toasts', async () => {
     world.items = [{ ...item('f', 'flora'), scale: 1 }]
     render(<TopNav />)
-    await user().click(screen.getByRole('button', { name: '+1 Day' }))
+    await user().click(screen.getByRole('button', { name: '+1 day' }))
     expect(useStudioStore.getState().dayCount).toBe(2)
     expect(world.items[0].scale).toBeCloseTo(1.06)
     expect(useToastStore.getState().message).toMatch(/^Day 2: plants grew/)
@@ -93,27 +94,27 @@ describe('TopNav speed controls', () => {
   it('+1 Day that finishes the cycle says the pool has cycled', async () => {
     world.env.cycleProgress = 0.99
     render(<TopNav />)
-    await user().click(screen.getByRole('button', { name: '+1 Day' }))
+    await user().click(screen.getByRole('button', { name: '+1 day' }))
     expect(world.env.cycleProgress).toBe(1)
     expect(useToastStore.getState().message).toBe('Day 2: plants grew. The pool has cycled.')
   })
 })
 
 describe('lighting', () => {
-  it('Night sets lighting and turns Auto Sync off; Auto Sync turns it back on', async () => {
-    render(<TopNav />)
+  it('Night sets lighting and turns Auto off; Auto turns it back on', async () => {
+    render(<LightingControls />)
     const u = user()
-    await u.click(screen.getByRole('button', { name: /Night/ }))
+    await u.click(screen.getByRole('button', { name: 'Night' }))
     expect(useStudioStore.getState()).toMatchObject({ lighting: 'night', autoLightSync: false })
-    await u.click(screen.getByRole('button', { name: /Auto Sync/ }))
+    await u.click(screen.getByRole('button', { name: 'Auto' }))
     expect(useStudioStore.getState().autoLightSync).toBe(true)
   })
 
   it.each([
-    ['dawn', 'DAWN · DEW CONDENSATION'],
-    ['sunlight', 'DAY · PHOTOSYNTHESIS'],
-    ['twilight', 'DUSK · GOLDEN HOUR'],
-    ['night', 'NIGHT · RESPIRATION'],
+    ['dawn', 'Dawn · dew on the glass'],
+    ['sunlight', 'Day · photosynthesis'],
+    ['twilight', 'Dusk · lamp winding down'],
+    ['night', 'Night · respiration'],
   ] as const)('cycle badge for %s', (lighting, text) => {
     useStudioStore.setState({ lighting })
     render(<TopNav />)
@@ -124,23 +125,27 @@ describe('lighting', () => {
 describe('utility actions', () => {
   it('renders Relax, Audio and Snapshot buttons', () => {
     render(<TopNav />)
-    expect(screen.getByRole('button', { name: /Relax Mode/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Toggle Ambient Soundscape/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Relax/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ambient sound' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Snapshot/ })).toBeInTheDocument()
   })
 
   it('Clear empties world items and the stored snapshot', async () => {
     world.items = [item('a', 'flora'), item('b', 'fauna')]
     render(<TopNav />)
-    await user().click(screen.getByRole('button', { name: 'Clear Placed Specimens' }))
+    const u = user()
+    await u.click(screen.getByRole('button', { name: 'More actions' }))
+    await u.click(screen.getByRole('menuitem', { name: 'Clear all specimens' }))
     expect(world.items).toEqual([])
     expect(useStudioStore.getState().worldSnapshot?.items).toEqual([])
     expect(useToastStore.getState().message).toBe('Cleared all specimens')
   })
 
-  it('Biome applies Falls Lake to the world and store', async () => {
+  it('Rebuild applies Falls Lake to the world and store', async () => {
     render(<TopNav />)
-    await user().click(screen.getByRole('button', { name: /Biome/ }))
+    const u = user()
+    await u.click(screen.getByRole('button', { name: 'More actions' }))
+    await u.click(screen.getByRole('menuitem', { name: 'Rebuild the Falls Lake paludarium' }))
     expect(world.items.length).toBeGreaterThan(5)
     const fauna = world.items.find((i) => i.category === 'fauna')
     expect(fauna).toMatchObject({ aiState: 'wandering', aiTimer: 120 })
@@ -155,19 +160,11 @@ describe('utility actions', () => {
 })
 
 describe('GaugeBar', () => {
-  it('fill width spans value within min..max and shows the text', () => {
+  it('marker position spans value within min..max and shows the text', () => {
     render(
-      <GaugeBar
-        gaugeKey="humidity"
-        icon="💧"
-        label="Humidity"
-        value={78}
-        min={0}
-        max={100}
-        text="78%"
-      />,
+      <GaugeBar gaugeKey="humidity" label="Humidity" value={78} min={0} max={100} text="78%" />,
     )
-    expect(screen.getByTestId('gauge-fill')).toHaveStyle({ width: '78%' })
+    expect(screen.getByTestId('gauge-mark')).toHaveStyle({ left: '78%' })
     expect(screen.getByText('78%')).toBeInTheDocument()
   })
 
@@ -175,7 +172,6 @@ describe('GaugeBar', () => {
     render(
       <GaugeBar
         gaugeKey="temperature"
-        icon="🌡️"
         label="Temperature"
         value={25}
         min={15}
@@ -184,7 +180,7 @@ describe('GaugeBar', () => {
         band={{ lo: 20, hi: 30, tol: 1 }}
       />,
     )
-    expect(screen.getByTestId('gauge-fill')).toHaveStyle({ width: '50%' })
+    expect(screen.getByTestId('gauge-mark')).toHaveStyle({ left: '50%' })
     expect(screen.getByTestId('gauge-band-temperature')).toHaveStyle({ left: '25%', width: '50%' })
     expect(screen.getByTestId('gauge-temperature')).toHaveAttribute('data-in-band', 'true')
   })

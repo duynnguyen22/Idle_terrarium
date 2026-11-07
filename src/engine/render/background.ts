@@ -26,7 +26,7 @@ export function drawBackground(
     bgGrad.addColorStop(1, '#e7e0d0')
   } else {
     bgGrad.addColorStop(0, '#eef2ec')
-    bgGrad.addColorStop(1, '#dcd6c8')
+    bgGrad.addColorStop(1, '#d6dbd2')
   }
   ctx.fillStyle = bgGrad
   ctx.fillRect(0, 0, W, H)

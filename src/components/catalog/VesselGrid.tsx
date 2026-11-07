@@ -16,10 +16,10 @@ export function VesselGrid() {
             type="button"
             aria-pressed={active}
             onClick={() => setVessel(v.id)}
-            className={`flex items-center gap-2.5 rounded-2xl border p-2.5 text-left transition ${
+            className={`flex min-w-0 items-center gap-2 rounded-2xl border p-2 text-left transition ${
               active
                 ? 'border-forest-deep bg-forest-deep text-white shadow-sm'
-                : 'border-sand-border bg-white text-ink-deep hover:bg-linen'
+                : 'border-sand-border bg-white text-ink-deep hover:bg-sand-warm'
             }`}
           >
             <span dangerouslySetInnerHTML={{ __html: getVesselPreviewSVG(v.id, active) }} />

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test('pool width, cycling and the next-step action', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Arid Sand' }).click()
+  await page.getByRole('button', { name: /^Arid/ }).click()
   await expect(page.getByText('Arid: open top, sand, no fogger')).toBeVisible()
   // Both the hardware pump status and the EcoStats water-cycle row say this with no pool.
   await expect(page.getByText('No pool in this build').first()).toBeVisible()
@@ -14,7 +14,7 @@ test('pool width, cycling and the next-step action', async ({ page }) => {
   ).toBeVisible()
   await expect(page.getByText(/Cycling, day 1 of ~21/)).toBeVisible()
 
-  const nextDay = page.getByRole('button', { name: '+1 Day' })
+  const nextDay = page.getByRole('button', { name: '+1 day' })
   for (let i = 0; i < 21; i++) await nextDay.click()
   await expect(page.getByText(/Cycled · ammonia 0 ppm/)).toBeVisible()
 

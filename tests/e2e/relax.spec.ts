@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test('Relax Mode hides the chrome, shows the dock, idles, and exits', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: /Relax Mode/ }).click()
+  await page.getByRole('button', { name: /Relax/ }).click()
   const body = page.locator('body')
   await expect(body).toHaveClass(/relax-active/)
   await expect(page.locator('#top-nav')).toBeHidden()

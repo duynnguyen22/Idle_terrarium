@@ -22,7 +22,7 @@ export function TotalSubstrateDepth() {
   return (
     <span
       data-testid="total-substrate-depth"
-      className="font-mono text-[11px] font-semibold text-forest-mid"
+      className="tabular-nums text-[11px] font-semibold text-forest-mid"
     >
       {Math.round(getTotalSubstrateDepth(substrates))} mm of land
     </span>
@@ -48,7 +48,7 @@ function SliderRow({ id, max }: { id: SliderLayerId; max: number }) {
           />
           <span>{layer.name}</span>
         </span>
-        <span className="font-mono text-[11px] text-stone">{val} mm</span>
+        <span className="tabular-nums text-[11px] text-stone">{val} mm</span>
       </div>
       <input
         type="range"
@@ -94,7 +94,7 @@ function changePoolWidth(percent: number) {
 export function SubstrateSliders() {
   const waterSplit = useStudioStore(selectWaterSplit)
   return (
-    <div className="space-y-2.5 rounded-2xl border border-sand-border bg-white p-3">
+    <div className="space-y-2.5 rounded-2xl border border-card-line bg-white p-3">
       <div className={SUBHEAD}>Land, top to bottom</div>
       {LAND_TOP_DOWN.map((id) => (
         <Fragment key={id}>
@@ -111,7 +111,7 @@ export function SubstrateSliders() {
       <div className="space-y-1">
         <div className="flex items-center justify-between text-xs">
           <span className="font-medium text-ink-soft">Pool width</span>
-          <span className="font-mono text-[11px] text-stone">{splitLabel(waterSplit)}</span>
+          <span className="tabular-nums text-[11px] text-stone">{splitLabel(waterSplit)}</span>
         </div>
         <input
           type="range"

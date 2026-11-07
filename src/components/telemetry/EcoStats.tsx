@@ -36,11 +36,11 @@ export function EcoStats() {
 
   const spawnSpore = () => {
     mutateWorld((w) => addSporePatch(w, useStudioStore.getState()))
-    showToast('🍄 Spawned fungal spore — use Scrub Mold or Isopods to clean!')
+    showToast('Mold spore added. Scrub it, or let the isopods clean it up')
   }
 
   return (
-    <div className="space-y-2.5 rounded-2xl border border-sand-border bg-white p-3.5 text-xs">
+    <div className="space-y-2.5 rounded-2xl border border-card-line bg-white p-3.5 text-xs">
       <div className="flex items-start justify-between gap-3">
         <span className="shrink-0 text-stone">Glass</span>
         <span className="text-right font-semibold text-forest-ink">{glassText(condensation)}</span>
@@ -48,7 +48,7 @@ export function EcoStats() {
       <div>
         <div className="flex items-start justify-between gap-3">
           <span className="shrink-0 text-stone">Pool water</span>
-          <span className="text-right font-semibold text-cyan-800">
+          <span className="text-right font-semibold text-[#0b5a7a]">
             {waterCycleText(pool, cycleProgress, pumpFlow)}
           </span>
         </div>
@@ -56,7 +56,7 @@ export function EcoStats() {
           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-sand-light">
             <div
               data-testid="cycle-bar"
-              className="h-full rounded-full bg-cyan-700"
+              className="h-full rounded-full bg-[#0e7490]"
               style={{ width: `${Math.round(Math.min(1, cycleProgress) * 100)}%` }}
             />
           </div>
@@ -72,7 +72,7 @@ export function EcoStats() {
             type="button"
             onClick={spawnSpore}
             title="Add a mold spore to watch the cleanup crew work"
-            className="rounded bg-amber-pale px-1.5 py-0.5 text-[11px] font-semibold text-amber-brown transition hover:bg-amber-soft"
+            className="rounded bg-wheat px-1.5 py-0.5 text-[11px] font-semibold text-wheat-ink transition hover:bg-wheat-hover"
           >
             + Spore
           </button>

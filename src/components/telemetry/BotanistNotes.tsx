@@ -40,7 +40,7 @@ export function BotanistNotes() {
   const top = careIssues.find((i) => i.level === 'warn') ?? careIssues[0]
   const action = top?.action
   return (
-    <div className="rounded-2xl bg-mint-light p-3.5">
+    <div className="rounded-2xl bg-mint-step p-3.5">
       <div className="mb-1 text-xs font-semibold text-forest-ink">Next step</div>
       <p className="text-xs leading-relaxed text-forest-slate">
         {top ? top.text : allClearNote(condensation)}
@@ -62,7 +62,7 @@ export function BotanistNotes() {
 export function CareList() {
   const { careIssues } = useTelemetryStore(selectTelemetry)
   return (
-    <div className="rounded-2xl border border-sand-border bg-white p-3.5">
+    <div className="rounded-2xl border border-card-line bg-white p-3.5">
       <div className="mb-2 text-xs font-semibold text-forest-ink">Inhabitants</div>
       <ul className="space-y-2 text-xs leading-snug text-ink-soft">
         {careIssues.length === 0 ? (

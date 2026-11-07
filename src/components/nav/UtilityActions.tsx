@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from 'react'
+import { LineIcon } from '@/components/ui/LineIcon'
 import { startAudioFromGesture, stopAudio } from '@/hooks/useAudio'
 import { mutateWorld } from '@/engine/engineBridge'
 import { applyPreset } from '@/engine/presets'
@@ -20,85 +22,136 @@ const takeSnapshot = async () => {
   const canvas = getTerrariumCanvas()
   if (!canvas) return
   const ok = await exportSnapshotPng(canvas, snapshotFilename(useStudioStore.getState().dayCount))
-  if (ok) showToast('📸 High-DPI Snapshot saved!')
+  if (ok) showToast('Snapshot saved')
+}
+const rebuildFalls = () => {
+  let message = ''
+  mutateWorld((w) => {
+    message = applyPreset(w, 'falls', useStudioStore.getState())
+  })
+  showToast(message)
+}
+const clearAll = () => {
+  mutateWorld((w) => {
+    w.items = []
+  })
+  useStudioStore.getState().selectItem(null)
+  showToast('Cleared all specimens')
 }
 
 const NEUTRAL =
-  'h-8 rounded-lg bg-sand-pale hover:bg-sand-track text-ink-soft border border-sand-border inline-flex items-center shrink-0 transition'
+  'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sand-pale text-ink-soft transition hover:bg-sand-track'
+const MENU_ITEM =
+  'inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium'
+
+/** "⋯" button with the rarely used, destructive actions (prototype #more-menu). */
+function MoreMenu() {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    // Capture phase + stopPropagation: Escape closes the menu only, not relax mode or the selection.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.stopPropagation()
+      setOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown)
+    window.addEventListener('keydown', onKey, true)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      window.removeEventListener('keydown', onKey, true)
+    }
+  }, [open])
+
+  const run = (fn: () => void) => () => {
+    setOpen(false)
+    fn()
+  }
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls="more-menu"
+        aria-label="More actions"
+        title="More actions"
+        onClick={() => setOpen((o) => !o)}
+        className={NEUTRAL}
+      >
+        <LineIcon name="more" />
+      </button>
+      {open && (
+        <div
+          id="more-menu"
+          role="menu"
+          className="fixed right-4 top-14 z-50 w-60 rounded-xl border border-sand-border bg-white p-1 shadow-lg"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={run(rebuildFalls)}
+            className={`${MENU_ITEM} text-ink-deep hover:bg-linen`}
+          >
+            <LineIcon name="dice" />
+            Rebuild the Falls Lake paludarium
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={run(clearAll)}
+            className={`${MENU_ITEM} text-rose-700 hover:bg-rose-50`}
+          >
+            <LineIcon name="trash" />
+            Clear all specimens
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function UtilityActions() {
   const audioEnabled = useStudioStore(selectAudioEnabled)
-
-  const randomBiome = () => {
-    let message = ''
-    mutateWorld((w) => {
-      message = applyPreset(w, 'falls', useStudioStore.getState())
-    })
-    showToast(message)
-  }
-  const clearAll = () => {
-    mutateWorld((w) => {
-      w.items = []
-    })
-    useStudioStore.getState().selectItem(null)
-    showToast('Cleared all specimens')
-  }
 
   return (
     <div className="flex shrink-0 items-center gap-1.5">
       <button
         type="button"
         onClick={enterRelax}
-        title="Enter Full-Screen Zen Relax Mode (Shortcut: R)"
-        className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-forest-mid px-3 text-xs font-semibold text-white shadow-xs transition hover:bg-forest-deep"
+        title="Full-screen relax mode (R)"
+        className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-forest-mid px-3 text-xs font-semibold text-white transition hover:bg-forest-deep"
       >
-        <span>🍃</span>
-        <span>Relax Mode</span>
+        <LineIcon name="leaf" />
+        <span>Relax</span>
       </button>
       <button
         type="button"
         onClick={toggleAudio}
-        aria-label="Toggle Ambient Soundscape"
-        title="Toggle Ambient Soundscape"
-        className={`${NEUTRAL} w-8 justify-center`}
+        aria-label="Ambient sound"
+        aria-pressed={audioEnabled}
+        title="Ambient sound"
+        className={NEUTRAL}
       >
-        <span>{audioEnabled ? '🔊' : '🔇'}</span>
-      </button>
-      <button
-        type="button"
-        onClick={randomBiome}
-        title="Craft a Complete Semi-Aquatic or Mountain Terrarium"
-        className={`${NEUTRAL} gap-1 whitespace-nowrap px-2.5 text-xs font-semibold`}
-      >
-        <span>🎲</span>
-        <span>Biome</span>
-      </button>
-      <button
-        type="button"
-        onClick={clearAll}
-        aria-label="Clear Placed Specimens"
-        title="Clear Placed Specimens"
-        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-rose bg-rose-pale text-blood transition hover:bg-rose-light"
-      >
-        <svg
-          className="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" />
-        </svg>
+        <LineIcon name={audioEnabled ? 'vol' : 'mute'} />
       </button>
       <button
         type="button"
         onClick={() => void takeSnapshot()}
+        aria-label="Snapshot"
         title="Save a PNG snapshot of the terrarium"
-        className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-forest-deep px-3 text-xs font-semibold text-white shadow-xs transition hover:bg-forest-dark"
+        className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-forest-deep px-3 text-xs font-semibold text-white transition hover:bg-forest-dark"
       >
-        <span>📸</span>
-        <span>Snapshot</span>
+        <LineIcon name="camera" />
+        <span className="hidden lg:inline">Snapshot</span>
       </button>
+      <MoreMenu />
     </div>
   )
 }

@@ -42,10 +42,10 @@ afterEach(() => {
 describe('LeftSidebar panels', () => {
   it('switches panels with the tab bar', () => {
     render(<LeftSidebar />)
-    expect(screen.getByText('1. Glass Enclosure')).toBeInTheDocument()
+    expect(screen.getByText('Enclosure')).toBeInTheDocument()
     click(screen.getByRole('tab', { name: /Flora/ }))
     expect(screen.getByText('Planting Stage:')).toBeInTheDocument()
-    expect(screen.queryByText('1. Glass Enclosure')).not.toBeInTheDocument()
+    expect(screen.queryByText('Enclosure')).not.toBeInTheDocument()
     click(screen.getByRole('tab', { name: /Hardscape/ }))
     expect(screen.getByText(/Living Moss Wall Cliff/)).toBeInTheDocument()
     click(screen.getByRole('tab', { name: /Fauna/ }))
@@ -61,21 +61,21 @@ describe('LeftSidebar panels', () => {
 
   it('hardware switches flip flags and aria-checked', () => {
     render(<LeftSidebar />)
-    const lamp = screen.getByRole('switch', { name: /Halo LED Lamp/ })
-    const fogger = screen.getByRole('switch', { name: /Mist Fogger/ })
+    const lamp = screen.getByRole('switch', { name: /Grow lamp/ })
+    const fogger = screen.getByRole('switch', { name: /Mist fogger/ })
     expect(lamp).toHaveAttribute('aria-checked', 'true')
     click(lamp)
     expect(state().hasGrowLamp).toBe(false)
     expect(lamp).toHaveAttribute('aria-checked', 'false')
     click(fogger)
     expect(state().hasFogger).toBe(false)
-    click(screen.getByRole('checkbox', { name: /Cork Lid Sealed/ }))
+    click(screen.getByRole('checkbox', { name: /Lid sealed/ }))
     expect(state().hasLid).toBe(false)
   })
 
   it('hardware copy follows lamp, fogger and pump state', () => {
     render(<LeftSidebar />)
-    expect(screen.getByRole('switch', { name: /Halo LED Lamp/ })).toBeChecked()
+    expect(screen.getByRole('switch', { name: /Grow lamp/ })).toBeChecked()
     expect(screen.getByText('Lit until 20:00')).toBeInTheDocument()
     set({ lighting: 'night' })
     expect(screen.getByText('Resting tonight, back on at 05:30')).toBeInTheDocument()
@@ -84,7 +84,7 @@ describe('LeftSidebar panels', () => {
     set({ hasGrowLamp: false })
     expect(screen.getByText('Switched off; plants get room light only')).toBeInTheDocument()
     expect(screen.getByText('Running, about +7% humidity')).toBeInTheDocument()
-    click(screen.getByRole('switch', { name: /Mist Fogger/ }))
+    click(screen.getByRole('switch', { name: /Mist fogger/ }))
     expect(state().hasFogger).toBe(false)
     expect(screen.getByText('Off; air relies on the pool')).toBeInTheDocument()
     const pump = screen.getByRole('radiogroup', { name: 'Waterfall pump' })
@@ -131,9 +131,9 @@ describe('LeftSidebar panels', () => {
 
   it('hardware switches are named by their label and described by their status', () => {
     render(<LeftSidebar />)
-    const lamp = screen.getByRole('switch', { name: 'Halo LED Lamp' })
+    const lamp = screen.getByRole('switch', { name: 'Grow lamp' })
     expect(lamp).toHaveAccessibleDescription('Lit until 20:00')
-    expect(screen.getByRole('switch', { name: 'Mist Fogger' })).toHaveAccessibleDescription(
+    expect(screen.getByRole('switch', { name: 'Mist fogger' })).toHaveAccessibleDescription(
       'Running, about +7% humidity',
     )
     expect(screen.getByRole('group', { name: 'Enclosure hardware' })).toBeInTheDocument()
@@ -167,13 +167,13 @@ describe('LeftSidebar panels', () => {
 
   it('recipe buttons toast the preset message', () => {
     render(<LeftSidebar />)
-    click(screen.getByRole('button', { name: /Arid Sand/ }))
+    click(screen.getByRole('button', { name: /^Arid/ }))
     expect(toast()).toBe('Arid: open top, sand, no fogger')
   })
 
   it('a recipe button sets substrates; Falls Lake also fills the world and toasts', () => {
     render(<LeftSidebar />)
-    click(screen.getByRole('button', { name: /Arid Sand/ }))
+    click(screen.getByRole('button', { name: /^Arid/ }))
     expect(state().substrates.sand).toBe(22)
     expect(state().substrates.water).toBe(0)
     expect(world.items).toHaveLength(0)
@@ -183,11 +183,11 @@ describe('LeftSidebar panels', () => {
     expect(toast()).toBe('Falls Lake: 30% pool, waterfall and moss wall')
   })
 
-  it('Level Terrain flattens the contour and clears grains', () => {
+  it('Level terrain flattens the contour and clears grains', () => {
     world.terrainContour[3] = 4
     world.surfaceGrains = [{}]
     render(<LeftSidebar />)
-    click(screen.getByRole('button', { name: 'Level Terrain' }))
+    click(screen.getByRole('button', { name: 'Level terrain' }))
     expect(world.terrainContour.every((v) => v === 0)).toBe(true)
     expect(world.surfaceGrains).toHaveLength(0)
   })
@@ -199,15 +199,13 @@ describe('LeftSidebar panels', () => {
     expect(state().activePourMaterial).toBe('pebbles')
     expect(state().activeTool).toBe('pour')
     expect(useToastStore.getState().message).toBe(
-      '🫙 Hold & drag inside the jar to scatter Drainage layer (LECA)!',
+      'Hold and drag inside the tank to scatter Drainage layer (LECA)',
     )
     click(jar)
     expect(state().activePourMaterial).toBeNull()
     expect(state().activeTool).toBe('select')
     click(screen.getByRole('button', { name: /Glass Water Pitcher/ }))
-    expect(useToastStore.getState().message).toBe(
-      '🫗 Hold & drag inside the jar to pour a Semi-Aquatic Lake!',
-    )
+    expect(useToastStore.getState().message).toBe('Hold and drag inside the tank to pour water')
   })
 
   it('a slider change writes mm and updates the total', () => {

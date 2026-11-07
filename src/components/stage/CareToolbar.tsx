@@ -1,14 +1,15 @@
+import { LineIcon, type IconName } from '@/components/ui/LineIcon'
 import { SUBSTRATES_BY_ID, type SubstrateId } from '@/data/substrates'
 import { selectActiveTool } from '@/store/selectors'
 import { useStudioStore } from '@/store/useStudioStore'
 
-const TOOLS = [
-  { id: 'select', icon: '🖐️', label: 'Move / Mount' },
-  { id: 'mist', icon: '💦', label: 'Mist Spray' },
-  { id: 'prune', icon: '✂️', label: 'Prune' },
-  { id: 'boost', icon: '✨', label: 'Bio-Feed' },
-  { id: 'scrub', icon: '🧽', label: 'Scrub Mold' },
-] as const
+const TOOLS: readonly { id: string; icon: IconName; label: string }[] = [
+  { id: 'select', icon: 'hand', label: 'Move / Mount' },
+  { id: 'mist', icon: 'drop', label: 'Mist Spray' },
+  { id: 'prune', icon: 'scissors', label: 'Prune' },
+  { id: 'boost', icon: 'sparkle', label: 'Bio-Feed' },
+  { id: 'scrub', icon: 'eraser', label: 'Scrub Mold' },
+]
 
 const BASE =
   'inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-xl px-3 text-xs font-semibold transition'
@@ -49,7 +50,7 @@ export function CareToolbar() {
             onClick={() => pick(t.id)}
             className={`${BASE} ${active ? 'bg-forest-deep text-white' : 'text-ink-soft hover:bg-white'}`}
           >
-            <span>{t.icon}</span>
+            <LineIcon name={t.icon} />
             <span>{t.label}</span>
           </button>
         )
@@ -67,7 +68,7 @@ export function CareToolbar() {
               }}
               className={`${BASE} bg-amber-700 text-white`}
             >
-              <span>🫙</span>
+              <LineIcon name="jar" />
               <span>{pourLabel(activePourMaterial)}</span>
             </button>,
           ]

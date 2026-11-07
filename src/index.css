@@ -25,24 +25,31 @@
   /* Text and neutrals */
   --color-ink-deep: #1f2924;
   --color-ink-soft: #2b332e;
-  --color-ink-brown: #4a463d;
-  --color-ink-umber: #575247;
-  --color-ink-bark: #5a5343;
-  --color-ink: #5c5649;
-  --color-stone: #6e6759;
-  --color-stone-grey: #6e6a5f;
-  --color-stone-light: #7c7464;
+  --color-ink-brown: #3f4a42;
+  --color-ink-umber: #4f5a52;
+  --color-ink-bark: #3f4a42;
+  --color-ink: #4f5a52;
+  --color-stone: #5b665e;
+  --color-stone-grey: #5b665e;
+  --color-stone-light: #6b756d;
 
   /* Parchment and sand */
-  --color-sand-border: #dcd6c8;
-  --color-sand-track: #e2ddd2;
-  --color-sand-warm: #eae5d9;
-  --color-sand-light: #ebe6da;
-  --color-sand-pale: #ede9df;
-  --color-linen: #efece3;
-  --color-parchment: #f0ede4;
-  --color-cream: #f4f1ea;
-  --color-paper: #f8f6f0;
+  --color-sand-border: #d6dbd2;
+  --color-sand-track: #dde2d8;
+  --color-sand-warm: #eaede6;
+  --color-sand-light: #e4e8e0;
+  --color-sand-pale: #e7eae3;
+  --color-linen: #eef1ea;
+  --color-parchment: #edf0ea;
+  --color-cream: #eceee8;
+  --color-stage: #e3e7df;
+  --color-card-line: #e1e5dc;
+  --color-gauge-band: #bcd6c3;
+  --color-mint-step: #dfeae2;
+  --color-wheat: #f3e6c4;
+  --color-wheat-hover: #ecd9a8;
+  --color-wheat-ink: #5c3d0c;
+  --color-paper: #f6f7f3;
   --color-white: #ffffff;
 
   /* Accents and alerts */
@@ -138,7 +145,8 @@
     font-family: var(--font-display);
   }
   .font-mono-clock {
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
   }
 
   /* Floating inspector square button */
@@ -166,7 +174,8 @@
   body.relax-active #left-sidebar,
   body.relax-active #right-sidebar,
   body.relax-active #care-toolbar,
-  body.relax-active #item-inspector {
+  body.relax-active #item-inspector,
+  body.relax-active #light-control {
     opacity: 0 !important;
     pointer-events: none !important;
     transform: scale(0.98);

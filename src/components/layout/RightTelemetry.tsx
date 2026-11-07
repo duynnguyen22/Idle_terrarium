@@ -46,17 +46,15 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
         </span>
       </div>
       <BotanistNotes />
-      <div className="space-y-3.5 rounded-2xl border border-sand-border bg-white p-3.5">
+      <div className="space-y-3.5 rounded-2xl border border-card-line bg-white p-3.5">
         <GaugeBar
           gaugeKey="humidity"
-          icon="💧"
           label="Air humidity"
           value={t.humidity}
           min={0}
           max={100}
           text={`${Math.round(t.humidity)}%`}
           band={{ ...hum, tol: 3 }}
-          fillClass="bg-sky-500"
           hint={
             hum.conflict && hum.names
               ? `No humidity suits both ${hum.names.lo} and ${hum.names.hi}`
@@ -65,14 +63,12 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
         />
         <GaugeBar
           gaugeKey="temperature"
-          icon="🌡️"
           label="Temperature"
           value={t.temperature}
           min={15}
           max={35}
           text={tempKnown ? `${t.temperature.toFixed(1)} °C` : '— °C'}
           band={{ ...tmp, tol: 1 }}
-          fillClass="bg-rose-400"
           hint={
             !tempKnown
               ? undefined
@@ -83,38 +79,32 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
         />
         <GaugeBar
           gaugeKey="moisture"
-          icon="🌱"
           label="Substrate moisture"
           value={t.soilMoisture}
           min={0}
           max={100}
           text={`${Math.round(t.soilMoisture)}%`}
           band={{ lo: 55, hi: 85, tol: 2 }}
-          fillClass="bg-teal-600"
           hint="Evenly moist with no standing water"
         />
         <GaugeBar
           gaugeKey="nutrients"
-          icon="🧪"
           label="Nutrients"
           value={t.nutrients}
           min={0}
           max={100}
           text={`${Math.round(t.nutrients)}%`}
           band={{ lo: 40, hi: 100, tol: 0 }}
-          fillClass="bg-amber-500"
           hint="Leaf litter and isopods recycle nutrients slowly"
         />
         <GaugeBar
           gaugeKey="o2"
-          icon="🌬️"
           label="O₂ / CO₂ balance"
           value={t.o2Balance}
           min={40}
           max={100}
           text={`${Math.round(t.o2Balance)}%`}
           band={{ lo: lampOn ? 80 : 55, hi: 100, tol: 2 }}
-          fillClass="bg-emerald-600"
           hint={
             lampOn ? 'Lamp on: plants are photosynthesising' : 'Lamp off: plants respire overnight'
           }

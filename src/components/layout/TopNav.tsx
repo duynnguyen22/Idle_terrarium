@@ -1,5 +1,4 @@
 import { ClockSpeedPill } from '@/components/nav/ClockSpeedPill'
-import { LightingControls } from '@/components/nav/LightingControls'
 import { UtilityActions } from '@/components/nav/UtilityActions'
 
 export type DrawerSide = 'left' | 'right'
@@ -17,7 +16,7 @@ export function TopNav({ drawer = null, onToggleDrawer }: TopNavProps) {
   return (
     <header
       id="top-nav"
-      className="z-30 flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-b border-sand-border bg-paper/95 px-3 py-1.5 backdrop-blur-md"
+      className="z-30 flex h-14 shrink-0 flex-nowrap items-center justify-between gap-2 border-b border-sand-border bg-paper/95 px-3 backdrop-blur-md"
     >
       <div className="flex shrink-0 items-center gap-2.5">
         <button
@@ -75,21 +74,15 @@ export function TopNav({ drawer = null, onToggleDrawer }: TopNavProps) {
           </svg>
         </div>
         <div className="leading-tight">
-          <div className="flex items-center gap-1.5 whitespace-nowrap">
-            <h1 className="font-serif-title text-base font-bold tracking-tight text-forest-ink">
-              Botanica
-            </h1>
-            <span className="rounded-full bg-mint-light px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-forest-deep">
-              Living Biosphere
-            </span>
-          </div>
-          <p className="whitespace-nowrap text-[11px] text-stone-grey">
-            Real-Time Semi-Aquatic &amp; Terrarium Studio
+          <h1 className="whitespace-nowrap font-serif-title text-lg font-bold tracking-tight text-forest-ink">
+            Botanica
+          </h1>
+          <p className="hidden whitespace-nowrap text-[11px] text-stone-grey xl:block">
+            Paludarium &amp; terrarium studio
           </p>
         </div>
       </div>
       <ClockSpeedPill />
-      <LightingControls />
       <UtilityActions />
     </header>
   )

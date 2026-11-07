@@ -125,7 +125,7 @@ export function HardwarePanel() {
       className="mt-2.5 rounded-[14px] border border-[#e1e5dc] bg-white p-1"
     >
       <SwitchRow
-        label="Halo LED Lamp"
+        label="Grow lamp"
         sub={lampSub}
         checked={hasGrowLamp}
         iconClass={!hasGrowLamp ? ICON_OFF : lampOn ? ICON_LIT : ICON_ON}
@@ -135,7 +135,7 @@ export function HardwarePanel() {
         onToggle={() => setHardware('hasGrowLamp', !hasGrowLamp)}
       />
       <SwitchRow
-        label="Mist Fogger"
+        label="Mist fogger"
         sub={hasFogger ? 'Running, about +7% humidity' : 'Off; air relies on the pool'}
         checked={hasFogger}
         iconClass={hasFogger ? ICON_ON : ICON_OFF}

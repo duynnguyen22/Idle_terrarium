@@ -29,7 +29,8 @@ test('studio journey: biome, 5x, relax, persistence', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Botanica' })).toBeVisible()
 
-  await page.getByRole('button', { name: /Biome/ }).click()
+  await page.getByRole('button', { name: 'More actions' }).click()
+  await page.getByRole('menuitem', { name: /Rebuild the Falls Lake/ }).click()
   await expect.poll(() => liveItemCount(page)).toBeGreaterThan(0)
 
   const fiveX = page.getByRole('button', { name: /5×/ })
@@ -98,18 +99,11 @@ for (const size of [
     await page.setViewportSize(size)
     await page.goto('/')
     const nav = page.locator('#top-nav')
-    for (const n of [
-      /Biome/,
-      /Clear Placed/,
-      /Snapshot/,
-      /Toggle Ambient/,
-      /Relax Mode/,
-      /Auto Sync/i,
-    ])
+    for (const n of [/More actions/, /Snapshot/, /Ambient sound/, /Relax/, /\+1 day/])
       await expect(nav.getByRole('button', { name: n })).toBeVisible()
-    // Every rendered control (speed pills, lighting, utilities); drawer toggles are display:none from lg up.
+    // Every rendered control (speed pills, utilities; lighting sits on the canvas); drawer toggles are display:none from lg up.
     const buttons = await nav.getByRole('button').filter({ visible: true }).all()
-    expect(buttons.length).toBeGreaterThanOrEqual(14)
+    expect(buttons.length).toBeGreaterThanOrEqual(9)
     for (const btn of buttons) {
       const box = await btn.boundingBox()
       expect(box, await btn.innerText()).not.toBeNull()
