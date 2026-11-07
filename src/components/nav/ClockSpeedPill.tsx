@@ -1,6 +1,7 @@
 import type { LightingId } from '@/data/types'
 import { advanceDay } from '@/engine/simulation/growth'
 import { mutateWorld } from '@/engine/engineBridge'
+import { hasPool } from '@/engine/geometry'
 import { play } from '@/hooks/useAudio'
 import { useLocalClock } from '@/hooks/useLocalClock'
 import { selectDayCount, selectLighting } from '@/store/selectors'
@@ -49,8 +50,14 @@ export function ClockSpeedPill() {
 
   const plusDay = () => {
     play('chime')
-    mutateWorld((w) => advanceDay(w, useStudioStore.getState()))
-    showToast('🌱 Advanced +24 Hours — plants grew lushly!')
+    let msg = ''
+    mutateWorld((w) => {
+      advanceDay(w, useStudioStore.getState())
+      const s = useStudioStore.getState()
+      const cycling = hasPool(s.waterSplit) && w.env.cycleProgress < 1
+      msg = `Day ${s.dayCount}: plants grew${cycling ? ', pool still cycling' : ''}`
+    })
+    showToast(msg)
   }
 
   return (

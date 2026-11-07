@@ -80,7 +80,7 @@ describe('TopNav speed controls', () => {
     await user().click(screen.getByRole('button', { name: '+1 Day' }))
     expect(useStudioStore.getState().dayCount).toBe(2)
     expect(world.items[0].scale).toBeCloseTo(1.06)
-    expect(useToastStore.getState().message).toBe('🌱 Advanced +24 Hours — plants grew lushly!')
+    expect(useToastStore.getState().message).toMatch(/^Day 2: plants grew/)
   })
 })
 

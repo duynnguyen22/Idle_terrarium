@@ -13,7 +13,7 @@ export function MicroEcologyPanel() {
   const faunaCount = useStudioStore(selectFaunaCount)
 
   const spawnSpore = () => {
-    mutateWorld((w) => addSporePatch(w))
+    mutateWorld((w) => addSporePatch(w, useStudioStore.getState()))
     showToast('🍄 Spawned fungal spore — use Scrub Mold or Isopods to clean!')
   }
 

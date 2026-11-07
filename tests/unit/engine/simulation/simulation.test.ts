@@ -49,6 +49,29 @@ const item = (
   ...o,
 })
 
+const st = {
+  timeSpeed: 1,
+  substrates: DEFAULT_SUBSTRATES,
+  waterSplit: 0.32,
+  lighting: 'sunlight',
+} as const
+const terrain = { substrates: st.substrates, waterSplit: st.waterSplit }
+
+function makeMemoryStorage(): Storage {
+  const m = new Map<string, string>()
+  return {
+    get length() {
+      return m.size
+    },
+    clear: () => m.clear(),
+    getItem: (k) => m.get(k) ?? null,
+    key: (i) => [...m.keys()][i] ?? null,
+    removeItem: (k) => void m.delete(k),
+    setItem: (k, v) => void m.set(k, String(v)),
+  }
+}
+const memoryStorage = makeMemoryStorage()
+
 let store: ReturnType<typeof createStudioStore>
 beforeEach(() => {
   localStorage.clear()
@@ -81,13 +104,6 @@ describe('lightingForHour', () => {
 })
 
 describe('fauna', () => {
-  const st = {
-    timeSpeed: 1,
-    substrates: DEFAULT_SUBSTRATES,
-    waterSplit: 0.32,
-    lighting: 'sunlight',
-  } as const
-  const terrain = { substrates: st.substrates, waterSplit: st.waterSplit }
   it('zones follow the divider', () => {
     const d = getDividerNormX(0.32)
     expect(faunaZone(FAUNA_BY_ID.cherry_shrimp, st, false)).toEqual({
@@ -209,22 +225,80 @@ describe('growth', () => {
     updateGrowth(w, { timeSpeed: 5 }, FRAME_MS)
     expect(w.items[0].growthProgress).toBeCloseTo(0.2 + 0.00025 * 3.5)
   })
+  it('vitality drifts by humidity range', () => {
+    const w = createWorld()
+    const fern = addItem(w, 'peacock_fern', 'mature', { terrain })!
+    fern.vitality = 50
+    w.env.humidity = 50
+    updateGrowth(w, { timeSpeed: 1 }, 1000 / 60)
+    expect(fern.vitality).toBeCloseTo(50 - 0.003, 6)
+    w.env.humidity = 80
+    updateGrowth(w, { timeSpeed: 1 }, 1000 / 60)
+    expect(fern.vitality).toBeCloseTo(50 - 0.003 + 0.004, 6)
+    fern.vitality = 30
+    w.env.humidity = 50
+    updateGrowth(w, { timeSpeed: 1 }, 1000 / 60)
+    expect(fern.vitality).toBe(30)
+  })
+  it('+1 Day advances the cycle, feeds mold chance and costs nutrients', () => {
+    const store = createStudioStore(memoryStorage)
+    const w = createWorld()
+    w.env.cycleProgress = 0
+    w.env.nutrients = 88
+    const fern = addItem(w, 'peacock_fern', 'mature', { terrain })!
+    fern.scale = 1.45
+    advanceDay(w, store.getState(), () => 0.5)
+    expect(store.getState().dayCount).toBe(2)
+    expect(w.env.cycleProgress).toBeCloseTo(1 / 21, 6)
+    expect(w.env.nutrients).toBe(86)
+    expect(fern.scale).toBe(1.5)
+    expect(fern.stage).toBe('lush')
+    expect(w.moldPatches).toHaveLength(1)
+    advanceDay(w, store.getState(), () => 0.7)
+    expect(w.moldPatches).toHaveLength(1)
+    store.getState().setSetupDay(-10)
+    advanceDay(w, store.getState(), () => 0.1)
+    expect(w.moldPatches).toHaveLength(1)
+    const noPool = createStudioStore(memoryStorage)
+    noPool.getState().setWaterSplit(0)
+    const w2 = createWorld()
+    advanceDay(w2, noPool.getState(), () => 0.9)
+    expect(w2.env.cycleProgress).toBe(1)
+  })
 })
 
 describe('mold', () => {
-  const crew = FAUNA.find((f) => 'cleansMold' in f && f.cleansMold)!
-  it('shrinks and clears with a detritivore, stays put without', () => {
+  it('mold bloom fires once when bloomTimer hits 0 and the crew clears it', () => {
+    const w = createWorld()
+    w.env.bloomTimer = 1
+    const toasts: string[] = []
+    updateMold(w, st, 1000 / 60, () => 0.5, (m) => toasts.push(m))
+    expect(w.moldPatches).toHaveLength(3)
+    expect(toasts).toEqual([
+      'A little white mold appeared. That is normal in a new build; the springtails will clear it.',
+    ])
+    updateMold(w, st, 1000 / 60, () => 0.5, (m) => toasts.push(m))
+    expect(w.moldPatches).toHaveLength(3)
+    expect(toasts).toHaveLength(1)
+    addItem(w, 'springtails', 'mature', { terrain })
+    addItem(w, 'isopod', 'mature', { terrain })
+    const before = w.moldPatches[0].size as number
+    updateMold(w, st, 1000 / 60, () => 0.5)
+    expect(w.moldPatches[0].size).toBeCloseTo(before - 0.005, 6)
+    w.moldPatches[0].size = 3
+    updateMold(w, st, 1000 / 60, () => 0.5)
+    expect(w.moldPatches).toHaveLength(2)
+  })
+  it('+Spore places a patch on land and a lone crew member eats 0.0025 per frame', () => {
     const world = createWorld()
-    addSporePatch(world, mulberry32(3))
-    addSporePatch(world, mulberry32(4))
-    const sizes = world.moldPatches.map((p) => p.size)
-    updateMold(world, { timeSpeed: 1 }, FRAME_MS)
-    expect(world.moldPatches.map((p) => p.size)).toEqual(sizes)
-    world.items.push(item({ uid: 'c', id: crew.id, category: 'fauna' }))
-    updateMold(world, { timeSpeed: 1 }, FRAME_MS)
-    expect(world.moldPatches[0].size as number).toBeCloseTo((sizes[0] as number) - 0.012)
-    for (let i = 0; i < 1500; i++) updateMold(world, { timeSpeed: 1 }, FRAME_MS)
-    expect(world.moldPatches.length).toBe(0)
+    world.env.bloomTimer = 0
+    addSporePatch(world, st, () => 0)
+    expect(world.moldPatches[0]).toEqual({ x: getDividerNormX(0.32) + 0.03, size: 11 })
+    updateMold(world, st, FRAME_MS, () => 0.5)
+    expect(world.moldPatches[0].size).toBe(11)
+    addItem(world, 'springtails', 'mature', { terrain })
+    updateMold(world, st, FRAME_MS, () => 0.5)
+    expect(world.moldPatches[0].size as number).toBeCloseTo(11 - 0.0025, 9)
   })
 })
 

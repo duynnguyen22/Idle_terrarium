@@ -70,7 +70,7 @@ export function tick(
     updateFauna(world, store, dtMs, timestamp, rng)
     if (!store.reducedMotion) updateAmbientMotes(world, dtMs)
     updateGrowth(world, store, dtMs)
-    updateMold(world, store, dtMs)
+    updateMold(world, store, dtMs, rng, deps.onToast)
   }
 
   syncChildren(world)
