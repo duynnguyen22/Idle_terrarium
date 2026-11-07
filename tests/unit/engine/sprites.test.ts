@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { ALL_CATALOG_DEFS, type CatalogId } from '@/data/catalog'
+import { ALL_CATALOG_DEFS, FAUNA, type CatalogId } from '@/data/catalog'
+import { FAUNA_SPRITES } from '@/engine/sprites/fauna'
+import { record } from '../helpers/recordingContext'
 import { drawSprite } from '@/engine/sprites/drawSprite'
 import {
   configureSpriteCache,
@@ -113,5 +115,17 @@ describe('spriteCache', () => {
     })
     expect(getSpriteDataUrl('quartz')).toBe(getSpriteDataUrl('quartz'))
     expect(urls).toBe(1)
+  })
+})
+
+describe('fauna sprites', () => {
+  it('isopod variants draw different paths and every fauna sprite paints', () => {
+    const a = record((ctx) => FAUNA_SPRITES.isopod?.(ctx))
+    const b = record((ctx) => FAUNA_SPRITES.ducky_isopod?.(ctx))
+    expect(a.fillStyles).not.toEqual(b.fillStyles)
+    for (const id of FAUNA.map((f) => f.id)) {
+      const fills = record((ctx) => FAUNA_SPRITES[id]?.(ctx)).calls.filter((c) => c.name === 'fill')
+      expect(fills.length).toBeGreaterThan(3)
+    }
   })
 })
