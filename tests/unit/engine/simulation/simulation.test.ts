@@ -121,15 +121,20 @@ describe('fauna', () => {
   it('water fauna bob between water top and bed', () => {
     const w = createWorld()
     const shrimp = addItem(w, 'cherry_shrimp', 'mature', { terrain, rng: () => 0.5 })!
-    for (let i = 0; i < 100; i++) updateFauna(w, st, 1000 / 60, i * 16, () => 0.5)
+    const ys: number[] = []
+    for (let i = 0; i < 100; i++) {
+      updateFauna(w, st, 1000 / 60, i * 16, () => 0.5)
+      ys.push(shrimp.y)
+    }
     expect(shrimp.y).toBeGreaterThanOrEqual(getWaterTopNormY(terrain))
     expect(shrimp.y).toBeLessThanOrEqual(getPoolBedNormY(terrain.substrates))
+    expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(1e-4)
   })
   it('fauna glide back into zone when the pool is removed', () => {
     // Review Focus 3
     const w = createWorld()
     const shrimp = addItem(w, 'cherry_shrimp', 'mature', { terrain, rng: () => 0.5 })!
-    shrimp.x = 0.2
+    shrimp.x = 0.1
     let prev = shrimp.x
     for (let i = 0; i < 300; i++) {
       updateFauna(w, { ...st, waterSplit: 0 }, 1000 / 60, i * 16, () => 0.5)
@@ -139,6 +144,7 @@ describe('fauna', () => {
     }
     expect(shrimp.x).toBeGreaterThanOrEqual(0.2 - 0.01)
     expect(shrimp.x).toBeLessThanOrEqual(0.8)
+    expect(shrimp.x).toBeGreaterThan(0.1)
   })
   it('frogbit floats to the water top inside the pool', () => {
     const w = createWorld()
