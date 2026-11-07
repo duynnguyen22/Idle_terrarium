@@ -10,6 +10,7 @@ import {
 import { seedInitialScene } from '@/engine/presets'
 import { restoreWorld } from '@/engine/persistence'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
+import { flushEnvSeed } from '@/engine/simulation/telemetry'
 import { tick } from '@/engine/simulation/tick'
 import { warmSpriteCache } from '@/engine/sprites/spriteCache'
 import { createWorld, type EngineWorld } from '@/engine/world'
@@ -137,7 +138,14 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       cancelAnimationFrame(rafId)
       rafId = 0
     }
-    const onVisibility = () => (document.hidden ? stop() : start())
+    const onVisibility = () => {
+      if (document.hidden) {
+        stop()
+        flushEnvSeed(world, useStudioStore.getState())
+      } else {
+        start()
+      }
+    }
 
     document.addEventListener('visibilitychange', onVisibility)
     if (!document.hidden) start()
@@ -145,6 +153,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
     return () => {
       document.removeEventListener('visibilitychange', onVisibility)
       stop()
+      flushEnvSeed(world, useStudioStore.getState())
       unsubscribe()
       unregisterWorld()
       if (import.meta.env.DEV) delete window.__botanica

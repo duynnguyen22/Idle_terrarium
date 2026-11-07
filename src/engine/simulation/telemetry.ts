@@ -87,13 +87,22 @@ export function pushTelemetry(
   }
   if (now - world.lastEnvSeedPush >= ENV_SEED_INTERVAL_MS) {
     world.lastEnvSeedPush = now
-    // setEnvSeed rounds to 1 decimal and skips set() when nothing changed.
-    store.setEnvSeed({
-      humidity: env.humidity,
-      temperature: env.temperature,
-      soilMoisture: env.soilMoisture,
-      nutrients: env.nutrients,
-    })
+    flushEnvSeed(world, store)
   }
   return true
+}
+
+/**
+ * Write the environment seed to the persisted store now, outside the 5 s cadence (used when the tab is
+ * hidden or the engine unmounts, so a care change made just before a reload is not lost).
+ * setEnvSeed rounds to 1 decimal and skips set() when nothing changed.
+ */
+export function flushEnvSeed(world: EngineWorld, store: Pick<StudioStore, 'setEnvSeed'>): void {
+  const env = world.env
+  store.setEnvSeed({
+    humidity: env.humidity,
+    temperature: env.temperature,
+    soilMoisture: env.soilMoisture,
+    nutrients: env.nutrients,
+  })
 }

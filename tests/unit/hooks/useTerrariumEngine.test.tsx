@@ -160,6 +160,24 @@ describe('useTerrariumEngine', () => {
     expect(callbacks.size).toBe(1)
   })
 
+  it('flushes the env seed when the tab hides and on unmount, ahead of the 5 s cadence', () => {
+    const { unmount } = render(<Harness />)
+    const hidden = vi.spyOn(document, 'hidden', 'get')
+    mutateWorld((w) => {
+      w.env.nutrients = 30
+    })
+    hidden.mockReturnValue(true)
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(useStudioStore.getState().envSeed.nutrients).toBe(30)
+    hidden.mockReturnValue(false)
+    document.dispatchEvent(new Event('visibilitychange'))
+    mutateWorld((w) => {
+      w.env.nutrients = 25
+    })
+    unmount()
+    expect(useStudioStore.getState().envSeed.nutrients).toBe(25)
+  })
+
   it('registers its world, skips its own snapshots, applies external ones, and unregisters', () => {
     const { unmount } = render(<Harness />)
     const world = getWorld()
