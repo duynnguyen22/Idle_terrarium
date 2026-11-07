@@ -3,7 +3,7 @@ import { selectHardware } from '@/store/selectors'
 import { showToast } from '@/store/toastStore'
 import { useStudioStore } from '@/store/useStudioStore'
 import { BiomeRecipes } from './BiomeRecipes'
-import { HardwareToggles } from './HardwareToggles'
+import { HardwarePanel } from './HardwarePanel'
 import { PourContainersGrid } from './PourContainersGrid'
 import { SubstrateSliders, TotalSubstrateDepth } from './SubstrateSliders'
 import { VesselGrid } from './VesselGrid'
@@ -38,7 +38,7 @@ export function VesselTab() {
           </label>
         </div>
         <VesselGrid />
-        <HardwareToggles />
+        <HardwarePanel />
       </div>
 
       <div>

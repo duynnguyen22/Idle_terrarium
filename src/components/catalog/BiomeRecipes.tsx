@@ -12,8 +12,11 @@ export function BiomeRecipes() {
           key={p.id}
           type="button"
           onClick={() => {
-            mutateWorld((w) => applyPreset(w, p.id, useStudioStore.getState()))
-            if (p.id === 'falls') showToast('🌊 Semi-Aquatic Waterfall & Lake crafted!')
+            let message = ''
+            mutateWorld((w) => {
+              message = applyPreset(w, p.id, useStudioStore.getState())
+            })
+            showToast(message)
           }}
           className={`whitespace-nowrap rounded-xl px-2 py-2 text-xs font-semibold transition ${
             p.id === 'falls'

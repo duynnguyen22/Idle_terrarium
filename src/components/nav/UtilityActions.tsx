@@ -30,8 +30,11 @@ export function UtilityActions() {
   const audioEnabled = useStudioStore(selectAudioEnabled)
 
   const randomBiome = () => {
-    mutateWorld((w) => applyPreset(w, 'falls', useStudioStore.getState()))
-    showToast('🎲 Crafted Semi-Aquatic Rainforest Waterfall!')
+    let message = ''
+    mutateWorld((w) => {
+      message = applyPreset(w, 'falls', useStudioStore.getState())
+    })
+    showToast(message)
   }
   const clearAll = () => {
     mutateWorld((w) => {

@@ -9,12 +9,14 @@ import { addItem } from '@/engine/items'
 import { configureSpriteCache } from '@/engine/sprites/spriteCache'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { useToastStore } from '@/store/toastStore'
-import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+import { createDefaultState, useStudioStore, type StudioState } from '@/store/useStudioStore'
 
 const TERRAIN = { substrates: DEFAULT_SUBSTRATES, waterSplit: 0.32 }
 let world: EngineWorld
 const click = (el: HTMLElement) => act(() => void fireEvent.click(el))
 const state = () => useStudioStore.getState()
+const set = (partial: Partial<StudioState>) => act(() => useStudioStore.setState(partial))
+const toast = () => useToastStore.getState().message
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -57,18 +59,91 @@ describe('LeftSidebar panels', () => {
     expect(state().vessel).toBe('apothecary')
   })
 
-  it('hardware toggles flip flags and aria-pressed', () => {
+  it('hardware switches flip flags and aria-checked', () => {
     render(<LeftSidebar />)
-    const lamp = screen.getByRole('button', { name: /Halo LED Lamp/ })
-    const fogger = screen.getByRole('button', { name: /Mist Fogger/ })
-    expect(lamp).toHaveAttribute('aria-pressed', 'true')
+    const lamp = screen.getByRole('switch', { name: /Halo LED Lamp/ })
+    const fogger = screen.getByRole('switch', { name: /Mist Fogger/ })
+    expect(lamp).toHaveAttribute('aria-checked', 'true')
     click(lamp)
     expect(state().hasGrowLamp).toBe(false)
-    expect(lamp).toHaveAttribute('aria-pressed', 'false')
+    expect(lamp).toHaveAttribute('aria-checked', 'false')
     click(fogger)
     expect(state().hasFogger).toBe(false)
     click(screen.getByRole('checkbox', { name: /Cork Lid Sealed/ }))
     expect(state().hasLid).toBe(false)
+  })
+
+  it('hardware copy follows lamp, fogger and pump state', () => {
+    render(<LeftSidebar />)
+    expect(screen.getByRole('switch', { name: /Halo LED Lamp/ })).toBeChecked()
+    expect(screen.getByText('Lit until 20:00')).toBeInTheDocument()
+    set({ lighting: 'night' })
+    expect(screen.getByText('Resting tonight, back on at 05:30')).toBeInTheDocument()
+    set({ autoLightSync: false })
+    expect(screen.getByText('Resting for the night')).toBeInTheDocument()
+    set({ hasGrowLamp: false })
+    expect(screen.getByText('Switched off; plants get room light only')).toBeInTheDocument()
+    expect(screen.getByText('Running, about +7% humidity')).toBeInTheDocument()
+    click(screen.getByRole('switch', { name: /Mist Fogger/ }))
+    expect(state().hasFogger).toBe(false)
+    expect(screen.getByText('Off; air relies on the pool')).toBeInTheDocument()
+    const pump = screen.getByRole('radiogroup', { name: 'Waterfall pump' })
+    expect(within(pump).getByRole('radio', { name: 'Gentle' })).toBeChecked()
+    expect(screen.getByText('Gentle cascade into the pool')).toBeInTheDocument()
+    click(within(pump).getByRole('radio', { name: 'Strong' }))
+    expect(state().pumpFlow).toBe('strong')
+    expect(screen.getByText('Strong flow; frogs and shrimp dislike it')).toBeInTheDocument()
+    click(within(pump).getByRole('radio', { name: 'Off' }))
+    expect(screen.getByText('Still water; it goes stale')).toBeInTheDocument()
+    set({ waterSplit: 0 })
+    expect(screen.getByText('No pool in this build')).toBeInTheDocument()
+    expect(within(pump).getByRole('radio', { name: 'Gentle' })).toBeDisabled()
+  })
+
+  it('pool width slider creates a pool with the cycling toast', () => {
+    set({ waterSplit: 0, cycleProgress: 1, substrates: { ...DEFAULT_SUBSTRATES, water: 10 } })
+    render(<LeftSidebar />)
+    fireEvent.change(screen.getByLabelText('Pool width'), { target: { value: '30' } })
+    expect(state().waterSplit).toBeCloseTo(0.3, 5)
+    expect(state().cycleProgress).toBe(0)
+    expect(world.env.cycleProgress).toBe(0)
+    expect(state().substrates.water).toBe(40)
+    expect(toast()).toBe('New pool: it cycles for about 3 weeks before fish and shrimp are safe')
+    act(() => state().setCycleProgress(0.5))
+    fireEvent.change(screen.getByLabelText('Pool width'), { target: { value: '45' } })
+    expect(state().cycleProgress).toBe(0.5)
+  })
+
+  it('sliders list land layers top-down and show the split label', () => {
+    render(<LeftSidebar />)
+    expect(screen.getAllByRole('slider').map((el) => el.getAttribute('aria-label'))).toEqual([
+      'Leaf litter',
+      'Silica sand',
+      'Tropical substrate',
+      'Activated charcoal',
+      'Drainage layer (LECA)',
+      'Pool width',
+      'Pool gravel',
+      'Pool water',
+    ])
+    expect(screen.getByText('68% land / 32% water')).toBeInTheDocument()
+    expect(screen.getByText('56 mm of land')).toBeInTheDocument()
+    set({ waterSplit: 0 })
+    expect(screen.getByText('All land')).toBeInTheDocument()
+  })
+
+  it('adding a species with a matching care issue shows its text as a toast', () => {
+    set({ waterSplit: 0 })
+    render(<LeftSidebar />)
+    click(screen.getByRole('tab', { name: /Fauna/ }))
+    click(screen.getByRole('button', { name: /Vampire Crab/ }))
+    expect(toast()).toBe('Vampire crabs need a pool to molt and drink.')
+  })
+
+  it('recipe buttons toast the preset message', () => {
+    render(<LeftSidebar />)
+    click(screen.getByRole('button', { name: /Arid Sand/ }))
+    expect(toast()).toBe('Arid: open top, sand, no fogger')
   })
 
   it('a recipe button sets substrates; Falls Lake also fills the world and toasts', () => {
@@ -80,7 +155,7 @@ describe('LeftSidebar panels', () => {
     click(screen.getByRole('button', { name: /Falls Lake/ }))
     expect(state().substrates.water).toBe(45)
     expect(world.items).toHaveLength(17)
-    expect(useToastStore.getState().message).toBe('🌊 Semi-Aquatic Waterfall & Lake crafted!')
+    expect(toast()).toBe('Falls Lake: 30% pool, waterfall and moss wall')
   })
 
   it('Level Terrain flattens the contour and clears grains', () => {
@@ -215,7 +290,7 @@ describe('ItemInspector', () => {
     const it = select()
     render(<ItemInspector />)
     expect(screen.getByTestId('insp-name')).toHaveTextContent('Blue Peacock Fern')
-    expect(screen.getByTestId('insp-meta')).toHaveTextContent('FLORA · MATURE · 98% HEALTH')
+    expect(screen.getByTestId('insp-meta')).toHaveTextContent('Plant · mature · 98% health')
     click(screen.getByRole('button', { name: 'Larger' }))
     expect(it.scale).toBeCloseTo(1.15)
     click(screen.getByRole('button', { name: 'Smaller' }))
@@ -230,7 +305,25 @@ describe('ItemInspector', () => {
     select()
     render(<ItemInspector />)
     click(screen.getByRole('button', { name: 'Advance Growth Stage' }))
-    expect(screen.getByTestId('insp-meta')).toHaveTextContent('LUSH')
+    expect(screen.getByTestId('insp-meta')).toHaveTextContent('lush')
+  })
+
+  it('inspector meta copy names plant, animal habitat and hardscape', () => {
+    const terrain = { substrates: state().substrates, waterSplit: state().waterSplit }
+    const cases: [string, string][] = [
+      ['peacock_fern', 'Plant · mature · 98% health'],
+      ['cherry_shrimp', 'Animal · in the pool · wandering'],
+      ['vampire_crab', 'Animal · pool and shore · wandering'],
+      ['isopod', 'Animal · on land · wandering'],
+      ['moss_wall_cliff', 'Hardscape'],
+    ]
+    for (const [id, meta] of cases) {
+      const item = addItem(world, id, 'mature', { terrain })!
+      act(() => state().selectItem(item.uid))
+      const { unmount } = render(<ItemInspector />)
+      expect(screen.getByTestId('insp-meta')).toHaveTextContent(meta)
+      unmount()
+    }
   })
 
   it('hides the grow button for non-flora', () => {
