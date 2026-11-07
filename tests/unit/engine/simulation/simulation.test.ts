@@ -271,19 +271,37 @@ describe('mold', () => {
   it('a fresh world never blooms (bloomTimer idles at 0 until a new build arms it)', () => {
     const w = createWorld()
     const toasts: string[] = []
-    updateMold(w, st, 1000 / 60, () => 0.5, (m) => toasts.push(m))
+    updateMold(
+      w,
+      st,
+      1000 / 60,
+      () => 0.5,
+      (m) => toasts.push(m),
+    )
     expect([w.env.bloomTimer, w.moldPatches.length, toasts.length]).toEqual([0, 0, 0])
   })
   it('mold bloom fires once when bloomTimer hits 0 and the crew clears it', () => {
     const w = createWorld()
     w.env.bloomTimer = 1
     const toasts: string[] = []
-    updateMold(w, st, 1000 / 60, () => 0.5, (m) => toasts.push(m))
+    updateMold(
+      w,
+      st,
+      1000 / 60,
+      () => 0.5,
+      (m) => toasts.push(m),
+    )
     expect(w.moldPatches).toHaveLength(3)
     expect(toasts).toEqual([
       'A little white mold appeared. That is normal in a new build; the springtails will clear it.',
     ])
-    updateMold(w, st, 1000 / 60, () => 0.5, (m) => toasts.push(m))
+    updateMold(
+      w,
+      st,
+      1000 / 60,
+      () => 0.5,
+      (m) => toasts.push(m),
+    )
     expect(w.moldPatches).toHaveLength(3)
     expect(toasts).toHaveLength(1)
     addItem(w, 'springtails', 'mature', { terrain })
