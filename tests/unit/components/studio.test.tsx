@@ -134,7 +134,7 @@ describe('utility actions', () => {
       growthProgress: 0.85,
       vitality: 98,
     })
-    expect(useStudioStore.getState().substrates.water).toBe(26)
+    expect(useStudioStore.getState().substrates.water).toBe(45)
     expect(useStudioStore.getState().worldSnapshot?.items.length).toBe(world.items.length)
   })
 })

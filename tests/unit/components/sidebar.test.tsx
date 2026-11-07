@@ -72,12 +72,12 @@ describe('LeftSidebar panels', () => {
   it('a recipe button sets substrates; Falls Lake also fills the world and toasts', () => {
     render(<LeftSidebar />)
     click(screen.getByRole('button', { name: /Arid Sand/ }))
-    expect(state().substrates.sand).toBe(28)
+    expect(state().substrates.sand).toBe(22)
     expect(state().substrates.water).toBe(0)
     expect(world.items).toHaveLength(0)
     click(screen.getByRole('button', { name: /Falls Lake/ }))
-    expect(state().substrates.water).toBe(26)
-    expect(world.items).toHaveLength(15)
+    expect(state().substrates.water).toBe(45)
+    expect(world.items).toHaveLength(17)
     expect(useToastStore.getState().message).toBe('🌊 Semi-Aquatic Waterfall & Lake crafted!')
   })
 
@@ -92,12 +92,12 @@ describe('LeftSidebar panels', () => {
 
   it('selects and deselects a pour container', () => {
     render(<LeftSidebar />)
-    const jar = screen.getByRole('button', { name: /Pebble Scoop Jar/ })
+    const jar = screen.getByRole('button', { name: /LECA Scoop Jar/ })
     click(jar)
     expect(state().activePourMaterial).toBe('pebbles')
     expect(state().activeTool).toBe('pour')
     expect(useToastStore.getState().message).toBe(
-      '🫙 Hold & drag inside the jar to scatter Drainage Pebbles!',
+      '🫙 Hold & drag inside the jar to scatter Drainage layer (LECA)!',
     )
     click(jar)
     expect(state().activePourMaterial).toBeNull()
@@ -110,10 +110,10 @@ describe('LeftSidebar panels', () => {
 
   it('a slider change writes mm and updates the total', () => {
     render(<LeftSidebar />)
-    expect(screen.getByTestId('total-substrate-depth')).toHaveTextContent('64 mm')
-    fireEvent.change(screen.getByLabelText('Rainforest Soil'), { target: { value: '30' } })
+    expect(screen.getByTestId('total-substrate-depth')).toHaveTextContent('62 mm')
+    fireEvent.change(screen.getByLabelText('Tropical substrate'), { target: { value: '30' } })
     expect(state().substrates.soil).toBe(30)
-    expect(screen.getByTestId('total-substrate-depth')).toHaveTextContent('78 mm')
+    expect(screen.getByTestId('total-substrate-depth')).toHaveTextContent('58 mm')
     expect(screen.queryByLabelText('Siphon / Scoop Out')).not.toBeInTheDocument()
   })
 
@@ -173,10 +173,10 @@ describe('CareToolbar', () => {
     render(<CareToolbar />)
     expect(screen.queryByText(/Scattering|Pouring/)).not.toBeInTheDocument()
     act(() => {
-      state().setActivePourMaterial('moss')
+      state().setActivePourMaterial('leaflitter')
       state().setActiveTool('pour')
     })
-    const ind = screen.getByRole('button', { name: /Scattering: Sphagnum Moss/ })
+    const ind = screen.getByRole('button', { name: /Scattering: Leaf litter/ })
     click(ind)
     expect(state().activeTool).toBe('select')
     expect(state().activePourMaterial).toBeNull()

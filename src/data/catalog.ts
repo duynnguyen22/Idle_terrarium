@@ -89,14 +89,14 @@ export const HARDSCAPE = [
 ] as const satisfies readonly HardscapeDef[]
 
 export const FAUNA = [
-  { id: 'tree_frog', name: 'Red-Eyed Tree Frog', category: 'fauna', speed: 0.18, cleansMold: false, baseScale: 0.9, desc: 'Peaceful emerald amphibian that perches on leaves.' },
-  { id: 'vampire_crab', name: 'Vampire Lagoon Crab', category: 'fauna', speed: 0.24, cleansMold: true, moldEatRate: 1.5, baseScale: 0.88, desc: 'Semi-aquatic violet crab with golden eyes.' },
-  { id: 'medaka_fish', name: 'Golden Medaka Fish', category: 'fauna', speed: 0.42, swimsInWater: true, cleansMold: false, baseScale: 0.85, desc: 'Graceful ricefish that schools in the lake.' },
-  { id: 'cherry_shrimp', name: 'Red Cherry Shrimp', category: 'fauna', speed: 0.35, swimsInWater: true, cleansMold: true, moldEatRate: 1.7, baseScale: 0.82, desc: 'Aquatic algae & biofilm grazer.' },
-  { id: 'isopod', name: 'Dairy Cow Isopod', category: 'fauna', speed: 0.32, cleansMold: true, moldEatRate: 1.8, baseScale: 0.82, desc: 'Spotted detritivore that devours mold spores.' },
-  { id: 'ducky_isopod', name: 'Rubber Ducky Isopod', category: 'fauna', speed: 0.28, cleansMold: true, moldEatRate: 1.9, baseScale: 0.82, desc: 'Adorable yellow-faced limestone isopod.' },
-  { id: 'springtails', name: 'White Springtails', category: 'fauna', speed: 0.45, cleansMold: true, moldEatRate: 2.2, baseScale: 0.78, desc: 'Microscopic cleanup crew that prevents rot.' },
-  { id: 'garden_snail', name: 'Amber Glass Snail', category: 'fauna', speed: 0.10, cleansMold: true, moldEatRate: 1.3, baseScale: 0.85, desc: 'Slow, meditative grazer with a spiral shell.' }
+  { id: 'tree_frog', name: 'Red-Eyed Tree Frog', category: 'fauna', speed: 0.18, habitat: 'land', nocturnal: true, idealHumidity: [50, 85], idealTemp: [20, 26], baseScale: 0.95, desc: 'Nocturnal climber. Hides under leaves by day, hunts insects at night.' },
+  { id: 'vampire_crab', name: 'Vampire Crab', category: 'fauna', speed: 0.24, habitat: 'shore', nocturnal: true, needsWater: true, preyOn: ['medaka_fish', 'garden_snail'], idealHumidity: [75, 100], idealTemp: [22, 28], cleansMold: true, moldEatRate: 1.5, baseScale: 0.8, desc: 'Semi-aquatic. Needs a pool to molt; tends to prey on fish and snails.' },
+  { id: 'medaka_fish', name: 'Golden Medaka Fish', category: 'fauna', speed: 0.42, habitat: 'water', aquatic: true, swimsInWater: true, idealTemp: [18, 28], cleansMold: false, baseScale: 0.8, desc: 'Hardy ricefish for the pool. Add once the water has cycled.' },
+  { id: 'cherry_shrimp', name: 'Red Cherry Shrimp', category: 'fauna', speed: 0.35, habitat: 'water', aquatic: true, swimsInWater: true, idealTemp: [20, 27], cleansMold: true, moldEatRate: 1.7, baseScale: 0.72, desc: 'Grazes biofilm in the pool. Add once the water has cycled.' },
+  { id: 'isopod', name: 'Dairy Cow Isopod', category: 'fauna', speed: 0.32, habitat: 'land', idealHumidity: [60, 100], cleansMold: true, moldEatRate: 1.8, baseScale: 0.66, desc: 'Breaks down leaf litter, wood and leftovers.' },
+  { id: 'ducky_isopod', name: 'Rubber Ducky Isopod', category: 'fauna', speed: 0.28, habitat: 'land', idealHumidity: [60, 100], cleansMold: true, moldEatRate: 1.9, baseScale: 0.66, desc: 'Yellow-faced isopod that recycles litter.' },
+  { id: 'springtails', name: 'White Springtails', category: 'fauna', speed: 0.45, habitat: 'land', idealHumidity: [65, 100], cleansMold: true, moldEatRate: 2.2, baseScale: 0.62, desc: 'Tiny cleanup crew that eats mold before it spreads.' },
+  { id: 'garden_snail', name: 'Amber Glass Snail', category: 'fauna', speed: 0.10, habitat: 'land', idealHumidity: [70, 100], cleansMold: true, moldEatRate: 1.3, baseScale: 0.75, desc: 'Slow grazer with a spiral shell.' }
 ] as const satisfies readonly FaunaDef[]
 
 export const CATALOG = { flora: FLORA, hardscape: HARDSCAPE, fauna: FAUNA } as const

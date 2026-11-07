@@ -14,8 +14,8 @@ describe('seedInitialScene', () => {
     const world = createWorld()
     registerWorld(world)
     expect(seedInitialScene(world)).toBe(true)
-    expect(world.items).toHaveLength(15)
-    expect(useStudioStore.getState().worldSnapshot?.items).toHaveLength(15)
+    expect(world.items).toHaveLength(17)
+    expect(useStudioStore.getState().worldSnapshot?.items).toHaveLength(17)
   })
 
   it('leaves a populated world untouched', () => {

@@ -156,7 +156,7 @@ describe('growth', () => {
 })
 
 describe('mold', () => {
-  const crew = FAUNA.find((f) => f.cleansMold)!
+  const crew = FAUNA.find((f) => 'cleansMold' in f && f.cleansMold)!
   it('shrinks and clears with a detritivore, stays put without', () => {
     const world = createWorld()
     addSporePatch(world, mulberry32(3))

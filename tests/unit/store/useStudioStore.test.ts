@@ -21,14 +21,13 @@ describe('studio store', () => {
       plantingStage: 'mature',
       soundPreset: 'stream',
       substrates: {
-        pebbles: 10,
-        lavarock: 8,
-        charcoal: 6,
-        moss: 8,
-        soil: 16,
-        rivergravel: 16,
+        pebbles: 12,
+        charcoal: 5,
+        soil: 34,
         sand: 0,
-        water: 24,
+        leaflitter: 5,
+        rivergravel: 6,
+        water: 45,
       },
     })
     expect(s.telemetry).toMatchObject({

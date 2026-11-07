@@ -10,14 +10,14 @@ describe('importPrototypeSave', () => {
     const contour = Array.from({ length: 21 }, (_, i) => i)
     localStorage.setItem(KEY, JSON.stringify({
       vessel: 'paludarium_tank', hasLid: false, hasGrowLamp: true, hasFogger: false,
-      substrates: { pebbles: 1, lavarock: 2, charcoal: 3, moss: 4, soil: 5, rivergravel: 6, sand: 7, water: 8 },
+      substrates: { pebbles: 1, charcoal: 2, soil: 3, sand: 4, leaflitter: 5, rivergravel: 6, water: 7 },
       terrainContour: contour, surfaceGrains: [{ x: 1 }], items, dayCount: 12,
       humidity: 50, soilMoisture: 60, nutrients: 70, lastSavedTimestamp: 1,
     }))
     const r = importPrototypeSave(localStorage)
     expect(r).toMatchObject({
       vessel: 'paludarium_tank', hasLid: false, hasGrowLamp: true, hasFogger: false, dayCount: 12,
-      substrates: { pebbles: 1, lavarock: 2, charcoal: 3, moss: 4, soil: 5, rivergravel: 6, sand: 7, water: 8 },
+      substrates: { pebbles: 1, charcoal: 2, soil: 3, sand: 4, leaflitter: 5, rivergravel: 6, water: 7 },
     })
     expect(r?.worldSnapshot?.items).toEqual(items)
     expect(r?.worldSnapshot?.terrainContour).toEqual(contour)

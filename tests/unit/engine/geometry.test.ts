@@ -8,8 +8,8 @@ import {
 } from '@/engine/geometry'
 
 describe('getTotalSubstrateDepth', () => {
-  it('sums non-water layers of the default substrates (10+8+6+8+16+16+0 = 64)', () => {
-    expect(getTotalSubstrateDepth(DEFAULT_SUBSTRATES)).toBe(64)
+  it('sums non-water layers of the default substrates (12+5+34+0+5+6 = 62)', () => {
+    expect(getTotalSubstrateDepth(DEFAULT_SUBSTRATES)).toBe(62)
   })
   it('ignores missing keys', () => {
     expect(getTotalSubstrateDepth({ soil: 5, water: 99 })).toBe(5)
@@ -18,7 +18,7 @@ describe('getTotalSubstrateDepth', () => {
 
 describe('getSoilSurfaceNormalizedY', () => {
   it('matches the prototype formula for default substrates', () => {
-    expect(getSoilSurfaceNormalizedY(DEFAULT_SUBSTRATES)).toBeCloseTo(0.92 - (64 / 130) * 0.42, 10)
+    expect(getSoilSurfaceNormalizedY(DEFAULT_SUBSTRATES)).toBeCloseTo(0.92 - (62 / 130) * 0.42, 10)
   })
   it('is monotonic in depth (more substrate = higher surface = smaller y) and clamped at 0.47', () => {
     const ys = [0, 20, 60, 130, 200, 1000].map((soil) => getSoilSurfaceNormalizedY({ soil }))

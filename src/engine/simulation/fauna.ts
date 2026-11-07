@@ -6,7 +6,7 @@ import { frameScale, type Rng } from './constants'
 
 export const FAUNA_X_MIN = 0.24
 export const FAUNA_X_MAX = 0.76
-const AI_STATES = ['wandering', 'resting', 'eating', 'exploring'] as const
+const AI_STATES = ['wandering', 'resting', 'foraging', 'exploring'] as const
 
 /** Autonomous creature AI (prototype 2594-2619). Dragged fauna are skipped; swimmers bob in the water band. */
 export function updateFauna(
