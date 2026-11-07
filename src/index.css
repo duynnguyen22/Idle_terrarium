@@ -200,3 +200,159 @@
     cursor: none !important;
   }
 }
+
+/* Two-tone sidebar tab and planting-stage icons (artifact .tab-ic / .stage-ic). */
+.tab-ic {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tab-ic .leaf {
+  fill: currentColor;
+  fill-opacity: 0.16;
+}
+.tab-ic .leaf-s {
+  fill: currentColor;
+  fill-opacity: 0.55;
+  stroke: none;
+}
+.tab-ic .soil {
+  stroke: #8a6a4a;
+  stroke-width: 1.7;
+}
+.tab-ic .soilfill {
+  fill: #8a6a4a;
+  fill-opacity: 0.28;
+  stroke: none;
+}
+.tab-ic .pebble {
+  stroke: #6b5a48;
+  stroke-width: 1.6;
+}
+.tab-ic .rock {
+  fill: currentColor;
+  fill-opacity: 0.14;
+}
+.tab-ic .wood {
+  stroke: #8a6a4a;
+  stroke-width: 1.7;
+}
+.tab-ic .crack {
+  stroke-width: 1.1;
+  opacity: 0.7;
+}
+.tab-ic .moss {
+  stroke-width: 2;
+  opacity: 0.6;
+}
+.tab-ic .eye {
+  fill: #fff;
+}
+.tab-ic .pupil {
+  stroke-width: 1.3;
+}
+.sidebar-tab[aria-selected='true'] .tab-ic .leaf {
+  fill: #3fa060;
+  fill-opacity: 0.55;
+}
+.sidebar-tab[aria-selected='true'] .tab-ic .leaf-s {
+  fill: #2f8a4e;
+  fill-opacity: 1;
+}
+.sidebar-tab[aria-selected='true'] .tab-ic .soilfill {
+  fill-opacity: 0.55;
+}
+.sidebar-tab[aria-selected='true'] .tab-ic .rock {
+  fill: #8f9a92;
+  fill-opacity: 0.55;
+}
+.sidebar-tab[aria-selected='true'] .tab-ic .moss {
+  stroke: #3fa060;
+  opacity: 1;
+}
+.sidebar-tab[aria-selected='true'] .tab-ic .eye {
+  fill: #e03131;
+}
+
+.stage-card {
+  background: #fff;
+  border: 1px solid #e1e5dc;
+  border-radius: 14px;
+  padding: 10px;
+}
+.stage-seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 11px;
+  background: #e7eae3;
+}
+.stage-opt {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 6px;
+  min-width: 0;
+  border-radius: 8px;
+  color: #5b665e;
+  text-align: left;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.stage-opt:hover {
+  color: #163022;
+}
+.stage-opt[aria-checked='true'] {
+  background: #fff;
+  color: #1b5e3b;
+}
+.stage-ic {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.stage-ic .leaf {
+  fill: currentColor;
+  fill-opacity: 0.18;
+}
+.stage-opt[aria-checked='true'] .stage-ic .leaf {
+  fill: #3fa060;
+  fill-opacity: 0.55;
+}
+.stage-ic .soil {
+  stroke: #8a6a4a;
+  stroke-width: 1.8;
+}
+.stage-ic .seed {
+  stroke: #8a6a4a;
+  stroke-width: 1.3;
+}
+.stage-txt {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+.stage-txt b {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #163022;
+}
+.stage-txt small {
+  font-size: 10.5px;
+  color: #5b665e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

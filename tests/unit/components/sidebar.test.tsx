@@ -44,7 +44,7 @@ describe('LeftSidebar panels', () => {
     render(<LeftSidebar />)
     expect(screen.getByText('Enclosure')).toBeInTheDocument()
     click(screen.getByRole('tab', { name: /Flora/ }))
-    expect(screen.getByText('Planting Stage:')).toBeInTheDocument()
+    expect(screen.getByText('Plant as')).toBeInTheDocument()
     expect(screen.queryByText('Enclosure')).not.toBeInTheDocument()
     click(screen.getByRole('tab', { name: /Hardscape/ }))
     expect(screen.getByText(/Living Moss Wall Cliff/)).toBeInTheDocument()
@@ -225,7 +225,8 @@ describe('LeftSidebar panels', () => {
     expect(world.items[0].stage).toBe('mature')
     expect(state().selectedId).toBe(world.items[0].uid)
 
-    click(screen.getByRole('button', { name: /Sprout/ }))
+    click(screen.getByRole('radio', { name: /Sprout/ }))
+    expect(screen.getByRole('radio', { name: /Sprout/ })).toHaveAttribute('aria-checked', 'true')
     expect(state().plantingStage).toBe('sprout')
     // selected flora converts immediately
     expect(world.items[0].stage).toBe('sprout')

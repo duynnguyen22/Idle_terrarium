@@ -1,17 +1,17 @@
 import { CatalogGrid } from '@/components/catalog/CatalogGrid'
 import { PlantingStageToggle } from '@/components/catalog/PlantingStageToggle'
 import { VesselTab } from '@/components/catalog/VesselTab'
-import { LineIcon, type IconName } from '@/components/ui/LineIcon'
+import { TabIcon, type TabIconName } from '@/components/ui/StudioIcons'
 import { selectActiveTab } from '@/store/selectors'
 import { useStudioStore } from '@/store/useStudioStore'
 
-/** Tab bar entries with their v6 line icons. */
+/** Tab bar entries; each uses the artifact's two-tone tab icon of the same name. */
 const TABS = [
-  { id: 'vessel', icon: 'jar', label: 'Vessel & Soil' },
-  { id: 'flora', icon: 'sprout', label: 'Flora' },
-  { id: 'hardscape', icon: 'rock', label: 'Hardscape' },
-  { id: 'fauna', icon: 'bug', label: 'Fauna' },
-] as const satisfies readonly { id: string; icon: IconName; label: string }[]
+  { id: 'vessel', label: 'Vessel & Soil' },
+  { id: 'flora', label: 'Flora' },
+  { id: 'hardscape', label: 'Hardscape' },
+  { id: 'fauna', label: 'Fauna' },
+] as const satisfies readonly { id: TabIconName; label: string }[]
 
 const BLURB = 'text-[11px] leading-relaxed text-stone'
 const STRONG = 'font-semibold text-forest-deep'
@@ -82,14 +82,14 @@ export function LeftSidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
               aria-selected={active}
               aria-controls="sidebar-panel"
               onClick={() => setActiveTab(t.id)}
-              className={`flex flex-col items-center justify-center rounded-xl px-1 py-2 text-xs transition ${
+              className={`sidebar-tab flex flex-col items-center justify-center rounded-xl px-1 py-2 text-xs transition ${
                 active
                   ? 'bg-white font-semibold text-forest-deep shadow-xs'
                   : 'font-medium text-stone hover:bg-white/50'
               }`}
             >
               <span className="mb-1 inline-flex">
-                <LineIcon name={t.icon} />
+                <TabIcon name={t.id} />
               </span>
               <span className="whitespace-nowrap text-[11px]">{t.label}</span>
             </button>

@@ -1,4 +1,4 @@
-import { LineIcon } from '@/components/ui/LineIcon'
+import { StageIcon } from '@/components/ui/StudioIcons'
 import type { GrowthStage } from '@/data/types'
 import { mutateWorld } from '@/engine/engineBridge'
 import { setFloraStage } from '@/engine/items'
@@ -8,15 +8,17 @@ import { useStudioStore } from '@/store/useStudioStore'
 
 type ToggleStage = Extract<GrowthStage, 'sprout' | 'mature'>
 
-const OPTIONS: { stage: ToggleStage; label: string; toast: string }[] = [
+const OPTIONS: { stage: ToggleStage; label: string; hint: string; toast: string }[] = [
   {
     stage: 'sprout',
     label: 'Sprout',
+    hint: '62% size, grows in',
     toast: 'Planting Stage: Sprout (new plants start as young shoots)',
   },
   {
     stage: 'mature',
     label: 'Mature',
+    hint: 'Full size now',
     toast: 'Planting Stage: Mature (new plants placed at full size)',
   },
 ]
@@ -37,35 +39,30 @@ export function PlantingStageToggle() {
   }
 
   return (
-    <div className="space-y-1.5 rounded-xl border border-sand-border bg-white p-2.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-forest-deep">Planting Stage:</span>
-        <div className="inline-flex rounded-lg border border-sand-border bg-sand-light p-0.5">
-          {OPTIONS.map((o) => {
-            const active = (o.stage === 'sprout') === isSprout
-            return (
-              <button
-                key={o.stage}
-                type="button"
-                aria-pressed={active}
-                onClick={() => choose(o.stage, o.toast)}
-                className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold transition ${
-                  active
-                    ? 'bg-white text-forest-deep shadow-2xs'
-                    : 'text-ink hover:text-forest-deep'
-                }`}
-              >
-                <LineIcon name="sprout" className="h-3.5 w-3.5" />
-                {o.label}
-              </button>
-            )
-          })}
-        </div>
+    <div className="stage-card">
+      <div className="mb-2 text-xs font-semibold text-[#163022]">Plant as</div>
+      <div className="stage-seg" role="radiogroup" aria-label="Planting stage">
+        {OPTIONS.map((o) => (
+          <button
+            key={o.stage}
+            type="button"
+            role="radio"
+            aria-checked={(o.stage === 'sprout') === isSprout}
+            onClick={() => choose(o.stage, o.toast)}
+            className="stage-opt"
+          >
+            <StageIcon stage={o.stage} />
+            <span className="stage-txt">
+              <b>{o.label}</b>
+              <small>{o.hint}</small>
+            </span>
+          </button>
+        ))}
       </div>
-      <div className="rounded-lg bg-mint-mist px-2 py-1 text-[10px] font-medium text-forest-grey">
+      <div className="mt-2 text-[11px] leading-snug text-[#4a6b56]">
         {isSprout
-          ? 'Places young starter sprouts (62% scale) that gradually grow into mature plants.'
-          : 'Places full-sized, established botanical specimens (100% scale).'}
+          ? 'Places seedlings at 62% size. They grow into mature plants over a few in-game days.'
+          : 'Places full-sized, established plants.'}
       </div>
     </div>
   )
