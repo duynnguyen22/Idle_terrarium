@@ -9,6 +9,7 @@ import { createWorld, type EngineWorld } from '@/engine/world'
 import { showToast, useToastStore } from '@/store/toastStore'
 import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
 import type { PlacedItem } from '@/data/types'
+import type { CareIssue } from '@/engine/care'
 
 const item = (uid: string, category: PlacedItem['category']): PlacedItem => ({
   uid,
@@ -148,27 +149,50 @@ describe('utility actions', () => {
 })
 
 describe('GaugeBar', () => {
-  it('fill width equals the value %', () => {
-    render(<GaugeBar label="Humidity" value={78} fillClass="bg-sky-500" />)
+  it('fill width spans value within min..max and shows the text', () => {
+    render(<GaugeBar gaugeKey="humidity" icon="💧" label="Humidity" value={78} min={0} max={100} text="78%" />)
     expect(screen.getByTestId('gauge-fill')).toHaveStyle({ width: '78%' })
     expect(screen.getByText('78%')).toBeInTheDocument()
   })
+
+  it('maps the value and band into a non-zero range', () => {
+    render(
+      <GaugeBar
+        gaugeKey="temperature"
+        icon="🌡️"
+        label="Temperature"
+        value={25}
+        min={15}
+        max={35}
+        text="25.0 °C"
+        band={{ lo: 20, hi: 30, tol: 1 }}
+      />,
+    )
+    expect(screen.getByTestId('gauge-fill')).toHaveStyle({ width: '50%' })
+    expect(screen.getByTestId('gauge-band-temperature')).toHaveStyle({ left: '25%', width: '50%' })
+    expect(screen.getByTestId('gauge-temperature')).toHaveAttribute('data-in-band', 'true')
+  })
 })
+
+const withTelemetry = (partial: Partial<ReturnType<typeof createDefaultState>['telemetry']>) =>
+  useStudioStore.setState({ telemetry: { ...createDefaultState().telemetry, ...partial } })
+
+const warn = (text: string): CareIssue => ({ level: 'warn', text })
 
 describe('RightTelemetry', () => {
   it('+Spore adds a mold patch to the world', async () => {
     render(<RightTelemetry />)
-    await user().click(screen.getByRole('button', { name: '+Spore' }))
+    await user().click(screen.getByRole('button', { name: /Spore/ }))
     expect(world.moldPatches).toHaveLength(1)
   })
 
-  it('shows telemetry values, the note, and counts all fauna', () => {
+  it('shows telemetry values, the top warning, the care list and the specimen count', () => {
     useStudioStore.setState({
       telemetry: {
         ...createDefaultState().telemetry,
         humidity: 61,
         moldCount: 2,
-        cleanupCrewCount: 0,
+        cleanupCrewCount: 2,
         careIssues: [
           { level: 'info', text: 'Info note' },
           { level: 'warn', text: 'Hello note' },
@@ -181,9 +205,135 @@ describe('RightTelemetry', () => {
     })
     render(<RightTelemetry />)
     expect(screen.getByText('61%')).toBeInTheDocument()
-    expect(screen.getByText('Hello note')).toBeInTheDocument()
-    expect(screen.getAllByText('2 Active')).toHaveLength(2)
-    expect(screen.getByText('3 Specimens')).toBeInTheDocument()
+    expect(screen.getAllByText('Hello note')).toHaveLength(2)
+    expect(screen.getByText('Info note')).toBeInTheDocument()
+    expect(screen.getByText('2 patches')).toBeInTheDocument()
+    expect(screen.getByText('2 at work')).toBeInTheDocument()
+    expect(screen.getByText('3 specimens')).toBeInTheDocument()
+  })
+
+  it('with no issues shows the condensation note and the all-clear list item', () => {
+    withTelemetry({ condensation: 0.3, careIssues: [] })
+    render(<RightTelemetry />)
+    expect(
+      screen.getByText(
+        'Everything is in range. A light fog that forms and clears on its own means the water balance is right.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Every plant and animal is in its range.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Crack the lid open' })).not.toBeInTheDocument()
+  })
+
+  it('temperature gauge shows °C text, °F hint and band state', () => {
+    withTelemetry({ temperature: 24.5 })
+    const { unmount } = render(<RightTelemetry />)
+    expect(screen.getByText('24.5 °C')).toBeInTheDocument()
+    expect(screen.getByText('Ideal 20–28 °C · 76.1 °F now')).toBeInTheDocument()
+    expect(screen.getByTestId('gauge-temperature')).toHaveAttribute('data-in-band', 'true')
+    unmount()
+    withTelemetry({ temperature: 31 })
+    render(<RightTelemetry />)
+    expect(screen.getByTestId('gauge-temperature')).toHaveAttribute('data-in-band', 'false')
+  })
+
+  it('conflicting ranges hide the band and leave the gauge on', () => {
+    withTelemetry({ humidity: 70 })
+    useStudioStore.setState({
+      worldSnapshot: {
+        items: [
+          { ...item('e', 'flora'), id: 'echeveria' },
+          { ...item('p', 'flora'), id: 'peacock_fern' },
+        ],
+        terrainContour: [],
+      },
+    })
+    render(<RightTelemetry />)
+    const gauge = screen.getByTestId('gauge-humidity')
+    expect(gauge).toHaveAttribute('data-in-band', 'true')
+    expect(screen.queryByTestId('gauge-band-humidity')).not.toBeInTheDocument()
+    expect(screen.getByText('70%')).toBeInTheDocument()
+    expect(
+      screen.getByText('No humidity suits both Blue Peacock Fern and Rosette Succulent'),
+    ).toBeInTheDocument()
+  })
+
+  it('o2 band follows the lamp', () => {
+    withTelemetry({ o2Balance: 70 })
+    const { unmount } = render(<RightTelemetry />)
+    expect(screen.getByTestId('gauge-o2')).toHaveAttribute('data-in-band', 'false')
+    unmount()
+    useStudioStore.setState({ lighting: 'night' })
+    render(<RightTelemetry />)
+    expect(screen.getByTestId('gauge-o2')).toHaveAttribute('data-in-band', 'true')
+  })
+
+  it('badge reflects warning count', () => {
+    withTelemetry({ careIssues: [{ level: 'info', text: 'i' }] })
+    const { unmount } = render(<RightTelemetry />)
+    expect(screen.getByText('Thriving')).toBeInTheDocument()
+    unmount()
+    withTelemetry({ careIssues: [warn('a'), warn('b')] })
+    const second = render(<RightTelemetry />)
+    expect(screen.getByText('Adjusting')).toBeInTheDocument()
+    second.unmount()
+    withTelemetry({ careIssues: [warn('a'), warn('b'), warn('c')] })
+    render(<RightTelemetry />)
+    expect(screen.getByText('Needs care')).toBeInTheDocument()
+  })
+
+  it('next-step button runs the care action and toasts', async () => {
+    withTelemetry({
+      careIssues: [
+        { level: 'warn', text: 'x', action: { id: 'openLid', label: 'Crack the lid open' } },
+      ],
+    })
+    render(<RightTelemetry />)
+    await user().click(screen.getByRole('button', { name: 'Crack the lid open' }))
+    expect(useStudioStore.getState().hasLid).toBe(false)
+    expect(useToastStore.getState().message).toBe('Lid cracked open to vent moisture')
+    expect(world.careIssues).not.toContainEqual(expect.objectContaining({ text: 'x' }))
+  })
+
+  it('tolerates care issues naming species that are no longer in the world', () => {
+    withTelemetry({ careIssues: [{ level: 'warn', species: ['ghost'], text: 'Gone plant' }] })
+    render(<RightTelemetry />)
+    expect(screen.getAllByText('Gone plant').length).toBeGreaterThan(0)
+  })
+
+  it('eco stats copy', () => {
+    withTelemetry({ condensation: 0.6, moldCount: 1, cleanupCrewCount: 0 })
+    useStudioStore.setState({ waterSplit: 0.32, cycleProgress: 0.3 })
+    const first = render(<RightTelemetry />)
+    expect(screen.getByText('Heavy fog')).toBeInTheDocument()
+    expect(screen.getByText('Cycling, day 7 of ~21 · NH₃ 3.5 · NO₂ 0.0 ppm')).toBeInTheDocument()
+    expect(screen.getByTestId('cycle-bar')).toHaveStyle({ width: '30%' })
+    expect(screen.getByText('1 patch')).toBeInTheDocument()
+    expect(screen.getByText('None yet')).toBeInTheDocument()
+    first.unmount()
+
+    useStudioStore.setState({ cycleProgress: 1, pumpFlow: 'gentle' })
+    const second = render(<RightTelemetry />)
+    expect(screen.getByText('Cycled · ammonia 0 ppm · pump gentle')).toBeInTheDocument()
+    second.unmount()
+
+    useStudioStore.setState({ waterSplit: 0 })
+    withTelemetry({ condensation: 0, moldCount: 0, cleanupCrewCount: 3 })
+    render(<RightTelemetry />)
+    expect(screen.getByText('No pool in this build')).toBeInTheDocument()
+    expect(screen.queryByTestId('cycle-bar')).not.toBeInTheDocument()
+    expect(screen.getByText('Clear')).toBeInTheDocument()
+    expect(screen.getByText('None')).toBeInTheDocument()
+    expect(screen.getByText('3 at work')).toBeInTheDocument()
+  })
+
+  it('glass copy covers light fog and fogged over', () => {
+    withTelemetry({ condensation: 0.2 })
+    const first = render(<RightTelemetry />)
+    expect(screen.getByText('Light fog, clears on its own')).toBeInTheDocument()
+    first.unmount()
+    withTelemetry({ condensation: 0.9 })
+    render(<RightTelemetry />)
+    expect(screen.getByText('Fogged over by condensation')).toBeInTheDocument()
   })
 })
 
