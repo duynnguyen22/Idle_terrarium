@@ -213,7 +213,9 @@ Activated via the **`🍃 Relax Mode`** button in the top bar or by pressing **`
 
 ## 6. Technical Architecture
 
-* **Single-File Zero-Dependency Architecture**: Built entirely within `terrarium_builder.html` using semantic HTML5, Tailwind CSS utilities, vanilla ES6+ JavaScript, HTML5 Canvas 2D, and the Web Audio API.
+* **Stack**: React 19 + TypeScript on Vite 6, styled with Tailwind CSS 4, with HTML5 Canvas 2D for the stage and the Web Audio API for sound.
+  * The canvas engine lives in `src/engine` (world, simulation, render, sprites) and runs on a single `requestAnimationFrame` loop. It never imports React or the audio modules (`src/engine/audio`, which only the `useAudio` hook drives). Components change the mutable `EngineWorld` only through `mutateWorld(fn)`; the world itself is never put in a store.
+  * **Two Zustand stores**: `useStudioStore` holds the build and UI settings under Zustand `persist` (including the `envSeed` described below). `useTelemetryStore` holds the live gauges (humidity, temperature, moisture, nutrients, O2, condensation, mold, cleanup crew, care issues) and is not persisted. The engine writes to them only through `pushTelemetry`, throttled to 250 ms.
 * **Retina / High-DPI Rendering**:
   * Dynamically scales the main canvas backing store by `Math.min(window.devicePixelRatio || 1, 2)` and applies `ctx.setTransform(dpr, 0, 0, dpr, 0, 0)` with `imageSmoothingQuality = 'high'`.
   * All 30+ flora, hardscape, and fauna sprites are pre-rendered at startup onto `256×256` offscreen `<canvas>` buffers (`canvasSpriteCache`), guaranteeing zero broken image links and crisp vector scaling at any zoom level.

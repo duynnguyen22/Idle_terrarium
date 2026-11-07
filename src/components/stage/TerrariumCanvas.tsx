@@ -129,7 +129,7 @@ export function TerrariumCanvas() {
       return
     }
 
-    const effect = applyTool(world, store, store.activeTool, nx, ny)
+    const effect = applyTool(world, store.activeTool, nx, ny)
     if (effect) {
       if (effect.sound) play(effect.sound)
       if (effect.toast) showToast(effect.toast)

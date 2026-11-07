@@ -26,6 +26,8 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
   const lampOn = useStudioStore(selectLampOn)
   const hum = idealRange(items, 'hum')
   const tmp = idealRange(items, 'temp')
+  // A corrupt or missing reading must not render as "NaN °C".
+  const tempKnown = Number.isFinite(t.temperature)
   const [badgeLabel, badgeCls] = badge(t.careIssues.filter((i) => i.level === 'warn').length)
 
   return (
@@ -68,13 +70,15 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
           value={t.temperature}
           min={15}
           max={35}
-          text={`${t.temperature.toFixed(1)} °C`}
+          text={tempKnown ? `${t.temperature.toFixed(1)} °C` : '— °C'}
           band={{ ...tmp, tol: 1 }}
           fillClass="bg-rose-400"
           hint={
-            tmp.conflict
-              ? 'Inhabitants want different temperatures'
-              : `Ideal ${tmp.lo}–${tmp.hi} °C · ${toF(t.temperature)} °F now`
+            !tempKnown
+              ? undefined
+              : tmp.conflict
+                ? 'Inhabitants want different temperatures'
+                : `Ideal ${tmp.lo}–${tmp.hi} °C · ${toF(t.temperature)} °F now`
           }
         />
         <GaugeBar

@@ -87,8 +87,10 @@ describe('migrate', () => {
       pumpFlow: 'gentle',
       waterSplit: 0.32,
       cycleProgress: 1,
-      setupDay: 7,
+      // The spec's loader defaults a missing setupDay to 1 (not dayCount), so no fresh mold window opens.
+      setupDay: 1,
     })
+    expect(out.dayCount).toBe(7)
   })
 
   it('a v1 save with no water gets no pool', () => {
@@ -122,7 +124,7 @@ describe('migrate', () => {
   it('v0 (unversioned) saves share the v1 shape and migrate the same way', () => {
     expect(migrate({ substrates: { lavarock: 2, moss: 1 }, dayCount: 3 }, 0)).toMatchObject({
       substrates: { pebbles: 2, soil: 1 },
-      setupDay: 3,
+      setupDay: 1,
     })
   })
 

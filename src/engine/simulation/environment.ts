@@ -1,5 +1,6 @@
 import { findCatalogDef } from '@/data/catalog'
 import type { PlacedItem } from '@/data/types'
+import { clamp } from '@/lib/clamp'
 import type { StudioState } from '@/store/useStudioStore'
 import { hasPool, poolHasWater } from '../geometry'
 import type { EngineWorld, EnvState } from '../world'
@@ -26,8 +27,6 @@ export interface EnvTargets {
   condensation: number
   o2: number
 }
-
-const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 
 function isWaterfall(item: PlacedItem): boolean {
   if (item.isWaterfall) return true

@@ -9,7 +9,6 @@ import {
   SNAP_RADIUS,
   updateDrag,
 } from '@/engine/interaction'
-import { createDefaultState } from '@/store/useStudioStore'
 import { createWorld, type EngineWorld } from '@/engine/world'
 
 let world: EngineWorld
@@ -106,24 +105,23 @@ describe('drag', () => {
 })
 
 describe('applyTool', () => {
-  const state = createDefaultState()
   it('mist raises mistBoost by 8 (cap 25) and moisture by 3 (cap 98); boost feeds +8 with chime', () => {
     world.env.mistBoost = 20
     world.env.soilMoisture = 97
-    expect(applyTool(world, state, 'mist', 0.5, 0.5)).toEqual({ sound: 'mist' })
+    expect(applyTool(world, 'mist', 0.5, 0.5)).toEqual({ sound: 'mist' })
     expect(world.env.mistBoost).toBe(25)
     expect(world.env.soilMoisture).toBe(98)
     world.env.nutrients = 95
-    expect(applyTool(world, state, 'boost', 0.5, 0.5)).toEqual({ sound: 'chime' })
+    expect(applyTool(world, 'boost', 0.5, 0.5)).toEqual({ sound: 'chime' })
     expect(world.env.nutrients).toBe(100)
   })
 
   it('scrub removes a mold patch and cues repot; reports a clean substrate otherwise', () => {
     world.moldPatches.push({ x: 0.5, size: 12 })
-    const fx = applyTool(world, state, 'scrub', 0.5, 0.8)!
+    const fx = applyTool(world, 'scrub', 0.5, 0.8)!
     expect(world.moldPatches).toHaveLength(0)
     expect(fx.sound).toBe('repot')
-    const none = applyTool(world, state, 'scrub', 0.5, 0.8)!
+    const none = applyTool(world, 'scrub', 0.5, 0.8)!
     expect(none.sound).toBeUndefined()
     expect(none.toast).toMatch(/spotless/)
   })
@@ -131,19 +129,19 @@ describe('applyTool', () => {
   it('prune shrinks flora under the pointer, floors at 0.55, ignores hardscape', () => {
     const fern = place('peacock_fern', 0.5, 0.5)
     const s = fern.scale
-    const fx = applyTool(world, state, 'prune', 0.5, 0.5)!
+    const fx = applyTool(world, 'prune', 0.5, 0.5)!
     expect(fx.sound).toBe('prune')
     expect(fern.scale).toBeCloseTo(s * 0.88)
     fern.scale = 0.56
-    applyTool(world, state, 'prune', 0.5, 0.5)
+    applyTool(world, 'prune', 0.5, 0.5)
     expect(fern.scale).toBe(0.55)
-    expect(applyTool(world, state, 'prune', 0.9, 0.9)).toBeNull()
+    expect(applyTool(world, 'prune', 0.9, 0.9)).toBeNull()
     world.items = []
     place('river_stones', 0.5, 0.5)
-    expect(applyTool(world, state, 'prune', 0.5, 0.5)).toBeNull()
+    expect(applyTool(world, 'prune', 0.5, 0.5)).toBeNull()
   })
 
   it('select is not consumed', () => {
-    expect(applyTool(world, state, 'select', 0.5, 0.5)).toBeNull()
+    expect(applyTool(world, 'select', 0.5, 0.5)).toBeNull()
   })
 })

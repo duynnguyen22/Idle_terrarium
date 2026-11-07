@@ -5,7 +5,7 @@ import { drawCondensation } from '@/engine/render/condensation'
 import { drawLid } from '@/engine/render/frame'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
 import { drawSubstrates } from '@/engine/render/substrates'
-import { rippleAmplitude } from '@/engine/render/water'
+import { drawWater, rippleAmplitude } from '@/engine/render/water'
 import { configureSpriteCache } from '@/engine/sprites/spriteCache'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { createDefaultState, type StudioState } from '@/store/useStudioStore'
@@ -116,6 +116,24 @@ describe('reduced motion', () => {
 
   it('holds flora still when reducedMotion is set', () => {
     expect(rotations(true, 0)).toEqual(rotations(true, 1500))
+  })
+
+  it('keeps the pool surface flat when reducedMotion is set', () => {
+    const surfaceYs = (reducedMotion: boolean, timestamp: number) => {
+      const { ctx } = makeRecordingContext()
+      const ys: number[] = []
+      ;(ctx as unknown as { lineTo: (x: number, y: number) => void }).lineTo = (_x, y) =>
+        void ys.push(y)
+      const state: StudioState = { ...createDefaultState(), pumpFlow: 'strong', reducedMotion }
+      drawWater(ctx, populatedWorld(), state, computeVesselRect(800, 600), timestamp)
+      return ys
+    }
+    expect(surfaceYs(false, 0)).not.toEqual(surfaceYs(false, 1500))
+    const still = surfaceYs(true, 0)
+    expect(still.length).toBeGreaterThan(4)
+    expect(still).toEqual(surfaceYs(true, 1500))
+    // The meniscus vertices before the bank all sit on one flat water line.
+    expect(new Set(still.slice(0, 4)).size).toBe(1)
   })
 })
 

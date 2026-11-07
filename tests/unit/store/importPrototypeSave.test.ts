@@ -105,6 +105,6 @@ describe('importPrototypeSave', () => {
 
   it('v5 import derives pool fields from its water depth', () => {
     localStorage.setItem(KEY, JSON.stringify({ items: [{ uid: 'a', id: 'fern' }], substrates: { water: 0 }, dayCount: 6 }))
-    expect(importPrototypeSave(localStorage)).toMatchObject({ pumpFlow: 'gentle', waterSplit: 0, cycleProgress: 1, setupDay: 6 })
+    expect(importPrototypeSave(localStorage)).toMatchObject({ pumpFlow: 'gentle', waterSplit: 0, cycleProgress: 1, setupDay: 1, dayCount: 6 })
   })
 })

@@ -237,6 +237,15 @@ describe('RightTelemetry', () => {
     expect(screen.getByTestId('gauge-temperature')).toHaveAttribute('data-in-band', 'false')
   })
 
+  it('a non-finite temperature shows a dash and no hint', () => {
+    withTelemetry({ temperature: NaN })
+    render(<RightTelemetry />)
+    const gauge = screen.getByTestId('gauge-temperature')
+    expect(gauge).toHaveTextContent('— °C')
+    expect(gauge).not.toHaveTextContent('NaN')
+    expect(gauge).not.toHaveTextContent('Ideal')
+  })
+
   it('conflicting ranges hide the band and leave the gauge on', () => {
     withTelemetry({ humidity: 70 })
     useStudioStore.setState({

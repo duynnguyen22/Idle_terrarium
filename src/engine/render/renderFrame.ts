@@ -11,11 +11,10 @@ import { drawSpecimens } from './specimens'
 import { drawSubstrates } from './substrates'
 import { beginVesselClip, drawVesselRim } from './vessel'
 
-/** Prototype stage layout: vessel centred horizontally, slightly below the vertical middle. */
-
 /**
- * Square vessel rect inside a canvas of CSS size `canvasW x canvasH` (prototype animateLoop:
- * cx = W/2, cy = 0.52H, radius = min(W,H) * 0.43, or 0.46 in relax mode).
+ * Square vessel rect inside a canvas of CSS size `canvasW x canvasH`, centred on the canvas
+ * (prototype-v6 getStageGeometry): radius = min(0.62W, 0.46H), or min(0.62W, 0.48H) in relax mode,
+ * so a narrow canvas fits its width and a wide one its height.
  */
 export function computeVesselRect(canvasW: number, canvasH: number, relaxMode = false): Rect {
   const r = Math.min(canvasW * 0.62, canvasH * (relaxMode ? 0.48 : 0.46))

@@ -91,7 +91,6 @@ export function endDrag(world: EngineWorld): void {
  */
 export function applyTool(
   world: EngineWorld,
-  _state: unknown,
   tool: string,
   nx: number,
   ny: number,

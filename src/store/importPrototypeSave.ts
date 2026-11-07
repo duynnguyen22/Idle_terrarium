@@ -111,7 +111,7 @@ function readPrototypeSave(
       substrates,
       dayCount,
       envSeed: readEnvSeed(saved),
-      ...(format === 'v6' ? readV6PoolFields(saved) : legacyPoolFields(substrates.water, dayCount)),
+      ...(format === 'v6' ? readV6PoolFields(saved) : legacyPoolFields(substrates.water)),
       worldSnapshot: {
         items,
         terrainContour: contour,

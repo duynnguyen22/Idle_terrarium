@@ -8,7 +8,7 @@ import { countCleanupCrew } from './mold'
 export const TELEMETRY_INTERVAL_MS = 250
 /** The persisted environment seed is written at most once per this interval. */
 export const ENV_SEED_INTERVAL_MS = 5000
-/** Cycle progress reaches the (persisted) studio store in steps of 1/CYCLE_PROGRESS_STEPS. */
+/** Cycle progress reaches the (persisted) studio store in steps of 1/CYCLE_PROGRESS_STEPS, floored so the store never runs ahead of the engine. */
 const CYCLE_PROGRESS_STEPS = 210
 
 /** Store substrates plus the deltas pouring has accumulated but not yet flushed. */
@@ -79,7 +79,7 @@ export function pushTelemetry(
     cleanupCrewCount: countCleanupCrew(world),
     careIssues: world.careIssues,
   })
-  const cycle = Math.round(env.cycleProgress * CYCLE_PROGRESS_STEPS) / CYCLE_PROGRESS_STEPS
+  const cycle = Math.floor(env.cycleProgress * CYCLE_PROGRESS_STEPS) / CYCLE_PROGRESS_STEPS
   if (cycle !== state.cycleProgress) store.setCycleProgress(cycle)
   if (world.pendingWaterSplit !== undefined) {
     store.setWaterSplit(world.pendingWaterSplit)

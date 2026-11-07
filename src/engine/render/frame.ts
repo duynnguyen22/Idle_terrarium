@@ -1,6 +1,6 @@
 import { getLandSurfaceNormY, getWaterTopNormY } from '../geometry'
 import { vesselMetrics, type RenderFn } from './metrics'
-import { terrainOf } from './water'
+import { terrainOf } from './terrain'
 
 /**
  * Paludarium black silicone frame, front water-dam bar and glass door knob. The dam sits just above

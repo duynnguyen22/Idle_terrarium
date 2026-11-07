@@ -565,7 +565,7 @@ describe('pushTelemetry', () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem')
     const w = createWorld()
     w.env.cycleProgress = 100.5 / 210 // mid-bucket, so the drift below never crosses a 1/210 step
-    store.getState().setCycleProgress(Math.round(w.env.cycleProgress * 210) / 210)
+    store.getState().setCycleProgress(Math.floor(w.env.cycleProgress * 210) / 210)
     setItem.mockClear()
     let t = 1000
     w.lastEnvSeedPush = t
@@ -589,7 +589,7 @@ describe('pushTelemetry', () => {
     const w = createWorld()
     w.env.cycleProgress = 0.31
     pushTelemetry(w, store.getState(), 1000)
-    expect(store.getState().cycleProgress).toBe(Math.round(0.31 * 210) / 210)
+    expect(store.getState().cycleProgress).toBe(Math.floor(0.31 * 210) / 210)
     let writes = 0
     const unsub = store.subscribe(() => writes++)
     w.env.cycleProgress = 0.3101
@@ -599,7 +599,7 @@ describe('pushTelemetry', () => {
     pushTelemetry(w, store.getState(), 3000)
     unsub()
     expect(writes).toBe(1)
-    expect(store.getState().cycleProgress).toBe(Math.round(0.32 * 210) / 210)
+    expect(store.getState().cycleProgress).toBe(Math.floor(0.32 * 210) / 210)
   })
   it('writes the env seed at most once every 5 s, rounded to 1 decimal', () => {
     const w = createWorld()

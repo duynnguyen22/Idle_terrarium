@@ -32,17 +32,22 @@ export function mapLegacySubstrates(raw: Record<string, unknown>): SubstrateDept
   }
 }
 
-/** Pool, pump and cycle fields for a save written before they existed. */
-export function legacyPoolFields(
-  water: number,
-  dayCount: unknown,
-): { pumpFlow: PumpFlow; waterSplit: number; cycleProgress: number; setupDay: number } {
+/**
+ * Pool, pump and cycle fields for a save written before they existed. `setupDay` takes the spec
+ * loader's default of 1 (`saved.setupDay || 1`), so an upgraded long-running build does not reopen
+ * the early-days mold window.
+ */
+export function legacyPoolFields(water: number): {
+  pumpFlow: PumpFlow
+  waterSplit: number
+  cycleProgress: number
+  setupDay: number
+} {
   return {
     pumpFlow: 'gentle',
     waterSplit: water > POOL_WATER_THRESHOLD_MM ? LEGACY_POOL_SPLIT : 0,
     cycleProgress: 1,
-    setupDay:
-      typeof dayCount === 'number' && Number.isFinite(dayCount) && dayCount >= 1 ? dayCount : 1,
+    setupDay: 1,
   }
 }
 
@@ -57,8 +62,8 @@ export function migrate(persisted: unknown, version: number): Record<string, unk
   const { substrates: rawSubstrates, ...rest } = persisted
   if (!isRecord(rawSubstrates)) {
     // No saved substrates: hydration keeps the default depths, whose water fills a pool.
-    return { ...rest, ...legacyPoolFields(DEFAULT_SUBSTRATES.water, persisted.dayCount) }
+    return { ...rest, ...legacyPoolFields(DEFAULT_SUBSTRATES.water) }
   }
   const substrates = mapLegacySubstrates(rawSubstrates)
-  return { ...rest, substrates, ...legacyPoolFields(substrates.water, persisted.dayCount) }
+  return { ...rest, substrates, ...legacyPoolFields(substrates.water) }
 }

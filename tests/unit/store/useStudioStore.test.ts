@@ -174,7 +174,7 @@ describe('studio store', () => {
     )
     const s = createStudioStore(localStorage).getState()
     expect(s.substrates).toEqual({ pebbles: 18, charcoal: 6, soil: 24, sand: 0, leaflitter: 0, rivergravel: 16, water: 24 })
-    expect(s).toMatchObject({ dayCount: 7, setupDay: 7, pumpFlow: 'gentle', waterSplit: 0.32, cycleProgress: 1 })
+    expect(s).toMatchObject({ dayCount: 7, setupDay: 1, pumpFlow: 'gentle', waterSplit: 0.32, cycleProgress: 1 })
     expect(s.substrates).not.toHaveProperty('lavarock')
   })
 })

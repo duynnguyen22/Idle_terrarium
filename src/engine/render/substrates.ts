@@ -10,7 +10,8 @@ import {
   sampleContour,
 } from '../geometry'
 import { num, str } from './metrics'
-import { bankGeometry, drawWater, terrainOf, type BankGeometry } from './water'
+import { bankGeometry, terrainOf, type BankGeometry } from './terrain'
+import { drawWater } from './water'
 
 export type SubstratePhase = 'soil' | 'water'
 
