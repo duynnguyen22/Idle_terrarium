@@ -7,6 +7,8 @@ import {
   configureSpriteCache,
   getSprite,
   getSpriteDataUrl,
+  THUMB_SIZE,
+  thumbnailFrame,
   warmSpriteCache,
 } from '@/engine/sprites/spriteCache'
 
@@ -115,6 +117,43 @@ describe('spriteCache', () => {
     })
     expect(getSpriteDataUrl('quartz')).toBe(getSpriteDataUrl('quartz'))
     expect(urls).toBe(1)
+  })
+})
+
+describe('catalog thumbnails', () => {
+  function rgbaWithBox(w: number, h: number, x0: number, y0: number, x1: number, y1: number) {
+    const data = new Uint8ClampedArray(w * h * 4)
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) data[(y * w + x) * 4 + 3] = 255
+    return data
+  }
+
+  it('frames the drawn pixels so a small creature fills the thumbnail with a 12% margin', () => {
+    // a 20x10 creature in a 256 sprite: side 20, pad 2, so 192 / 24 = 8x
+    const frame = thumbnailFrame(rgbaWithBox(256, 256, 100, 120, 119, 129), 256, 256)
+    expect(frame).toEqual({ scale: 8, cx: 110, cy: 125 })
+  })
+
+  it('ignores near-transparent pixels and returns null for an empty sprite', () => {
+    const faint = new Uint8ClampedArray(16 * 16 * 4).fill(8)
+    expect(thumbnailFrame(faint, 16, 16)).toBeNull()
+  })
+
+  it('redraws the sprite onto a 192px canvas centred on the drawn pixels', () => {
+    const made: ReturnType<typeof makeStubCanvas>[] = []
+    configureSpriteCache(() => {
+      const stub = makeStubCanvas()
+      made.push(stub)
+      const ctx = stub.canvas.getContext('2d') as unknown as Record<string, unknown>
+      ctx.getImageData = (_x: number, _y: number, w: number, h: number) => ({
+        data: rgbaWithBox(w, h, 100, 120, 119, 129),
+      })
+      return stub.canvas
+    })
+    getSpriteDataUrl('springtails')
+    expect(made).toHaveLength(2)
+    const thumb = made[1]!
+    expect([thumb.canvas.width, thumb.canvas.height]).toEqual([THUMB_SIZE, THUMB_SIZE])
+    expect(thumb.calls.some((c) => c === 'fill')).toBe(true)
   })
 })
 

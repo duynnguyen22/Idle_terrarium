@@ -4,12 +4,42 @@ import { VesselTab } from '@/components/catalog/VesselTab'
 import { selectActiveTab } from '@/store/selectors'
 import { useStudioStore } from '@/store/useStudioStore'
 
+/** Line icons from the v6 prototype's tab bar (24-unit viewBox, stroked). */
 const TABS = [
-  { id: 'vessel', icon: '🫙', label: 'Vessel & Soil' },
-  { id: 'flora', icon: '🌿', label: 'Flora' },
-  { id: 'hardscape', icon: '🪨', label: 'Hardscape' },
-  { id: 'fauna', icon: '🐸', label: 'Fauna' },
+  {
+    id: 'vessel',
+    icon: 'M8 3h8M7 6h10v13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM7 11h10',
+    label: 'Vessel & Soil',
+  },
+  {
+    id: 'flora',
+    icon: 'M12 21v-9M12 12c0-4 3-6 7-6c0 4-3 6-7 6zM12 14c0-3-2-5-6-5c0 3 2 5 6 5z',
+    label: 'Flora',
+  },
+  { id: 'hardscape', icon: 'M3 18l3-8l5-3l6 2l4 9zM3 18h18', label: 'Hardscape' },
+  {
+    id: 'fauna',
+    icon: 'M7 14a5 4 0 1 0 10 0a5 4 0 1 0-10 0zM8.5 9a1.5 1.5 0 1 0 .01 0M15.5 9a1.5 1.5 0 1 0 .01 0M5 18l-2 2M19 18l2 2',
+    label: 'Fauna',
+  },
 ] as const
+
+function TabIcon({ d }: { d: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-4 w-4 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={d} />
+    </svg>
+  )
+}
 
 const BLURB = 'text-[11px] leading-relaxed text-stone'
 const STRONG = 'font-semibold text-forest-deep'
@@ -86,7 +116,9 @@ export function LeftSidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
                   : 'font-medium text-stone hover:bg-white/50'
               }`}
             >
-              <span className="mb-0.5 text-base">{t.icon}</span>
+              <span className="mb-1 inline-flex">
+                <TabIcon d={t.icon} />
+              </span>
               <span className="whitespace-nowrap text-[11px]">{t.label}</span>
             </button>
           )

@@ -8,7 +8,7 @@ function Badge({ def }: { def: CatalogDef }) {
   if (def.category === 'flora' && def.canMountOnRock) {
     return (
       <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
-        🪨 Mountable
+        Mountable
       </span>
     )
   }
@@ -30,7 +30,10 @@ export function CatalogCard({ def, onSelect }: { def: CatalogEntry; onSelect: ()
       onClick={onSelect}
       className="group flex flex-col items-center rounded-2xl border border-sand-border bg-white p-2.5 text-left shadow-2xs transition hover:bg-linen"
     >
-      <span className="mb-1.5 flex h-16 w-16 items-center justify-center transition group-hover:scale-105">
+      <span
+        data-testid="catalog-thumb"
+        className="mb-2 flex aspect-square w-full max-w-[104px] items-center justify-center rounded-xl bg-thumb-tile p-2.5 transition group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+      >
         <img src={src} alt="" className="pointer-events-none h-full w-full object-contain" />
       </span>
       <span className="w-full">
