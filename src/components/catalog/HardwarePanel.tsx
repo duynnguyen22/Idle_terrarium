@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import type { PumpFlow } from '@/data/types'
 import { hasPool } from '@/engine/geometry'
@@ -39,11 +39,13 @@ function Glyph({ d }: { d: string }) {
   )
 }
 
-function HwText({ label, sub }: { label: string; sub: string }) {
+function HwText({ label, sub, subId }: { label: string; sub: string; subId?: string }) {
   return (
     <span className="flex min-w-0 flex-1 flex-col">
       <span className="text-[12.5px] font-semibold text-[#163022]">{label}</span>
-      <span className="text-[11px] leading-snug text-[#5b665e]">{sub}</span>
+      <span id={subId} className="text-[11px] leading-snug text-[#5b665e]">
+        {sub}
+      </span>
     </span>
   )
 }
@@ -63,16 +65,19 @@ function SwitchRow({
   icon: ReactNode
   onToggle: () => void
 }) {
+  const subId = useId()
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={label}
+      aria-describedby={subId}
       onClick={onToggle}
       className="flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-[9px] text-left transition-colors hover:bg-[#f1f4ef]"
     >
       <span className={`${ICON_BASE} ${iconClass}`}>{icon}</span>
-      <HwText label={label} sub={sub} />
+      <HwText label={label} sub={sub} subId={subId} />
       <span
         aria-hidden="true"
         className={`relative h-5 w-[34px] shrink-0 rounded-full transition-colors ${checked ? 'bg-[#1b3b2b]' : 'bg-[#cfd5cb]'}`}
@@ -115,6 +120,7 @@ export function HardwarePanel() {
 
   return (
     <div
+      role="group"
       aria-label="Enclosure hardware"
       className="mt-2.5 rounded-[14px] border border-[#e1e5dc] bg-white p-1"
     >
@@ -133,7 +139,9 @@ export function HardwarePanel() {
         sub={hasFogger ? 'Running, about +7% humidity' : 'Off; air relies on the pool'}
         checked={hasFogger}
         iconClass={hasFogger ? ICON_ON : ICON_OFF}
-        icon={<Glyph d="M7 15a4 4 0 0 1 .5-8A5.5 5.5 0 0 1 18 8a3.5 3.5 0 0 1-.5 7zM4 19h16M7 22h10" />}
+        icon={
+          <Glyph d="M7 15a4 4 0 0 1 .5-8A5.5 5.5 0 0 1 18 8a3.5 3.5 0 0 1-.5 7zM4 19h16M7 22h10" />
+        }
         onToggle={() => setHardware('hasFogger', !hasFogger)}
       />
       <div className="mt-0.5 flex w-full items-center gap-2.5 px-2.5 pb-1.5 pt-[9px]">

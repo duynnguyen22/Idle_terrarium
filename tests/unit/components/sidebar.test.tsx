@@ -114,6 +114,31 @@ describe('LeftSidebar panels', () => {
     expect(state().cycleProgress).toBe(0.5)
   })
 
+  it('first water into an existing pool restarts the cycle; topping up does not', () => {
+    set({ cycleProgress: 1, substrates: { ...DEFAULT_SUBSTRATES, water: 0 } })
+    world.env.cycleProgress = 1
+    render(<LeftSidebar />)
+    fireEvent.change(screen.getByLabelText('Pool water'), { target: { value: '10' } })
+    expect(state().substrates.water).toBe(10)
+    expect(state().cycleProgress).toBe(0)
+    expect(world.env.cycleProgress).toBe(0)
+    act(() => state().setCycleProgress(0.5))
+    world.env.cycleProgress = 0.5
+    fireEvent.change(screen.getByLabelText('Pool water'), { target: { value: '20' } })
+    expect(state().cycleProgress).toBe(0.5)
+    expect(world.env.cycleProgress).toBe(0.5)
+  })
+
+  it('hardware switches are named by their label and described by their status', () => {
+    render(<LeftSidebar />)
+    const lamp = screen.getByRole('switch', { name: 'Halo LED Lamp' })
+    expect(lamp).toHaveAccessibleDescription('Lit until 20:00')
+    expect(screen.getByRole('switch', { name: 'Mist Fogger' })).toHaveAccessibleDescription(
+      'Running, about +7% humidity',
+    )
+    expect(screen.getByRole('group', { name: 'Enclosure hardware' })).toBeInTheDocument()
+  })
+
   it('sliders list land layers top-down and show the split label', () => {
     render(<LeftSidebar />)
     expect(screen.getAllByRole('slider').map((el) => el.getAttribute('aria-label'))).toEqual([

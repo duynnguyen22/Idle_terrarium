@@ -38,7 +38,6 @@ function splitLabel(waterSplit: number): string {
 function SliderRow({ id, max }: { id: SliderLayerId; max: number }) {
   const layer = SUBSTRATES_BY_ID[id]
   const val = Math.round(useStudioStore((s) => s.substrates[id]) || 0)
-  const setSubstrate = useStudioStore((s) => s.setSubstrate)
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-xs">
@@ -58,24 +57,35 @@ function SliderRow({ id, max }: { id: SliderLayerId; max: number }) {
         step={1}
         value={val}
         aria-label={layer.name}
-        onChange={(e) => setSubstrate(id, parseInt(e.target.value, 10))}
+        onChange={(e) => changeLayer(id, parseInt(e.target.value, 10))}
         className="w-full"
       />
     </div>
   )
 }
 
+function resetCycle() {
+  useStudioStore.getState().setCycleProgress(0)
+  mutateWorld((w) => {
+    w.env.cycleProgress = 0
+  })
+}
+
+/** Writes a layer depth; first water into an existing pool restarts the cycle (prototype 2198–2201). */
+function changeLayer(id: SliderLayerId, mm: number) {
+  const { substrates, waterSplit, setSubstrate } = useStudioStore.getState()
+  const before = substrates[id] || 0
+  setSubstrate(id, mm)
+  if (id === 'water' && before < 1 && mm >= 1 && hasPool(waterSplit)) resetCycle()
+}
+
 /** Changing the pool width; opening a new pool restarts the nitrogen cycle (prototype 2189–2196). */
 function changePoolWidth(percent: number) {
-  const { waterSplit: prev, setWaterSplit, setCycleProgress, setSubstrate } =
-    useStudioStore.getState()
+  const { waterSplit: prev, setWaterSplit, setSubstrate } = useStudioStore.getState()
   setWaterSplit(percent / 100)
   const next = useStudioStore.getState().waterSplit
   if (!hasPool(prev) && hasPool(next)) {
-    setCycleProgress(0)
-    mutateWorld((w) => {
-      w.env.cycleProgress = 0
-    })
+    resetCycle()
     setSubstrate('water', Math.max(useStudioStore.getState().substrates.water || 0, 40))
     showToast(NEW_POOL_TOAST)
   }
