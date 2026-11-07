@@ -6,6 +6,7 @@ import { idealRange } from '@/engine/care'
 import { isLampOn } from '@/engine/simulation/clock'
 import { selectTelemetry } from '@/store/selectors'
 import { useStudioStore, type StudioStore } from '@/store/useStudioStore'
+import { useTelemetryStore } from '@/store/useTelemetryStore'
 
 const NO_ITEMS: PlacedItem[] = []
 const selectItems = (s: StudioStore) => s.worldSnapshot?.items ?? NO_ITEMS
@@ -20,7 +21,7 @@ function badge(warns: number): [label: string, cls: string] {
 }
 
 export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean }) {
-  const t = useStudioStore(selectTelemetry)
+  const t = useTelemetryStore(selectTelemetry)
   const items = useStudioStore(selectItems)
   const lampOn = useStudioStore(selectLampOn)
   const hum = idealRange(items, 'hum')

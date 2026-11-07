@@ -5,7 +5,8 @@ import { MAX_PERSISTED_GRAINS } from '@/engine/persistence'
 import { TERRAIN_POINTS, type WorldEntity } from '@/engine/world'
 import { clamp } from '@/lib/clamp'
 import { legacyPoolFields, mapLegacySubstrates, MAX_WATER_SPLIT } from './migrations'
-import type { StudioState } from './useStudioStore'
+import type { EnvSeed, StudioState } from './useStudioStore'
+import { DEFAULT_TELEMETRY } from './useTelemetryStore'
 
 export const PROTOTYPE_STORAGE_KEY_V6 = 'botanica_paludarium_v6'
 export const PROTOTYPE_STORAGE_KEY = 'existence_botanica_paludarium_v5'
@@ -38,6 +39,18 @@ function readV6PoolFields(saved: Record<string, unknown>) {
     waterSplit: clamp(finiteOr(saved.waterSplit, 0.32), 0, MAX_WATER_SPLIT),
     cycleProgress: clamp(finiteOr(saved.cycleProgress, 1), 0, 1),
     setupDay: typeof saved.setupDay === 'number' && saved.setupDay >= 1 ? saved.setupDay : 1,
+  }
+}
+
+/** The prototype's saved gauges (both formats save them); missing or bad values keep the defaults. */
+function readEnvSeed(saved: Record<string, unknown>): EnvSeed {
+  const d = DEFAULT_TELEMETRY
+  const read = (v: unknown, fallback: number) => Math.round(finiteOr(v, fallback) * 10) / 10
+  return {
+    humidity: read(saved.humidity, d.humidity),
+    temperature: read(saved.temperature, d.temperature),
+    soilMoisture: read(saved.soilMoisture, d.soilMoisture),
+    nutrients: read(saved.nutrients, d.nutrients),
   }
 }
 
@@ -97,6 +110,7 @@ function readPrototypeSave(
       hasFogger: typeof saved.hasFogger === 'boolean' ? saved.hasFogger : true,
       substrates,
       dayCount,
+      envSeed: readEnvSeed(saved),
       ...(format === 'v6' ? readV6PoolFields(saved) : legacyPoolFields(substrates.water, dayCount)),
       worldSnapshot: {
         items,

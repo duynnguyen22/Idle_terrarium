@@ -48,14 +48,16 @@ export interface EngineWorld {
   pourSettled: boolean
   pointerNorm: Point
   lastTelemetryPush: number
+  /** Timestamp of the last persisted env-seed write (at most one every ENV_SEED_INTERVAL_MS). */
+  lastEnvSeedPush: number
   clockAccumulatorMs: number
   /** Substrate depth deltas (mm) accumulated by pouring, flushed to the store by the telemetry throttle. */
   pendingSubstrates: Partial<Record<keyof SubstrateDepths, number>>
-  /** Live environment gauges; flushed into store telemetry by the throttle. */
+  /** Live environment gauges; flushed into the telemetry store by the throttle (and a rounded seed into the studio store). */
   env: EnvState
   /** Tick counter (increments every tick, paused or not). */
   frame: number
-  /** Latest care report; flushed into telemetry.careIssues. */
+  /** Latest care report; flushed into the telemetry store's careIssues. */
   careIssues: CareIssue[]
   /** Water split the engine wants written to the store on the next flush. */
   pendingWaterSplit?: number
@@ -84,6 +86,7 @@ export function createWorld(): EngineWorld {
     pourSettled: false,
     pointerNorm: { x: 0.5, y: 0.35 },
     lastTelemetryPush: 0,
+    lastEnvSeedPush: 0,
     clockAccumulatorMs: 0,
     pendingSubstrates: {},
     env: {

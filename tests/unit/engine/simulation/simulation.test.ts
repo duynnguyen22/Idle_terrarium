@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FAUNA, FAUNA_BY_ID } from '@/data/catalog'
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
 import type { PlacedItem } from '@/data/types'
@@ -30,6 +30,7 @@ import { pushTelemetry, TELEMETRY_INTERVAL_MS } from '@/engine/simulation/teleme
 import { syncChildren, tick } from '@/engine/simulation/tick'
 import { createWorld, type EngineWorld, type WorldEntity } from '@/engine/world'
 import { createStudioStore } from '@/store/useStudioStore'
+import { createDefaultTelemetry, useTelemetryStore } from '@/store/useTelemetryStore'
 
 function mulberry32(seed: number) {
   let a = seed
@@ -81,6 +82,7 @@ let store: ReturnType<typeof createStudioStore>
 beforeEach(() => {
   localStorage.clear()
   store = createStudioStore()
+  useTelemetryStore.setState({ telemetry: createDefaultTelemetry() })
 })
 
 describe('lightingForHour', () => {
@@ -528,20 +530,25 @@ describe('pouring', () => {
 })
 
 describe('pushTelemetry', () => {
+  const telemetry = () => useTelemetryStore.getState().telemetry
   it('writes at most 4x per simulated second and skips unchanged values', () => {
     const world = createWorld()
     world.moldPatches.push({ x: 0.3, size: 12 })
     let writes = 0
-    const unsub = store.subscribe(() => writes++)
+    const unsub = useTelemetryStore.subscribe(() => writes++)
+    let studioWrites = 0
+    const unsubStudio = store.subscribe(() => studioWrites++)
     let flushes = 0
     for (let t = 1000; t < 2000; t += FRAME_MS)
       if (pushTelemetry(world, store.getState(), t)) flushes++
     unsub()
+    unsubStudio()
     expect(flushes).toBeLessThanOrEqual(1000 / TELEMETRY_INTERVAL_MS)
     expect(flushes).toBeGreaterThanOrEqual(3)
     expect(writes).toBe(1) // moldCount changed once; later flushes are no-ops
-    expect(store.getState().telemetry.moldCount).toBe(1)
-    expect(store.getState().telemetry.cleanupCrewCount).toBe(0)
+    expect(studioWrites).toBe(0)
+    expect(telemetry().moldCount).toBe(1)
+    expect(telemetry().cleanupCrewCount).toBe(0)
   })
   it('pushTelemetry flushes env, cycle progress and pending water split', () => {
     const w = createWorld()
@@ -549,10 +556,66 @@ describe('pushTelemetry', () => {
     w.env.cycleProgress = 0.3
     w.pendingWaterSplit = 0.3
     pushTelemetry(w, store.getState(), 1000)
-    expect(store.getState().telemetry.temperature).toBe(30)
+    expect(telemetry().temperature).toBe(30)
     expect(store.getState().cycleProgress).toBe(0.3)
     expect(store.getState().waterSplit).toBe(0.3)
     expect(w.pendingWaterSplit).toBeUndefined()
+  })
+  it('50 flushes of moving gauges write no storage when no persisted field changed', () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
+    const w = createWorld()
+    w.env.cycleProgress = 100.5 / 210 // mid-bucket, so the drift below never crosses a 1/210 step
+    store.getState().setCycleProgress(Math.round(w.env.cycleProgress * 210) / 210)
+    setItem.mockClear()
+    let t = 1000
+    w.lastEnvSeedPush = t
+    for (let i = 0; i < 50; i++) {
+      // Float drift on every gauge; the env seed's 1-decimal rounding hides all of it.
+      w.env.humidity = 82 + i * 0.0007
+      w.env.temperature = 24.5 - i * 0.0009
+      w.env.soilMoisture = 74 + Math.sin(i) * 0.03
+      w.env.nutrients = 88 - i * 0.0004
+      w.env.o2 = 96 - i * 0.37
+      w.env.condensation = (i % 7) / 10
+      w.env.cycleProgress += 0.00001
+      t += TELEMETRY_INTERVAL_MS
+      expect(pushTelemetry(w, store.getState(), t)).toBe(true)
+    }
+    expect(telemetry().o2Balance).toBeCloseTo(96 - 49 * 0.37, 6)
+    expect(setItem).not.toHaveBeenCalled()
+    setItem.mockRestore()
+  })
+  it('quantises cycle progress to 1/210 before writing it', () => {
+    const w = createWorld()
+    w.env.cycleProgress = 0.31
+    pushTelemetry(w, store.getState(), 1000)
+    expect(store.getState().cycleProgress).toBe(Math.round(0.31 * 210) / 210)
+    let writes = 0
+    const unsub = store.subscribe(() => writes++)
+    w.env.cycleProgress = 0.3101
+    pushTelemetry(w, store.getState(), 2000)
+    expect(writes).toBe(0)
+    w.env.cycleProgress = 0.32
+    pushTelemetry(w, store.getState(), 3000)
+    unsub()
+    expect(writes).toBe(1)
+    expect(store.getState().cycleProgress).toBe(Math.round(0.32 * 210) / 210)
+  })
+  it('writes the env seed at most once every 5 s, rounded to 1 decimal', () => {
+    const w = createWorld()
+    let seedWrites = 0
+    const unsub = store.subscribe((s, prev) => {
+      if (s.envSeed !== prev.envSeed) seedWrites++
+    })
+    w.lastEnvSeedPush = 0
+    for (let t = 250; t <= 12_500; t += TELEMETRY_INTERVAL_MS) {
+      w.env.nutrients = 88 - t / 1000 // drops 0.25 per flush
+      pushTelemetry(w, store.getState(), t)
+    }
+    unsub()
+    expect(seedWrites).toBe(2) // at 5 s and 10 s
+    expect(store.getState().envSeed.nutrients).toBe(78)
+    expect(w.lastEnvSeedPush).toBe(10_000)
   })
 })
 

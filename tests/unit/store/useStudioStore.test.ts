@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { CareIssue } from '@/engine/care'
 import { createStudioStore, partialize, STUDIO_STORAGE_KEY } from '@/store/useStudioStore'
 
 beforeEach(() => localStorage.clear())
@@ -32,17 +31,8 @@ describe('studio store', () => {
       },
     })
     expect(s).toMatchObject({ pumpFlow: 'gentle', waterSplit: 0.32, cycleProgress: 1, setupDay: 1 })
-    expect(s.telemetry).toEqual({
-      humidity: 82,
-      temperature: 24.5,
-      soilMoisture: 74,
-      nutrients: 88,
-      o2Balance: 96,
-      condensation: 0,
-      moldCount: 0,
-      cleanupCrewCount: 0,
-      careIssues: [],
-    })
+    expect(s).not.toHaveProperty('telemetry')
+    expect(s.envSeed).toEqual({ humidity: 82, temperature: 24.5, soilMoisture: 74, nutrients: 88 })
   })
 
   it('partialize excludes transient fields', () => {
@@ -52,16 +42,7 @@ describe('studio store', () => {
     }
     expect(p).toHaveProperty('worldSnapshot')
     expect(p).toHaveProperty('substrates')
-  })
-
-  it('setTelemetry is a no-op for identical values', () => {
-    const store = createStudioStore(localStorage)
-    const before = store.getState()
-    store.getState().setTelemetry({ humidity: 82, nutrients: 88 })
-    expect(store.getState()).toBe(before)
-    store.getState().setTelemetry({ humidity: 70 })
-    expect(store.getState().telemetry.humidity).toBe(70)
-    expect(store.getState().telemetry.nutrients).toBe(88)
+    expect(p).toHaveProperty('envSeed')
   })
 
   it('actions update state and persist non-transient fields', () => {
@@ -108,30 +89,51 @@ describe('studio store', () => {
     expect(createStudioStore(localStorage).getState().dayCount).toBe(2)
   })
 
-  it('unchanged setTelemetry/setSubstrates calls notify nobody and write no storage', () => {
+  it('unchanged setSubstrates/setEnvSeed calls notify nobody and write no storage', () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem')
     const store = createStudioStore(localStorage)
     const listener = vi.fn()
     store.subscribe(listener)
     setItem.mockClear()
-    const { telemetry, substrates } = store.getState()
+    const { substrates, envSeed } = store.getState()
     for (let i = 0; i < 10; i++) {
-      store
-        .getState()
-        .setTelemetry({ humidity: telemetry.humidity, moldCount: telemetry.moldCount })
-      store.getState().setTelemetry({})
       store.getState().setSubstrates({ ...substrates })
+      // Differences below the 1-decimal rounding are not a change.
+      store.getState().setEnvSeed({ ...envSeed, humidity: envSeed.humidity + 0.01 })
     }
     expect(listener).not.toHaveBeenCalled()
     expect(setItem).not.toHaveBeenCalled()
     setItem.mockRestore()
   })
 
-  it('setTelemetry never writes undefined over existing keys', () => {
+  it('setEnvSeed rounds to 1 decimal and persists', () => {
     const store = createStudioStore(localStorage)
-    store.getState().setTelemetry({ humidity: 50, nutrients: undefined })
-    expect(store.getState().telemetry.humidity).toBe(50)
-    expect(store.getState().telemetry.nutrients).toBe(88)
+    store.getState().setEnvSeed({ humidity: 61.26, temperature: 22.04, soilMoisture: 50, nutrients: 30.449 })
+    expect(store.getState().envSeed).toEqual({ humidity: 61.3, temperature: 22, soilMoisture: 50, nutrients: 30.4 })
+    const stored = JSON.parse(localStorage.getItem(STUDIO_STORAGE_KEY) ?? '{}')
+    expect(stored.state.envSeed).toEqual({ humidity: 61.3, temperature: 22, soilMoisture: 50, nutrients: 30.4 })
+  })
+
+  it('envSeed survives a rehydrate from the serialised storage', () => {
+    const store = createStudioStore(localStorage)
+    store.getState().setEnvSeed({ ...store.getState().envSeed, nutrients: 30 })
+    const serialised = localStorage.getItem(STUDIO_STORAGE_KEY)
+    expect(serialised).not.toBeNull()
+    localStorage.clear()
+    localStorage.setItem(STUDIO_STORAGE_KEY, serialised!)
+    const reloaded = createStudioStore(localStorage)
+    expect(reloaded.getState().envSeed.nutrients).toBe(30)
+    expect(reloaded.getState().envSeed.humidity).toBe(82)
+  })
+
+  it('a v2 save without envSeed hydrates the default seed', () => {
+    localStorage.setItem(
+      STUDIO_STORAGE_KEY,
+      JSON.stringify({ state: { dayCount: 5, waterSplit: 0.2 }, version: 2 }),
+    )
+    const s = createStudioStore(localStorage).getState()
+    expect(s.dayCount).toBe(5)
+    expect(s.envSeed).toEqual({ humidity: 82, temperature: 24.5, soilMoisture: 74, nutrients: 88 })
   })
 
   it('setWaterSplit clamps to [0, 0.6] and persists pool fields', () => {
@@ -157,18 +159,6 @@ describe('studio store', () => {
     expect(store.getState()).toMatchObject({ setupDay: 9, hasFogger: false, hasLid: true })
     const stored = JSON.parse(localStorage.getItem(STUDIO_STORAGE_KEY) ?? '{}')
     expect(stored.state).toMatchObject({ setupDay: 9, cycleProgress: 0, hasFogger: false })
-  })
-
-  it('setTelemetry ignores an identical careIssues array', () => {
-    const store = createStudioStore(localStorage)
-    const issues: CareIssue[] = [{ level: 'warn', text: 'x' }]
-    store.getState().setTelemetry({ careIssues: issues })
-    const before = store.getState().telemetry
-    expect(before.careIssues).toEqual(issues)
-    store.getState().setTelemetry({ careIssues: [{ level: 'warn', text: 'x' }] })
-    expect(store.getState().telemetry).toBe(before)
-    store.getState().setTelemetry({ careIssues: [] })
-    expect(store.getState().telemetry.careIssues).toEqual([])
   })
 
   it('hydrates a persisted v1 save through the v1 to v2 migration', () => {

@@ -8,6 +8,7 @@ import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { showToast, useToastStore } from '@/store/toastStore'
 import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+import { createDefaultTelemetry, useTelemetryStore, type Telemetry } from '@/store/useTelemetryStore'
 import type { PlacedItem } from '@/data/types'
 import type { CareIssue } from '@/engine/care'
 
@@ -29,6 +30,7 @@ const user = () => ({ click: (el: HTMLElement) => act(() => void fireEvent.click
 beforeEach(() => {
   vi.useFakeTimers()
   useStudioStore.setState(createDefaultState())
+  useTelemetryStore.setState({ telemetry: createDefaultTelemetry() })
   useToastStore.setState({ message: '', visible: false })
   world = createWorld()
   registerWorld(world)
@@ -174,8 +176,8 @@ describe('GaugeBar', () => {
   })
 })
 
-const withTelemetry = (partial: Partial<ReturnType<typeof createDefaultState>['telemetry']>) =>
-  useStudioStore.setState({ telemetry: { ...createDefaultState().telemetry, ...partial } })
+const withTelemetry = (partial: Partial<Telemetry>) =>
+  useTelemetryStore.setState({ telemetry: { ...createDefaultTelemetry(), ...partial } })
 
 const warn = (text: string): CareIssue => ({ level: 'warn', text })
 
@@ -187,17 +189,16 @@ describe('RightTelemetry', () => {
   })
 
   it('shows telemetry values, the top warning, the care list and the specimen count', () => {
+    withTelemetry({
+      humidity: 61,
+      moldCount: 2,
+      cleanupCrewCount: 2,
+      careIssues: [
+        { level: 'info', text: 'Info note' },
+        { level: 'warn', text: 'Hello note' },
+      ],
+    })
     useStudioStore.setState({
-      telemetry: {
-        ...createDefaultState().telemetry,
-        humidity: 61,
-        moldCount: 2,
-        cleanupCrewCount: 2,
-        careIssues: [
-          { level: 'info', text: 'Info note' },
-          { level: 'warn', text: 'Hello note' },
-        ],
-      },
       worldSnapshot: {
         items: [item('a', 'fauna'), item('b', 'fauna'), item('c', 'flora')],
         terrainContour: [],

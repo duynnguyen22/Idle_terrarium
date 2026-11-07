@@ -4,6 +4,7 @@ import { play } from '@/hooks/useAudio'
 import { selectTelemetry } from '@/store/selectors'
 import { showToast } from '@/store/toastStore'
 import { useStudioStore } from '@/store/useStudioStore'
+import { useTelemetryStore } from '@/store/useTelemetryStore'
 
 /** All-clear note keyed on how fogged the glass is (prototype renderTelemetry). */
 function allClearNote(condensation: number): string {
@@ -27,7 +28,7 @@ function runAction(action: NonNullable<CareIssue['action']>) {
     // Recompute now so the fixed issue doesn't linger until the next throttled telemetry push.
     const store = useStudioStore.getState()
     w.careIssues = computeCareReport({ ...store, ...w.env, items: w.items })
-    store.setTelemetry({ careIssues: w.careIssues })
+    useTelemetryStore.getState().setTelemetry({ careIssues: w.careIssues })
   })
   if (action.id === 'feed') play('chime')
   showToast(msg)
@@ -35,7 +36,7 @@ function runAction(action: NonNullable<CareIssue['action']>) {
 
 /** "Next step" card: the top issue (first warning, else first note) with its one-click fix. */
 export function BotanistNotes() {
-  const { careIssues, condensation } = useStudioStore(selectTelemetry)
+  const { careIssues, condensation } = useTelemetryStore(selectTelemetry)
   const top = careIssues.find((i) => i.level === 'warn') ?? careIssues[0]
   const action = top?.action
   return (
@@ -59,7 +60,7 @@ export function BotanistNotes() {
 
 /** "Inhabitants" list: every care issue, or an all-clear line. */
 export function CareList() {
-  const { careIssues } = useStudioStore(selectTelemetry)
+  const { careIssues } = useTelemetryStore(selectTelemetry)
   return (
     <div className="rounded-2xl border border-sand-border bg-white p-3.5">
       <div className="mb-2 text-xs font-semibold text-forest-ink">Inhabitants</div>

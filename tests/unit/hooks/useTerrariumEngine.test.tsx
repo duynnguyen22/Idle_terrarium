@@ -5,7 +5,8 @@ import { mutateWorld, getWorld, unregisterWorld } from '@/engine/engineBridge'
 import { hasPool } from '@/engine/geometry'
 import { configureSpriteCache } from '@/engine/sprites/spriteCache'
 import { useTerrariumEngine } from '@/hooks/useTerrariumEngine'
-import { useStudioStore } from '@/store/useStudioStore'
+import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+import { useTelemetryStore } from '@/store/useTelemetryStore'
 import { makeRecordingContext } from '../helpers/recordingContext'
 
 function Harness() {
@@ -76,17 +77,47 @@ describe('useTerrariumEngine', () => {
     let otherWrites = 0
     const unsubscribe = useStudioStore.subscribe((s, prev) => {
       if (s.worldSnapshot !== prev.worldSnapshot) snapshotWrites++
-      else if (s.telemetry !== prev.telemetry) telemetryWrites++
       else otherWrites++
     })
+    const unsubscribeTelemetry = useTelemetryStore.subscribe(() => telemetryWrites++)
     const simulatedMs = 2000
     for (let t = 16; t <= simulatedMs; t += 16) runFrame(t)
     unsubscribe()
+    unsubscribeTelemetry()
     expect(snapshotWrites).toBe(0)
     expect(telemetryWrites).toBeLessThanOrEqual(Math.ceil(simulatedMs / 250))
     // The seeded scene has cleanup crew the default telemetry does not, so the flush really happened.
     expect(telemetryWrites).toBeGreaterThanOrEqual(1)
     expect(otherWrites).toBe(0)
+  })
+
+  it('seeds the environment from the persisted envSeed, falling back per field', () => {
+    useStudioStore.setState({
+      envSeed: { humidity: 64, temperature: Number.NaN, soilMoisture: 51, nutrients: 30 },
+    })
+    try {
+      const { unmount } = render(<Harness />)
+      const env = getWorld().env
+      expect(env.nutrients).toBe(30)
+      expect(env.humidity).toBe(64)
+      expect(env.soilMoisture).toBe(51)
+      expect(env.temperature).toBe(24.5)
+      expect(env.o2).toBe(96)
+      unmount()
+    } finally {
+      useStudioStore.setState({ envSeed: createDefaultState().envSeed })
+    }
+  })
+
+  it('a world mounted after setEnvSeed reads the seeded nutrients', () => {
+    useStudioStore.getState().setEnvSeed({ ...useStudioStore.getState().envSeed, nutrients: 30 })
+    try {
+      const { unmount } = render(<Harness />)
+      expect(getWorld().env.nutrients).toBe(30)
+      unmount()
+    } finally {
+      useStudioStore.setState({ envSeed: createDefaultState().envSeed })
+    }
   })
 
   it('commits exactly once after in-flight pour particles land, none while they fall', async () => {

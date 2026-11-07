@@ -40,7 +40,8 @@ export function syncChildren(world: EngineWorld): void {
  * Per-frame simulation step, in the prototype's order: frame counter, pour spawn / siphon, clock, environment,
  * fauna AI, ambient motes,
  * growth, mold cleanup (all skipped at timeSpeed 0, ambient motes included, as the prototype early-returns), then the draw-phase mutations
- * (child sync, firefly drift, stream integration), the care report refresh and the throttled store flush.
+ * (child sync, firefly drift, stream integration), the care report refresh and the throttled store flush
+ * (live gauges to the telemetry store, persisted fields to the studio store).
  */
 export function tick(
   world: EngineWorld,
@@ -78,7 +79,7 @@ export function tick(
     updateFireflies(world, dtMs)
   stepPourParticles(world, store, dtMs, rng, deps.onToast)
   // Care report every 30 frames (prototype 3138, 3307); every frame while paused so edits show at once.
-  // Assign a fresh array: telemetry flushes careIssues by reference.
+  // Assign a fresh array; the throttled flush copies it into the telemetry store (compared by content).
   if (world.frame % 30 === 0 || store.timeSpeed === 0)
     world.careIssues = computeCareReport({ ...store, ...world.env, items: world.items })
   pushTelemetry(world, store, timestamp)

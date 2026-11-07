@@ -23,7 +23,14 @@ describe('importPrototypeSave', () => {
     expect(r?.worldSnapshot?.items).toEqual(items)
     expect(r?.worldSnapshot?.terrainContour).toEqual(contour)
     expect(r?.worldSnapshot?.substrateGrains).toEqual([{ x: 1 }])
+    // Saved gauges seed the environment; the missing temperature keeps its default.
+    expect(r?.envSeed).toEqual({ humidity: 50, temperature: 24.5, soilMoisture: 60, nutrients: 70 })
     expect(localStorage.getItem(KEY)).not.toBeNull()
+  })
+
+  it('maps the v6 saved gauges onto envSeed, rounding and defaulting bad values', () => {
+    localStorage.setItem(V6_KEY, JSON.stringify({ items: [{ uid: 'a', id: 'fern' }], humidity: 64.27, temperature: 'hot', soilMoisture: null, nutrients: 30 }))
+    expect(importPrototypeSave(localStorage)?.envSeed).toEqual({ humidity: 64.3, temperature: 24.5, soilMoisture: 74, nutrients: 30 })
   })
 
   it('returns null on garbage, missing key or empty items', () => {

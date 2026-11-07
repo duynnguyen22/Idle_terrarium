@@ -10,6 +10,7 @@ import {
 } from '@/store/selectors'
 import { showToast } from '@/store/toastStore'
 import { useStudioStore } from '@/store/useStudioStore'
+import { useTelemetryStore } from '@/store/useTelemetryStore'
 import type { PumpFlow } from '@/data/types'
 
 function glassText(c: number): string {
@@ -28,7 +29,7 @@ function waterCycleText(pool: boolean, p: number, pumpFlow: PumpFlow): string {
 
 /** Glass, pool water cycle, mold and cleanup crew readouts (prototype stat-* rows). */
 export function EcoStats() {
-  const { condensation, moldCount, cleanupCrewCount } = useStudioStore(selectTelemetry)
+  const { condensation, moldCount, cleanupCrewCount } = useTelemetryStore(selectTelemetry)
   const pool = hasPool(useStudioStore(selectWaterSplit))
   const cycleProgress = useStudioStore(selectCycleProgress)
   const pumpFlow = useStudioStore(selectPumpFlow)

@@ -11,7 +11,7 @@ export type CatalogCategory = keyof typeof CATALOG
 
 /**
  * Click a card to place the item at the prototype's default position and select it. A fresh care report
- * (not the throttled telemetry copy) names any issue the new species triggers (prototype addItemToTerrarium).
+ * (not the throttled copy in the telemetry store) names any issue the new species triggers (prototype addItemToTerrarium).
  */
 export function CatalogGrid({ category }: { category: CatalogCategory }) {
   const place = (defId: string) => {

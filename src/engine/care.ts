@@ -85,7 +85,7 @@ export type CareInputs = Pick<
 
 const SMALL_VESSELS: readonly string[] = ['globe', 'teardrop', 'apothecary', 'wardian']
 
-/** Builds a fresh issue list each call (callers assign it; telemetry compares by reference). */
+/** Builds a fresh issue list each call (callers assign it; the telemetry store compares it by content). */
 export function computeCareReport(s: CareInputs): CareIssue[] {
   const issues: CareIssue[] = []
   const present = new Set(s.items.map((i) => i.id))
