@@ -119,7 +119,9 @@ export function computeCareReport(s: CareInputs): CareIssue[] {
         level: 'warn',
         species: [d.id],
         text: `${d.name} needs ${lo}–${hi}% humidity; the air is at ${h}%.`,
-        action: !s.hasLid ? { id: 'closeLid', label: 'Seal the lid' } : { id: 'mist', label: 'Mist now' },
+        action: !s.hasLid
+          ? { id: 'closeLid', label: 'Seal the lid' }
+          : { id: 'mist', label: 'Mist now' },
       })
     }
     const temp = tempRange(d)

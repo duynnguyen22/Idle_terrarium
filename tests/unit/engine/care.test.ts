@@ -29,8 +29,7 @@ function makeMemoryStorage(): Storage {
 }
 const memoryStorage = makeMemoryStorage()
 
-const item = (id: string) =>
-  ({ uid: id, id, category: findCatalogDef(id)!.category }) as PlacedItem
+const item = (id: string) => ({ uid: id, id, category: findCatalogDef(id)!.category }) as PlacedItem
 const inputs = (over: Partial<CareInputs>): CareInputs => ({
   items: [],
   humidity: 80,
