@@ -1,11 +1,13 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
-import type { LightingId, SoundPresetId, GrowthStage, SubstrateDepths } from '@/data/types'
+import type { LightingId, PumpFlow, SoundPresetId, GrowthStage, SubstrateDepths } from '@/data/types'
 import type { VesselId } from '@/data/vessels'
+import type { CareIssue } from '@/engine/care'
 import type { WorldSnapshot } from '@/engine/persistence'
+import { clamp } from '@/lib/clamp'
 import { importPrototypeSave } from './importPrototypeSave'
-import { migrate } from './migrations'
+import { MAX_WATER_SPLIT, migrate } from './migrations'
 
 export const STUDIO_STORAGE_KEY = 'botanica_studio_v1'
 
@@ -15,14 +17,14 @@ export type ActiveTool = 'select' | 'plant' | 'pour' | (string & {})
 
 export interface Telemetry {
   humidity: number
+  temperature: number
   soilMoisture: number
   nutrients: number
   o2Balance: number
+  condensation: number
   moldCount: number
   cleanupCrewCount: number
-  mossCoverPct: number
-  waterCycle: string
-  note: string
+  careIssues: CareIssue[]
 }
 
 export interface StudioState {
@@ -30,6 +32,13 @@ export interface StudioState {
   hasLid: boolean
   hasGrowLamp: boolean
   hasFogger: boolean
+  pumpFlow: PumpFlow
+  /** Fraction of the tank width given to the pool, 0 to MAX_WATER_SPLIT. */
+  waterSplit: number
+  /** Nitrogen-cycle progress, 0 (fresh setup) to 1 (cycled). */
+  cycleProgress: number
+  /** Day the current setup was built; cycle days count from here. */
+  setupDay: number
   lighting: LightingId
   autoLightSync: boolean
   timeSpeed: number
@@ -53,6 +62,11 @@ export interface StudioState {
 export interface StudioActions {
   setVessel: (id: VesselId) => void
   toggleHardware: (key: HardwareKey) => void
+  setHardware: (key: HardwareKey, value: boolean) => void
+  setPumpFlow: (flow: PumpFlow) => void
+  setWaterSplit: (v: number) => void
+  setCycleProgress: (v: number) => void
+  setSetupDay: (day: number) => void
   setLighting: (id: LightingId) => void
   setAutoLightSync: (v: boolean) => void
   setTimeSpeed: (v: number) => void
@@ -78,14 +92,14 @@ export type StudioStore = StudioState & StudioActions
 
 export const DEFAULT_TELEMETRY: Telemetry = {
   humidity: 82,
-  soilMoisture: 76,
+  temperature: 24.5,
+  soilMoisture: 74,
   nutrients: 88,
   o2Balance: 96,
+  condensation: 0,
   moldCount: 0,
   cleanupCrewCount: 0,
-  mossCoverPct: 28,
-  waterCycle: 'Cascading & Mist',
-  note: 'Semi-aquatic waterfall circulates fresh oxygenated water while the Halo LED lamp nurtures epiphytic ferns and moss along the cliff wall.',
+  careIssues: [],
 }
 
 export function createDefaultState(): StudioState {
@@ -94,6 +108,10 @@ export function createDefaultState(): StudioState {
     hasLid: true,
     hasGrowLamp: true,
     hasFogger: true,
+    pumpFlow: 'gentle',
+    waterSplit: 0.32,
+    cycleProgress: 1,
+    setupDay: 1,
     lighting: 'sunlight',
     autoLightSync: true,
     timeSpeed: 1,
@@ -109,7 +127,7 @@ export function createDefaultState(): StudioState {
     substrates: { ...DEFAULT_SUBSTRATES },
     selectedId: null,
     activePourMaterial: null,
-    telemetry: { ...DEFAULT_TELEMETRY },
+    telemetry: { ...DEFAULT_TELEMETRY, careIssues: [] },
     worldSnapshot: null,
   }
 }
@@ -121,6 +139,10 @@ export function partialize(s: StudioStore) {
     hasLid: s.hasLid,
     hasGrowLamp: s.hasGrowLamp,
     hasFogger: s.hasFogger,
+    pumpFlow: s.pumpFlow,
+    waterSplit: s.waterSplit,
+    cycleProgress: s.cycleProgress,
+    setupDay: s.setupDay,
     lighting: s.lighting,
     autoLightSync: s.autoLightSync,
     timeSpeed: s.timeSpeed,
@@ -156,6 +178,11 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
         ...seed,
         setVessel: (vessel) => set({ vessel }),
         toggleHardware: (key) => set((s) => ({ [key]: !s[key] })),
+        setHardware: (key, value) => set({ [key]: value }),
+        setPumpFlow: (pumpFlow) => set({ pumpFlow }),
+        setWaterSplit: (v) => set({ waterSplit: clamp(v, 0, MAX_WATER_SPLIT) }),
+        setCycleProgress: (v) => set({ cycleProgress: clamp(v, 0, 1) }),
+        setSetupDay: (setupDay) => set({ setupDay }),
         setLighting: (lighting) => set({ lighting }),
         setAutoLightSync: (autoLightSync) => set({ autoLightSync }),
         setTimeSpeed: (timeSpeed) => set({ timeSpeed }),
@@ -187,6 +214,8 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
           for (const k of Object.keys(partial) as (keyof Telemetry)[]) {
             const v = partial[k]
             if (v === undefined || v === cur[k]) continue
+            // careIssues is rebuilt each report; compare by content so an equal report writes nothing.
+            if (k === 'careIssues' && JSON.stringify(v) === JSON.stringify(cur.careIssues)) continue
             ;(next as Record<string, unknown>)[k] = v
             changed = true
           }
@@ -198,10 +227,10 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
       }),
       {
         name: STUDIO_STORAGE_KEY,
-        version: 1,
+        version: 2,
         storage: createJSONStorage(() => storage),
         partialize,
-        migrate: (persisted, version) => migrate(persisted, version) as StudioStore,
+        migrate: (persisted, version) => migrate(persisted, version) as unknown as StudioStore,
       },
     ),
   )

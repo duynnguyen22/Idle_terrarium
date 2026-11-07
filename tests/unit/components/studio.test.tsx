@@ -161,7 +161,10 @@ describe('RightTelemetry', () => {
         humidity: 61,
         moldCount: 2,
         cleanupCrewCount: 0,
-        note: 'Hello note',
+        careIssues: [
+          { level: 'info', text: 'Info note' },
+          { level: 'warn', text: 'Hello note' },
+        ],
       },
       worldSnapshot: {
         items: [item('a', 'fauna'), item('b', 'fauna'), item('c', 'flora')],

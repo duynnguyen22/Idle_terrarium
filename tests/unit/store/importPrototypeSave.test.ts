@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { importPrototypeSave } from '@/store/importPrototypeSave'
 
 const KEY = 'existence_botanica_paludarium_v5'
+const V6_KEY = 'botanica_paludarium_v6'
 beforeEach(() => localStorage.clear())
 
 describe('importPrototypeSave', () => {
@@ -62,5 +63,41 @@ describe('importPrototypeSave', () => {
     const good = { uid: 'u1', id: 'fern', x: 0.1 }
     localStorage.setItem(KEY, JSON.stringify({ items: [null, good, 5, { uid: 'z' }] }))
     expect(importPrototypeSave(localStorage)?.worldSnapshot?.items).toEqual([good])
+  })
+
+  it('imports a v6 prototype save', () => {
+    localStorage.setItem(V6_KEY, JSON.stringify({ items: [{ uid: 'a', id: 'isopod' }], vessel: 'wardian', pumpFlow: 'off', waterSplit: 0.4, cycleProgress: 0.2, setupDay: 3, dayCount: 5, substrates: { pebbles: 1, charcoal: 1, soil: 1, sand: 0, leaflitter: 1, rivergravel: 1, water: 10 }, terrainContour: new Array(21).fill(0) }))
+    const r = importPrototypeSave(localStorage)
+    expect(r).toMatchObject({ vessel: 'wardian', pumpFlow: 'off', waterSplit: 0.4, cycleProgress: 0.2, setupDay: 3, dayCount: 5 })
+    expect(r?.substrates).toEqual({ pebbles: 1, charcoal: 1, soil: 1, sand: 0, leaflitter: 1, rivergravel: 1, water: 10 })
+  })
+
+  it('prefers the v6 save over the v5 save', () => {
+    localStorage.setItem(KEY, JSON.stringify({ items: [{ uid: 'a', id: 'fern' }], dayCount: 9 }))
+    localStorage.setItem(V6_KEY, JSON.stringify({ items: [{ uid: 'b', id: 'fern' }], dayCount: 2 }))
+    expect(importPrototypeSave(localStorage)?.dayCount).toBe(2)
+  })
+
+  it('falls back to the v5 save when the v6 save is unusable', () => {
+    localStorage.setItem(V6_KEY, JSON.stringify({ items: [] }))
+    localStorage.setItem(KEY, JSON.stringify({ items: [{ uid: 'a', id: 'fern' }], dayCount: 9 }))
+    expect(importPrototypeSave(localStorage)?.dayCount).toBe(9)
+  })
+
+  it('v6 import defaults and clamps bad pool fields', () => {
+    localStorage.setItem(V6_KEY, JSON.stringify({ items: [{ uid: 'a', id: 'fern' }], pumpFlow: 'turbo', waterSplit: 2, cycleProgress: -1, setupDay: 0 }))
+    expect(importPrototypeSave(localStorage)).toMatchObject({ pumpFlow: 'gentle', waterSplit: 0.6, cycleProgress: 0, setupDay: 1 })
+    localStorage.setItem(V6_KEY, JSON.stringify({ items: [{ uid: 'a', id: 'fern' }], waterSplit: 'x' }))
+    expect(importPrototypeSave(localStorage)).toMatchObject({ pumpFlow: 'gentle', waterSplit: 0.32, cycleProgress: 1, setupDay: 1 })
+  })
+
+  it('still imports a v5 save through the legacy substrate map', () => {
+    localStorage.setItem(KEY, JSON.stringify({ items: [{ uid: 'a', id: 'isopod' }], substrates: { lavarock: 5, moss: 3, soil: 10, water: 20 } }))
+    expect(importPrototypeSave(localStorage)!.substrates).toEqual({ pebbles: 5, charcoal: 0, soil: 13, sand: 0, leaflitter: 0, rivergravel: 0, water: 20 })
+  })
+
+  it('v5 import derives pool fields from its water depth', () => {
+    localStorage.setItem(KEY, JSON.stringify({ items: [{ uid: 'a', id: 'fern' }], substrates: { water: 0 }, dayCount: 6 }))
+    expect(importPrototypeSave(localStorage)).toMatchObject({ pumpFlow: 'gentle', waterSplit: 0, cycleProgress: 1, setupDay: 6 })
   })
 })

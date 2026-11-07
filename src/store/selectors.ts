@@ -3,6 +3,9 @@ import type { StudioStore } from './useStudioStore'
 export const selectVessel = (s: StudioStore) => s.vessel
 export const selectLighting = (s: StudioStore) => s.lighting
 export const selectAutoLightSync = (s: StudioStore) => s.autoLightSync
+export const selectPumpFlow = (s: StudioStore) => s.pumpFlow
+export const selectWaterSplit = (s: StudioStore) => s.waterSplit
+export const selectCycleProgress = (s: StudioStore) => s.cycleProgress
 export const selectSubstrates = (s: StudioStore) => s.substrates
 export const selectTelemetry = (s: StudioStore) => s.telemetry
 export const selectSelectedId = (s: StudioStore) => s.selectedId

@@ -37,14 +37,6 @@ export function MicroEcologyPanel() {
         <span className="text-stone">Cleanup Crew</span>
         <span className="font-semibold text-forest-deep">{faunaCount} Active</span>
       </div>
-      <div className="flex items-center justify-between">
-        <span className="text-stone">Moss Carpet</span>
-        <span className="font-semibold text-emerald-700">{telemetry.mossCoverPct}% Cover</span>
-      </div>
-      <div className="flex items-center justify-between">
-        <span className="text-stone">Water Cycle</span>
-        <span className="font-semibold text-sky-700">{telemetry.waterCycle}</span>
-      </div>
     </div>
   )
 }

@@ -1,20 +1,66 @@
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
-import type { PlacedItem, SubstrateDepths } from '@/data/types'
+import type { PlacedItem, PumpFlow, SubstrateDepths } from '@/data/types'
 import { VESSELS_BY_ID, type VesselId } from '@/data/vessels'
 import { MAX_PERSISTED_GRAINS } from '@/engine/persistence'
 import { TERRAIN_POINTS, type WorldEntity } from '@/engine/world'
+import { clamp } from '@/lib/clamp'
+import { legacyPoolFields, mapLegacySubstrates, MAX_WATER_SPLIT } from './migrations'
 import type { StudioState } from './useStudioStore'
 
+export const PROTOTYPE_STORAGE_KEY_V6 = 'botanica_paludarium_v6'
 export const PROTOTYPE_STORAGE_KEY = 'existence_botanica_paludarium_v5'
+
+const PUMP_FLOWS: readonly PumpFlow[] = ['off', 'gentle', 'strong']
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
 
-/** One-time read of a prototype save. Returns null when absent or malformed. Never deletes the key. */
+function finiteOr(v: unknown, fallback: number): number {
+  return typeof v === 'number' && Number.isFinite(v) ? v : fallback
+}
+
+/** v6 saves already use the v6 substrate keys; missing or bad depths keep the defaults. */
+function readV6Substrates(raw: unknown): SubstrateDepths {
+  const substrates: SubstrateDepths = { ...DEFAULT_SUBSTRATES }
+  if (isRecord(raw)) {
+    for (const key of Object.keys(DEFAULT_SUBSTRATES) as (keyof SubstrateDepths)[]) {
+      substrates[key] = finiteOr(raw[key], substrates[key])
+    }
+  }
+  return substrates
+}
+
+/** Pool, pump and cycle fields of a v6 save, with the prototype's load defaults. */
+function readV6PoolFields(saved: Record<string, unknown>) {
+  return {
+    pumpFlow: PUMP_FLOWS.includes(saved.pumpFlow as PumpFlow) ? (saved.pumpFlow as PumpFlow) : 'gentle',
+    waterSplit: clamp(finiteOr(saved.waterSplit, 0.32), 0, MAX_WATER_SPLIT),
+    cycleProgress: clamp(finiteOr(saved.cycleProgress, 1), 0, 1),
+    setupDay: typeof saved.setupDay === 'number' && saved.setupDay >= 1 ? saved.setupDay : 1,
+  }
+}
+
+type PrototypeFormat = 'v6' | 'v5'
+
+/**
+ * One-time read of a prototype save: the v6 key first, then the v5 key. Returns null when neither
+ * holds a usable save. Never deletes either key.
+ */
 export function importPrototypeSave(storage: Storage): Partial<StudioState> | null {
+  return (
+    readPrototypeSave(storage, PROTOTYPE_STORAGE_KEY_V6, 'v6') ??
+    readPrototypeSave(storage, PROTOTYPE_STORAGE_KEY, 'v5')
+  )
+}
+
+function readPrototypeSave(
+  storage: Storage,
+  key: string,
+  format: PrototypeFormat,
+): Partial<StudioState> | null {
   try {
-    const raw = storage.getItem(PROTOTYPE_STORAGE_KEY)
+    const raw = storage.getItem(key)
     if (!raw) return null
     const saved: unknown = JSON.parse(raw)
     if (!isRecord(saved) || !Array.isArray(saved.items)) return null
@@ -29,13 +75,10 @@ export function importPrototypeSave(storage: Storage): Partial<StudioState> | nu
         ? (saved.vessel as VesselId)
         : 'paludarium_tank'
 
-    const substrates: SubstrateDepths = { ...DEFAULT_SUBSTRATES }
-    if (isRecord(saved.substrates)) {
-      for (const key of Object.keys(DEFAULT_SUBSTRATES) as (keyof SubstrateDepths)[]) {
-        const v = saved.substrates[key]
-        if (typeof v === 'number' && Number.isFinite(v)) substrates[key] = v
-      }
-    }
+    const substrates =
+      format === 'v6'
+        ? readV6Substrates(saved.substrates)
+        : mapLegacySubstrates(isRecord(saved.substrates) ? saved.substrates : {})
 
     const contour =
       Array.isArray(saved.terrainContour) &&
@@ -54,6 +97,7 @@ export function importPrototypeSave(storage: Storage): Partial<StudioState> | nu
       hasFogger: typeof saved.hasFogger === 'boolean' ? saved.hasFogger : true,
       substrates,
       dayCount,
+      ...(format === 'v6' ? readV6PoolFields(saved) : legacyPoolFields(substrates.water, dayCount)),
       worldSnapshot: {
         items,
         terrainContour: contour,

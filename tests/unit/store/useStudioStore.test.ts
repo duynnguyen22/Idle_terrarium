@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { CareIssue } from '@/engine/care'
 import { createStudioStore, partialize, STUDIO_STORAGE_KEY } from '@/store/useStudioStore'
 
 beforeEach(() => localStorage.clear())
@@ -30,11 +31,17 @@ describe('studio store', () => {
         water: 45,
       },
     })
-    expect(s.telemetry).toMatchObject({
+    expect(s).toMatchObject({ pumpFlow: 'gentle', waterSplit: 0.32, cycleProgress: 1, setupDay: 1 })
+    expect(s.telemetry).toEqual({
       humidity: 82,
-      soilMoisture: 76,
+      temperature: 24.5,
+      soilMoisture: 74,
       nutrients: 88,
       o2Balance: 96,
+      condensation: 0,
+      moldCount: 0,
+      cleanupCrewCount: 0,
+      careIssues: [],
     })
   })
 
@@ -67,7 +74,7 @@ describe('studio store', () => {
     expect(store.getState()).toMatchObject({ hasLid: false, dayCount: 2, selectedId: 'x' })
     expect(store.getState().substrates.sand).toBe(5)
     const stored = JSON.parse(localStorage.getItem(STUDIO_STORAGE_KEY) ?? '{}')
-    expect(stored.version).toBe(1)
+    expect(stored.version).toBe(2)
     expect(stored.state.dayCount).toBe(2)
     expect(stored.state).not.toHaveProperty('selectedId')
     store.getState().resetStudio()
@@ -125,5 +132,59 @@ describe('studio store', () => {
     store.getState().setTelemetry({ humidity: 50, nutrients: undefined })
     expect(store.getState().telemetry.humidity).toBe(50)
     expect(store.getState().telemetry.nutrients).toBe(88)
+  })
+
+  it('setWaterSplit clamps to [0, 0.6] and persists pool fields', () => {
+    const store = createStudioStore(localStorage)
+    store.getState().setWaterSplit(0.9)
+    expect(store.getState().waterSplit).toBe(0.6)
+    store.getState().setPumpFlow('strong')
+    store.getState().setCycleProgress(0.4)
+    expect(partialize(store.getState())).toMatchObject({ waterSplit: 0.6, pumpFlow: 'strong', cycleProgress: 0.4 })
+    store.getState().setWaterSplit(-1)
+    expect(store.getState().waterSplit).toBe(0)
+  })
+
+  it('setCycleProgress clamps to [0, 1]; setSetupDay and setHardware set values', () => {
+    const store = createStudioStore(localStorage)
+    store.getState().setCycleProgress(3)
+    expect(store.getState().cycleProgress).toBe(1)
+    store.getState().setCycleProgress(-0.5)
+    expect(store.getState().cycleProgress).toBe(0)
+    store.getState().setSetupDay(9)
+    store.getState().setHardware('hasFogger', false)
+    store.getState().setHardware('hasLid', true)
+    expect(store.getState()).toMatchObject({ setupDay: 9, hasFogger: false, hasLid: true })
+    const stored = JSON.parse(localStorage.getItem(STUDIO_STORAGE_KEY) ?? '{}')
+    expect(stored.state).toMatchObject({ setupDay: 9, cycleProgress: 0, hasFogger: false })
+  })
+
+  it('setTelemetry ignores an identical careIssues array', () => {
+    const store = createStudioStore(localStorage)
+    const issues: CareIssue[] = [{ level: 'warn', text: 'x' }]
+    store.getState().setTelemetry({ careIssues: issues })
+    const before = store.getState().telemetry
+    expect(before.careIssues).toEqual(issues)
+    store.getState().setTelemetry({ careIssues: [{ level: 'warn', text: 'x' }] })
+    expect(store.getState().telemetry).toBe(before)
+    store.getState().setTelemetry({ careIssues: [] })
+    expect(store.getState().telemetry.careIssues).toEqual([])
+  })
+
+  it('hydrates a persisted v1 save through the v1 to v2 migration', () => {
+    localStorage.setItem(
+      STUDIO_STORAGE_KEY,
+      JSON.stringify({
+        state: {
+          dayCount: 7,
+          substrates: { pebbles: 10, lavarock: 8, charcoal: 6, moss: 8, soil: 16, rivergravel: 16, sand: 0, water: 24 },
+        },
+        version: 1,
+      }),
+    )
+    const s = createStudioStore(localStorage).getState()
+    expect(s.substrates).toEqual({ pebbles: 18, charcoal: 6, soil: 24, sand: 0, leaflitter: 0, rivergravel: 16, water: 24 })
+    expect(s).toMatchObject({ dayCount: 7, setupDay: 7, pumpFlow: 'gentle', waterSplit: 0.32, cycleProgress: 1 })
+    expect(s.substrates).not.toHaveProperty('lavarock')
   })
 })
