@@ -1,10 +1,18 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { FAUNA } from '@/data/catalog'
+import { FAUNA, FAUNA_BY_ID } from '@/data/catalog'
+import { DEFAULT_SUBSTRATES } from '@/data/substrates'
 import type { PlacedItem } from '@/data/types'
-import { getSoilSurfaceNormalizedY } from '@/engine/geometry'
+import {
+  BANK_W,
+  getDividerNormX,
+  getPoolBedNormY,
+  getSoilSurfaceNormalizedY,
+  getWaterTopNormY,
+} from '@/engine/geometry'
+import { addItem } from '@/engine/items'
 import { advanceClock, lightingForHour } from '@/engine/simulation/clock'
 import { FRAME_MS } from '@/engine/simulation/constants'
-import { updateFauna } from '@/engine/simulation/fauna'
+import { faunaZone, updateFauna } from '@/engine/simulation/fauna'
 import { advanceDay, updateGrowth } from '@/engine/simulation/growth'
 import { addSporePatch, updateMold } from '@/engine/simulation/mold'
 import {
@@ -73,31 +81,70 @@ describe('lightingForHour', () => {
 })
 
 describe('fauna', () => {
-  it('stays inside its habitat band for 10,000 steps', () => {
-    const rng = mulberry32(7)
-    const swimmer = FAUNA.find((f) => 'swimsInWater' in f && f.swimsInWater)
-    const walker = FAUNA.find((f) => !('swimsInWater' in f && f.swimsInWater))
-    expect(swimmer && walker).toBeTruthy()
-    const world = createWorld()
-    world.items.push(
-      item({ uid: 's', id: swimmer!.id, category: 'fauna', x: 0.5, y: 0.7 }),
-      item({ uid: 'w', id: walker!.id, category: 'fauna', x: 0.5, y: 0.6 }),
-    )
-    const state = store.getState()
-    const surface = getSoilSurfaceNormalizedY({
-      substrates: state.substrates,
-      waterSplit: state.waterSplit,
+  const st = {
+    timeSpeed: 1,
+    substrates: DEFAULT_SUBSTRATES,
+    waterSplit: 0.32,
+    lighting: 'sunlight',
+  } as const
+  const terrain = { substrates: st.substrates, waterSplit: st.waterSplit }
+  it('zones follow the divider', () => {
+    const d = getDividerNormX(0.32)
+    expect(faunaZone(FAUNA_BY_ID.cherry_shrimp, st, false)).toEqual({
+      minX: 0.17,
+      maxX: d - BANK_W - 0.01,
     })
-    for (let i = 0; i < 10_000; i++) {
-      updateFauna(world, state, FRAME_MS, i * FRAME_MS, rng)
-      for (const f of world.items) {
-        expect(f.x).toBeGreaterThanOrEqual(0.24)
-        expect(f.x).toBeLessThanOrEqual(0.76)
-      }
-      expect(world.items[0].y).toBeGreaterThanOrEqual(surface + 0.04 - 0.015 - 1e-9)
-      expect(world.items[0].y).toBeLessThanOrEqual(surface + 0.04 + 0.015 + 1e-9)
-      expect(world.items[1].y).toBe(0.6)
+    expect(faunaZone(FAUNA_BY_ID.vampire_crab, st, false)).toEqual({
+      minX: Math.max(0.17, d - BANK_W - 0.06),
+      maxX: Math.min(0.8, d + 0.05),
+    })
+    expect(faunaZone(FAUNA_BY_ID.vampire_crab, st, true)).toEqual({ minX: d - 0.02, maxX: 0.8 })
+    expect(faunaZone(FAUNA_BY_ID.isopod, st, false)).toEqual({ minX: d + 0.01, maxX: 0.8 })
+    expect(faunaZone(FAUNA_BY_ID.isopod, { ...st, waterSplit: 0 }, false)).toEqual({
+      minX: 0.2,
+      maxX: 0.8,
+    })
+  })
+  it('nocturnal land fauna hide by day and move at dusk', () => {
+    const w = createWorld()
+    const frog = addItem(w, 'tree_frog', 'mature', { terrain, rng: () => 0.5 })!
+    for (let i = 0; i < 200; i++) updateFauna(w, st, 1000 / 60, i * 16, () => 0.5)
+    expect(frog.aiState).toBe('hiding')
+    expect(frog.vx).toBe(0)
+    expect(frog.zIndex).toBe(0.5)
+    expect(frog.y).toBeCloseTo(getSoilSurfaceNormalizedY(terrain, frog.x) - 0.11, 2)
+    frog.aiTimer = 0
+    updateFauna(w, { ...st, lighting: 'twilight' }, 1000 / 60, 0, () => 0.5)
+    expect(frog.zIndex).toBe(40)
+    expect(['wandering', 'resting', 'foraging', 'exploring']).toContain(frog.aiState)
+  })
+  it('water fauna bob between water top and bed', () => {
+    const w = createWorld()
+    const shrimp = addItem(w, 'cherry_shrimp', 'mature', { terrain, rng: () => 0.5 })!
+    for (let i = 0; i < 100; i++) updateFauna(w, st, 1000 / 60, i * 16, () => 0.5)
+    expect(shrimp.y).toBeGreaterThanOrEqual(getWaterTopNormY(terrain))
+    expect(shrimp.y).toBeLessThanOrEqual(getPoolBedNormY(terrain.substrates))
+  })
+  it('fauna glide back into zone when the pool is removed', () => {
+    // Review Focus 3
+    const w = createWorld()
+    const shrimp = addItem(w, 'cherry_shrimp', 'mature', { terrain, rng: () => 0.5 })!
+    shrimp.x = 0.2
+    let prev = shrimp.x
+    for (let i = 0; i < 300; i++) {
+      updateFauna(w, { ...st, waterSplit: 0 }, 1000 / 60, i * 16, () => 0.5)
+      expect(Number.isFinite(shrimp.x)).toBe(true)
+      expect(shrimp.x).toBeGreaterThanOrEqual(prev - 1e-9)
+      prev = shrimp.x
     }
+    expect(shrimp.x).toBeGreaterThanOrEqual(0.2 - 0.01)
+    expect(shrimp.x).toBeLessThanOrEqual(0.8)
+  })
+  it('frogbit floats to the water top inside the pool', () => {
+    const w = createWorld()
+    const pad = addItem(w, 'frogbit_pads', 'mature', { terrain, x: 0.2, y: 0.9 })!
+    for (let i = 0; i < 200; i++) updateFauna(w, st, 1000 / 60, i * 16, () => 0.5)
+    expect(pad.y).toBeCloseTo(getWaterTopNormY(terrain) - 0.005, 3)
   })
   it('skips the dragged item', () => {
     const world = createWorld()

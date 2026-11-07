@@ -99,6 +99,12 @@ export const FAUNA = [
   { id: 'garden_snail', name: 'Amber Glass Snail', category: 'fauna', speed: 0.10, habitat: 'land', idealHumidity: [70, 100], cleansMold: true, moldEatRate: 1.3, baseScale: 0.75, desc: 'Slow grazer with a spiral shell.' }
 ] as const satisfies readonly FaunaDef[]
 
+export type FaunaId = (typeof FAUNA)[number]['id']
+
+export const FAUNA_BY_ID: Readonly<Record<FaunaId, FaunaDef>> = Object.fromEntries(
+  FAUNA.map((f) => [f.id, f]),
+) as Record<FaunaId, FaunaDef>
+
 export const CATALOG = { flora: FLORA, hardscape: HARDSCAPE, fauna: FAUNA } as const
 
 export const ALL_CATALOG_DEFS: readonly CatalogDef[] = [...FLORA, ...HARDSCAPE, ...FAUNA]
