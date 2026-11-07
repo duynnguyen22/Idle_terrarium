@@ -12,16 +12,15 @@ import { beginVesselClip, drawVesselRim } from './vessel'
 import { drawWater } from './water'
 
 /** Prototype stage layout: vessel centred horizontally, slightly below the vertical middle. */
-const CENTER_Y_FACTOR = 0.52
 
 /**
  * Square vessel rect inside a canvas of CSS size `canvasW x canvasH` (prototype animateLoop:
  * cx = W/2, cy = 0.52H, radius = min(W,H) * 0.43, or 0.46 in relax mode).
  */
 export function computeVesselRect(canvasW: number, canvasH: number, relaxMode = false): Rect {
-  const r = Math.min(canvasW, canvasH) * (relaxMode ? 0.46 : 0.43)
+  const r = Math.min(canvasW * 0.62, canvasH * (relaxMode ? 0.48 : 0.46))
   const cx = canvasW * 0.5
-  const cy = canvasH * CENTER_Y_FACTOR
+  const cy = canvasH * 0.5
   return { x: cx - r, y: cy - r, w: r * 2, h: r * 2 }
 }
 
@@ -38,7 +37,7 @@ export function renderFrame(
   timestamp: number,
   view?: { w: number; h: number },
 ): void {
-  const size = view ?? { w: (R.x + R.w / 2) * 2, h: (R.y + R.h / 2) / CENTER_Y_FACTOR }
+  const size = view ?? { w: (R.x + R.w / 2) * 2, h: (R.y + R.h / 2) * 2 }
 
   // 1. Sky backdrop + studio base board
   drawBackground(ctx, state, R, size)

@@ -34,7 +34,7 @@ export function applyPreset(world: EngineWorld, presetId: PresetId, state: Prese
 
   if (preset.items.length === 0) return
 
-  const surfaceY = getSoilSurfaceNormalizedY(preset.substrates)
+  const surfaceY = getSoilSurfaceNormalizedY({ substrates: preset.substrates, waterSplit: 0 })
   const items: PlacedItem[] = []
   for (const p of preset.items) {
     const def = findCatalogDef(p.defId)

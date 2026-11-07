@@ -110,10 +110,10 @@ describe('LeftSidebar panels', () => {
 
   it('a slider change writes mm and updates the total', () => {
     render(<LeftSidebar />)
-    expect(screen.getByTestId('total-substrate-depth')).toHaveTextContent('62 mm')
+    expect(screen.getByTestId('total-substrate-depth')).toHaveTextContent('56 mm')
     fireEvent.change(screen.getByLabelText('Tropical substrate'), { target: { value: '30' } })
     expect(state().substrates.soil).toBe(30)
-    expect(screen.getByTestId('total-substrate-depth')).toHaveTextContent('58 mm')
+    expect(screen.getByTestId('total-substrate-depth')).toHaveTextContent('52 mm')
     expect(screen.queryByLabelText('Siphon / Scoop Out')).not.toBeInTheDocument()
   })
 

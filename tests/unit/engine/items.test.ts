@@ -14,7 +14,7 @@ import {
 } from '@/engine/items'
 import { createWorld } from '@/engine/world'
 
-const surface = getSoilSurfaceNormalizedY(DEFAULT_SUBSTRATES)
+const surface = getSoilSurfaceNormalizedY({ substrates: DEFAULT_SUBSTRATES, waterSplit: 0 })
 
 describe('addItem', () => {
   it('places mature flora at base scale near the soil surface', () => {

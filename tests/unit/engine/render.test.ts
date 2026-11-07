@@ -46,6 +46,13 @@ beforeEach(() => {
 })
 afterEach(() => configureSpriteCache())
 
+describe('computeVesselRect', () => {
+  it('follows getStageGeometry', () => {
+    expect(computeVesselRect(1000, 600, false).w / 2).toBeCloseTo(276, 0)
+    expect(computeVesselRect(1000, 600, true).w / 2).toBeCloseTo(288, 0)
+  })
+})
+
 describe('renderFrame', () => {
   it('draws one of each item category: one clip, one drawImage per item', () => {
     const { ctx, calls } = makeRecordingContext()
@@ -128,16 +135,17 @@ describe('reduced motion', () => {
 })
 
 describe('computeVesselRect', () => {
-  it('is square and centred horizontally, 0.52 down vertically', () => {
+  it('is square and centred on the canvas', () => {
     const R = computeVesselRect(1000, 600)
     expect(R.w).toBe(R.h)
-    expect(R.w).toBeCloseTo(600 * 0.43 * 2)
+    expect(R.w).toBeCloseTo(600 * 0.46 * 2)
     expect(R.x + R.w / 2).toBeCloseTo(500)
-    expect(R.y + R.h / 2).toBeCloseTo(600 * 0.52)
+    expect(R.y + R.h / 2).toBeCloseTo(300)
   })
 
   it('fits the shorter canvas side and widens in relax mode', () => {
-    expect(computeVesselRect(400, 900).w).toBeCloseTo(400 * 0.43 * 2)
-    expect(computeVesselRect(400, 900, true).w).toBeCloseTo(400 * 0.46 * 2)
+    expect(computeVesselRect(400, 900).w).toBeCloseTo(400 * 0.62 * 2)
+    expect(computeVesselRect(400, 900, true).w).toBeCloseTo(400 * 0.62 * 2)
+    expect(computeVesselRect(1000, 600, true).w).toBeGreaterThan(computeVesselRect(1000, 600).w)
   })
 })

@@ -15,7 +15,7 @@ const MAX_SURFACE_GRAINS = 220
 const MAX_DEPTH_MM = 45
 const MAX_CONTOUR_MM = 18
 
-type PourState = Pick<StudioState, 'substrates' | 'telemetry'>
+type PourState = Pick<StudioState, 'substrates' | 'telemetry' | 'waterSplit'>
 
 function num(e: WorldEntity, k: string): number {
   const v = e[k]
@@ -89,8 +89,11 @@ export function stepPourParticles(
 
     const px = num(p, 'x')
     const surface = getSoilSurfaceNormalizedY(
-      effectiveSubstrates(world, state.substrates),
-      world.terrainContour,
+      {
+        substrates: effectiveSubstrates(world, state.substrates),
+        waterSplit: state.waterSplit,
+        terrainContour: world.terrainContour,
+      },
       px,
     )
     if (num(p, 'y') < surface) continue

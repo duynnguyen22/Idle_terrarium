@@ -84,7 +84,7 @@ describe('fauna', () => {
       item({ uid: 'w', id: walker!.id, category: 'fauna', x: 0.5, y: 0.6 }),
     )
     const state = store.getState()
-    const surface = getSoilSurfaceNormalizedY(state.substrates)
+    const surface = getSoilSurfaceNormalizedY({ substrates: state.substrates, waterSplit: state.waterSplit })
     for (let i = 0; i < 10_000; i++) {
       updateFauna(world, state, FRAME_MS, i * FRAME_MS, rng)
       for (const f of world.items) {
@@ -260,6 +260,7 @@ describe('pouring', () => {
     expect(s.water).toBe(0)
     const w2 = createWorld()
     siphonStep(w2, {
+      waterSplit: store.getState().waterSplit,
       substrates: { ...store.getState().substrates, water: 24 },
       telemetry: store.getState().telemetry,
     })

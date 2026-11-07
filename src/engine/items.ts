@@ -39,7 +39,7 @@ export function addItem(
 ): PlacedItem | null {
   const def = findCatalogDef(defId)
   if (!def) return null
-  const surfaceY = getSoilSurfaceNormalizedY(options.substrates ?? DEFAULT_SUBSTRATES)
+  const surfaceY = getSoilSurfaceNormalizedY({ substrates: options.substrates ?? DEFAULT_SUBSTRATES, waterSplit: 0 })
   const spreadX = (Math.random() - 0.5) * 0.28
   const swims = def.category === 'fauna' && !!def.swimsInWater
   const isFlora = def.category === 'flora'

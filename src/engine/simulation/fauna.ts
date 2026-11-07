@@ -11,13 +11,13 @@ const AI_STATES = ['wandering', 'resting', 'foraging', 'exploring'] as const
 /** Autonomous creature AI (prototype 2594-2619). Dragged fauna are skipped; swimmers bob in the water band. */
 export function updateFauna(
   world: EngineWorld,
-  state: Pick<StudioState, 'timeSpeed' | 'substrates'> & { reducedMotion?: boolean },
+  state: Pick<StudioState, 'timeSpeed' | 'substrates'> & Partial<Pick<StudioState, 'waterSplit'>> & { reducedMotion?: boolean },
   dtMs: number,
   timestamp = 0,
   rng: Rng = Math.random,
 ): void {
   const fs = frameScale(dtMs)
-  const surfaceY = getSoilSurfaceNormalizedY(state.substrates)
+  const surfaceY = getSoilSurfaceNormalizedY({ substrates: state.substrates, waterSplit: state.waterSplit ?? 0 })
   for (const item of world.items) {
     if (item.category !== 'fauna' || item.uid === world.draggingId) continue
     const def = findCatalogDef(item.id)

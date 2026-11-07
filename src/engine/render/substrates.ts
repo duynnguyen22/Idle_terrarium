@@ -84,7 +84,10 @@ export const drawSubstrates: RenderFn = (ctx, world, state, R, timestamp) => {
   drawSubstrateLayers(ctx, world, state, R, timestamp)
   const { cx, cy, r: Rad } = vesselMetrics(R)
   const contour = world.terrainContour
-  const surfaceY = (nx: number) => getSoilSurfaceNormalizedY(state.substrates, contour, nx)
+  const surfaceY = (nx: number) => getSoilSurfaceNormalizedY(
+      { substrates: state.substrates, waterSplit: state.waterSplit, terrainContour: contour },
+      nx,
+    )
 
   // Custom user-scattered surface pebbles, sand & gravel grains
   if (world.surfaceGrains.length > 0) {
