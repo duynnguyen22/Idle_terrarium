@@ -110,7 +110,9 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
           text={`${Math.round(t.o2Balance)}%`}
           band={{ lo: lampOn ? 80 : 55, hi: 100, tol: 2 }}
           fillClass="bg-emerald-600"
-          hint={lampOn ? 'Lamp on: plants are photosynthesising' : 'Lamp off: plants respire overnight'}
+          hint={
+            lampOn ? 'Lamp on: plants are photosynthesising' : 'Lamp off: plants respire overnight'
+          }
         />
       </div>
       <CareList />

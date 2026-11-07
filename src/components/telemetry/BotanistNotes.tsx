@@ -66,7 +66,10 @@ export function CareList() {
       <ul className="space-y-2 text-xs leading-snug text-ink-soft">
         {careIssues.length === 0 ? (
           <li className="flex gap-2">
-            <span aria-hidden="true" className={`mt-[5px] size-[7px] shrink-0 rounded-full ${DOT.ok}`} />
+            <span
+              aria-hidden="true"
+              className={`mt-[5px] size-[7px] shrink-0 rounded-full ${DOT.ok}`}
+            />
             <span>Every plant and animal is in its range.</span>
           </li>
         ) : (

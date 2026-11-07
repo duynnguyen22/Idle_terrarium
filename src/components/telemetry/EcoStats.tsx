@@ -2,7 +2,12 @@ import { CYCLE_DAYS, cycleChemistry, cycleDay } from '@/engine/care'
 import { mutateWorld } from '@/engine/engineBridge'
 import { hasPool } from '@/engine/geometry'
 import { addSporePatch } from '@/engine/simulation/mold'
-import { selectCycleProgress, selectPumpFlow, selectTelemetry, selectWaterSplit } from '@/store/selectors'
+import {
+  selectCycleProgress,
+  selectPumpFlow,
+  selectTelemetry,
+  selectWaterSplit,
+} from '@/store/selectors'
 import { showToast } from '@/store/toastStore'
 import { useStudioStore } from '@/store/useStudioStore'
 import type { PumpFlow } from '@/data/types'
