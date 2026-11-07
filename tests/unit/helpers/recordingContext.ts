@@ -1,5 +1,5 @@
 /** Recording 2D-context stub: every unknown method is a no-op that logs its name. */
-export function makeRecordingContext() {
+export function makeRecordingContext(styleLog?: unknown[]) {
   const calls: string[] = []
   const state: Record<string, unknown> = {}
   const gradient = { addColorStop: () => undefined }
@@ -18,9 +18,18 @@ export function makeRecordingContext() {
       }
     },
     set(target, prop: string, value) {
+      if (styleLog && prop === 'fillStyle') styleLog.push(value)
       target[prop] = value
       return true
     },
   }) as unknown as CanvasRenderingContext2D
   return { ctx, calls }
+}
+
+/** Runs a draw function against a recording context; returns named calls and every fillStyle assigned. */
+export function record(fn: (ctx: CanvasRenderingContext2D) => void) {
+  const fillStyles: unknown[] = []
+  const { ctx, calls } = makeRecordingContext(fillStyles)
+  fn(ctx)
+  return { calls: calls.map((name) => ({ name })), fillStyles }
 }

@@ -1,15 +1,17 @@
 import { CatalogGrid } from '@/components/catalog/CatalogGrid'
 import { PlantingStageToggle } from '@/components/catalog/PlantingStageToggle'
 import { VesselTab } from '@/components/catalog/VesselTab'
+import { LineIcon, type IconName } from '@/components/ui/LineIcon'
 import { selectActiveTab } from '@/store/selectors'
 import { useStudioStore } from '@/store/useStudioStore'
 
+/** Tab bar entries with their v6 line icons. */
 const TABS = [
-  { id: 'vessel', icon: '🫙', label: 'Vessel & Soil' },
-  { id: 'flora', icon: '🌿', label: 'Flora' },
-  { id: 'hardscape', icon: '🪨', label: 'Hardscape' },
-  { id: 'fauna', icon: '🐸', label: 'Fauna' },
-] as const
+  { id: 'vessel', icon: 'jar', label: 'Vessel & Soil' },
+  { id: 'flora', icon: 'sprout', label: 'Flora' },
+  { id: 'hardscape', icon: 'rock', label: 'Hardscape' },
+  { id: 'fauna', icon: 'bug', label: 'Fauna' },
+] as const satisfies readonly { id: string; icon: IconName; label: string }[]
 
 const BLURB = 'text-[11px] leading-relaxed text-stone'
 const STRONG = 'font-semibold text-forest-deep'
@@ -61,7 +63,7 @@ export function LeftSidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
     <aside
       id="left-sidebar"
       data-drawer-open={drawerOpen}
-      className={`z-20 max-lg:z-40 flex w-80 shrink-0 flex-col border-r border-sand-border bg-paper md:w-96 max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:max-w-[85vw] max-lg:shadow-xl max-lg:transition-[transform,visibility] motion-reduce:max-lg:transition-none ${
+      className={`z-20 max-lg:z-40 flex w-80 shrink-0 flex-col border-r border-sand-border bg-paper max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:max-w-[85vw] max-lg:shadow-xl max-lg:transition-[transform,visibility] motion-reduce:max-lg:transition-none ${
         drawerOpen ? '' : 'max-lg:invisible max-lg:-translate-x-full'
       }`}
     >
@@ -86,7 +88,9 @@ export function LeftSidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
                   : 'font-medium text-stone hover:bg-white/50'
               }`}
             >
-              <span className="mb-0.5 text-base">{t.icon}</span>
+              <span className="mb-1 inline-flex">
+                <LineIcon name={t.icon} />
+              </span>
               <span className="whitespace-nowrap text-[11px]">{t.label}</span>
             </button>
           )

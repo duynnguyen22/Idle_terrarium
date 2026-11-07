@@ -1,14 +1,23 @@
+import { getLandSurfaceNormY, getWaterTopNormY } from '../geometry'
 import { vesselMetrics, type RenderFn } from './metrics'
+import { terrainOf } from './terrain'
 
-/** Paludarium black silicone frame, front water-dam bar and glass door knob. */
-export const drawPaludariumFrontFrame: RenderFn = (ctx, _world, state, R) => {
+/**
+ * Paludarium black silicone frame, front water-dam bar and glass door knob. The dam sits just above
+ * whichever is higher, the land at x = 0.6 or the pool surface, but never lower than 0.2R off the floor.
+ */
+export const drawPaludariumFrontFrame: RenderFn = (ctx, world, state, R) => {
   if (state.vessel !== 'paludarium_tank') return
   const { cx, cy, r: Rad } = vesselMetrics(R)
   ctx.save()
   const leftX = cx - Rad * 0.72
   const topY = cy - Rad * 0.84
   const bottomY = cy + Rad * 0.84
-  const damY = bottomY - Rad * 0.34
+  const t = terrainOf(world, state)
+  const damY = Math.min(
+    cy - Rad + Math.min(getLandSurfaceNormY(t, 0.6), getWaterTopNormY(t)) * 2 * Rad - 10,
+    bottomY - Rad * 0.2,
+  )
 
   // Black silicone structural edges
   ctx.strokeStyle = '#111827'

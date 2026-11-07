@@ -1,5 +1,5 @@
 import type { LightingId } from '@/data/types'
-import type { StudioStore } from '@/store/useStudioStore'
+import type { StudioState, StudioStore } from '@/store/useStudioStore'
 
 /** Prototype autoLightSync thresholds: dawn 5.5-8.5, day 8.5-17.5, twilight 17.5-20, otherwise night. */
 export function lightingForHour(hour: number): LightingId {
@@ -24,4 +24,9 @@ export function advanceClock(store: StudioStore, now: Date = new Date()): boolea
   if (next === store.lighting) return false
   store.setLighting(next)
   return true
+}
+
+/** The grow lamp is lit whenever it is installed and it is not night (prototype 3133). */
+export function isLampOn(s: Pick<StudioState, 'hasGrowLamp' | 'lighting'>): boolean {
+  return s.hasGrowLamp && s.lighting !== 'night'
 }

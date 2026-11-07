@@ -16,6 +16,8 @@ interface Recipe {
 
 /** Oscillator recipes copied from prototype playTactileASMR (1611-1665). */
 const RECIPES: Record<AsmrCue, Recipe | null> = {
+  /** Not in the prototype (its mist is silent); a soft descending sine for the care tool. */
+  mist: { type: 'sine', f0: () => 900, f1: 500, gain: 0.03, fDur: 0.08, gDur: 0.08, stop: 0.08 },
   repot: {
     type: 'triangle',
     f0: () => 140,

@@ -3,7 +3,9 @@
 export type LightingId = 'dawn' | 'sunlight' | 'twilight' | 'night'
 export type SoundPresetId = 'stream' | 'rain' | 'forest' | 'night'
 export type GrowthStage = 'sprout' | 'mature' | 'lush'
-export type AiState = 'wandering' | 'resting' | (string & {})
+export type PumpFlow = 'off' | 'gentle' | 'strong'
+export type FaunaHabitat = 'water' | 'shore' | 'land'
+export type AiState = 'wandering' | 'resting' | 'foraging' | 'exploring' | 'hiding'
 
 export interface Rect {
   x: number
@@ -62,8 +64,15 @@ export interface HardscapeDef extends BaseDef {
 export interface FaunaDef extends BaseDef {
   category: 'fauna'
   speed: number
+  habitat: FaunaHabitat
+  nocturnal?: boolean
+  needsWater?: boolean
+  aquatic?: boolean
   swimsInWater?: boolean
-  cleansMold: boolean
+  preyOn?: readonly string[]
+  idealHumidity?: readonly [number, number]
+  idealTemp?: readonly [number, number]
+  cleansMold?: boolean
   moldEatRate?: number
 }
 
@@ -71,12 +80,11 @@ export type CatalogDef = FloraDef | HardscapeDef | FaunaDef
 
 export interface SubstrateDepths {
   pebbles: number
-  lavarock: number
   charcoal: number
-  moss: number
   soil: number
-  rivergravel: number
   sand: number
+  leaflitter: number
+  rivergravel: number
   water: number
 }
 

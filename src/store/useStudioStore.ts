@@ -1,11 +1,22 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
-import type { LightingId, SoundPresetId, GrowthStage, SubstrateDepths } from '@/data/types'
+import type {
+  LightingId,
+  PumpFlow,
+  SoundPresetId,
+  GrowthStage,
+  SubstrateDepths,
+} from '@/data/types'
 import type { VesselId } from '@/data/vessels'
 import type { WorldSnapshot } from '@/engine/persistence'
+import { clamp } from '@/lib/clamp'
 import { importPrototypeSave } from './importPrototypeSave'
-import { migrate } from './migrations'
+import { MAX_WATER_SPLIT, migrate } from './migrations'
+import { DEFAULT_TELEMETRY } from './useTelemetryStore'
+
+// The live gauges live in the unpersisted telemetry store; re-exported so existing imports keep working.
+export { DEFAULT_TELEMETRY, type Telemetry } from './useTelemetryStore'
 
 export const STUDIO_STORAGE_KEY = 'botanica_studio_v1'
 
@@ -13,16 +24,12 @@ export type HardwareKey = 'hasLid' | 'hasGrowLamp' | 'hasFogger'
 export type ActiveTab = 'vessel' | 'substrate' | 'flora' | 'hardscape' | 'fauna' | (string & {})
 export type ActiveTool = 'select' | 'plant' | 'pour' | (string & {})
 
-export interface Telemetry {
+/** Environment values that survive a reload (the prototype's saved gauges), rounded to 1 decimal. */
+export interface EnvSeed {
   humidity: number
+  temperature: number
   soilMoisture: number
   nutrients: number
-  o2Balance: number
-  moldCount: number
-  cleanupCrewCount: number
-  mossCoverPct: number
-  waterCycle: string
-  note: string
 }
 
 export interface StudioState {
@@ -30,6 +37,13 @@ export interface StudioState {
   hasLid: boolean
   hasGrowLamp: boolean
   hasFogger: boolean
+  pumpFlow: PumpFlow
+  /** Fraction of the tank width given to the pool, 0 to MAX_WATER_SPLIT. */
+  waterSplit: number
+  /** Nitrogen-cycle progress, 0 (fresh setup) to 1 (cycled). */
+  cycleProgress: number
+  /** Day the current setup was built; cycle days count from here. */
+  setupDay: number
   lighting: LightingId
   autoLightSync: boolean
   timeSpeed: number
@@ -46,13 +60,19 @@ export interface StudioState {
   substrates: SubstrateDepths
   selectedId: string | null
   activePourMaterial: string | null
-  telemetry: Telemetry
+  /** Persisted environment seed; the engine writes it every few seconds and seeds `world.env` from it. */
+  envSeed: EnvSeed
   worldSnapshot: WorldSnapshot | null
 }
 
 export interface StudioActions {
   setVessel: (id: VesselId) => void
   toggleHardware: (key: HardwareKey) => void
+  setHardware: (key: HardwareKey, value: boolean) => void
+  setPumpFlow: (flow: PumpFlow) => void
+  setWaterSplit: (v: number) => void
+  setCycleProgress: (v: number) => void
+  setSetupDay: (day: number) => void
   setLighting: (id: LightingId) => void
   setAutoLightSync: (v: boolean) => void
   setTimeSpeed: (v: number) => void
@@ -69,24 +89,22 @@ export interface StudioActions {
   selectItem: (id: string | null) => void
   setActivePourMaterial: (id: string | null) => void
   advanceDay: () => void
-  setTelemetry: (partial: Partial<Telemetry>) => void
+  /** Rounds to 1 decimal; a no-op when all four rounded values are unchanged. */
+  setEnvSeed: (seed: EnvSeed) => void
   setWorldSnapshot: (snapshot: WorldSnapshot | null) => void
   resetStudio: () => void
 }
 
 export type StudioStore = StudioState & StudioActions
 
-export const DEFAULT_TELEMETRY: Telemetry = {
-  humidity: 82,
-  soilMoisture: 76,
-  nutrients: 88,
-  o2Balance: 96,
-  moldCount: 0,
-  cleanupCrewCount: 0,
-  mossCoverPct: 28,
-  waterCycle: 'Cascading & Mist',
-  note: 'Semi-aquatic waterfall circulates fresh oxygenated water while the Halo LED lamp nurtures epiphytic ferns and moss along the cliff wall.',
+const ENV_SEED_KEYS = ['humidity', 'temperature', 'soilMoisture', 'nutrients'] as const
+
+export function defaultEnvSeed(): EnvSeed {
+  const { humidity, temperature, soilMoisture, nutrients } = DEFAULT_TELEMETRY
+  return { humidity, temperature, soilMoisture, nutrients }
 }
+
+const round1 = (v: number) => Math.round(v * 10) / 10
 
 export function createDefaultState(): StudioState {
   return {
@@ -94,6 +112,10 @@ export function createDefaultState(): StudioState {
     hasLid: true,
     hasGrowLamp: true,
     hasFogger: true,
+    pumpFlow: 'gentle',
+    waterSplit: 0.32,
+    cycleProgress: 1,
+    setupDay: 1,
     lighting: 'sunlight',
     autoLightSync: true,
     timeSpeed: 1,
@@ -109,18 +131,22 @@ export function createDefaultState(): StudioState {
     substrates: { ...DEFAULT_SUBSTRATES },
     selectedId: null,
     activePourMaterial: null,
-    telemetry: { ...DEFAULT_TELEMETRY },
+    envSeed: defaultEnvSeed(),
     worldSnapshot: null,
   }
 }
 
-/** Fields written to localStorage. Transient UI and telemetry are excluded. */
+/** Fields written to localStorage. Transient UI is excluded; live telemetry lives in its own store. */
 export function partialize(s: StudioStore) {
   return {
     vessel: s.vessel,
     hasLid: s.hasLid,
     hasGrowLamp: s.hasGrowLamp,
     hasFogger: s.hasFogger,
+    pumpFlow: s.pumpFlow,
+    waterSplit: s.waterSplit,
+    cycleProgress: s.cycleProgress,
+    setupDay: s.setupDay,
     lighting: s.lighting,
     autoLightSync: s.autoLightSync,
     timeSpeed: s.timeSpeed,
@@ -131,6 +157,7 @@ export function partialize(s: StudioStore) {
     audioEnabled: s.audioEnabled,
     soundPreset: s.soundPreset,
     substrates: s.substrates,
+    envSeed: s.envSeed,
     worldSnapshot: s.worldSnapshot,
   }
 }
@@ -156,6 +183,11 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
         ...seed,
         setVessel: (vessel) => set({ vessel }),
         toggleHardware: (key) => set((s) => ({ [key]: !s[key] })),
+        setHardware: (key, value) => set({ [key]: value }),
+        setPumpFlow: (pumpFlow) => set({ pumpFlow }),
+        setWaterSplit: (v) => set({ waterSplit: clamp(v, 0, MAX_WATER_SPLIT) }),
+        setCycleProgress: (v) => set({ cycleProgress: clamp(v, 0, 1) }),
+        setSetupDay: (setupDay) => set({ setupDay }),
         setLighting: (lighting) => set({ lighting }),
         setAutoLightSync: (autoLightSync) => set({ autoLightSync }),
         setTimeSpeed: (timeSpeed) => set({ timeSpeed }),
@@ -180,17 +212,16 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
         selectItem: (selectedId) => set({ selectedId }),
         setActivePourMaterial: (activePourMaterial) => set({ activePourMaterial }),
         advanceDay: () => set((s) => ({ dayCount: s.dayCount + 1 })),
-        setTelemetry: (partial) => {
-          const cur = get().telemetry
-          const next: Partial<Telemetry> = {}
-          let changed = false
-          for (const k of Object.keys(partial) as (keyof Telemetry)[]) {
-            const v = partial[k]
-            if (v === undefined || v === cur[k]) continue
-            ;(next as Record<string, unknown>)[k] = v
-            changed = true
-          }
-          if (changed) set({ telemetry: { ...cur, ...next } })
+        setEnvSeed: (seed) => {
+          // A hand-edited save could hydrate a null seed; treat it as the defaults.
+          const cur = get().envSeed ?? defaultEnvSeed()
+          const next = {} as EnvSeed
+          // A non-finite value keeps the current one, so a bad reading can never poison the save.
+          for (const k of ENV_SEED_KEYS)
+            next[k] = Number.isFinite(seed[k]) ? round1(seed[k]) : cur[k]
+          // Skip set(): persist would rewrite storage for an identical seed.
+          if (ENV_SEED_KEYS.every((k) => cur[k] === next[k])) return
+          set({ envSeed: next })
         },
         setWorldSnapshot: (worldSnapshot) => set({ worldSnapshot }),
         resetStudio: () =>
@@ -198,10 +229,10 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
       }),
       {
         name: STUDIO_STORAGE_KEY,
-        version: 1,
+        version: 2,
         storage: createJSONStorage(() => storage),
         partialize,
-        migrate: (persisted, version) => migrate(persisted, version) as StudioStore,
+        migrate: (persisted, version) => migrate(persisted, version) as unknown as StudioStore,
       },
     ),
   )

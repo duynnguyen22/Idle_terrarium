@@ -1,15 +1,20 @@
+import { LineIcon, type IconName } from '@/components/ui/LineIcon'
 import type { LightingId } from '@/data/types'
 import { selectAutoLightSync, selectLighting } from '@/store/selectors'
 import { showToast } from '@/store/toastStore'
 import { useStudioStore } from '@/store/useStudioStore'
 
-const PHASES: { id: LightingId; icon: string; label: string }[] = [
-  { id: 'dawn', icon: '🌅', label: 'Dawn' },
-  { id: 'sunlight', icon: '☀️', label: 'Day' },
-  { id: 'twilight', icon: '🌇', label: 'Dusk' },
-  { id: 'night', icon: '🌙', label: 'Night' },
+const PHASES: { id: LightingId; icon: IconName; label: string }[] = [
+  { id: 'dawn', icon: 'sunrise', label: 'Dawn' },
+  { id: 'sunlight', icon: 'sun', label: 'Day' },
+  { id: 'twilight', icon: 'sunset', label: 'Dusk' },
+  { id: 'night', icon: 'moon', label: 'Night' },
 ]
 
+const BTN =
+  'inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-xs transition'
+
+/** Floating light switcher in the canvas corner (prototype #light-control); hidden in relax mode. */
 export function LightingControls() {
   const lighting = useStudioStore(selectLighting)
   const autoSync = useStudioStore(selectAutoLightSync)
@@ -23,11 +28,16 @@ export function LightingControls() {
   const toggleAuto = () => {
     const next = !autoSync
     setAutoLightSync(next)
-    showToast(next ? '🕒 Lighting synced with local clock' : 'Lighting set to manual control')
+    showToast(next ? 'Lighting follows your local clock' : 'Lighting set to manual control')
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-1 rounded-xl border border-sand-border bg-sand-pale p-1">
+    <div
+      id="light-control"
+      role="group"
+      aria-label="Lighting"
+      className="absolute right-3 top-3 z-20 flex items-center gap-0.5 rounded-xl border border-sand-border bg-paper/95 p-1 shadow-sm"
+    >
       {PHASES.map((p) => {
         const active = p.id === lighting
         return (
@@ -35,42 +45,32 @@ export function LightingControls() {
             key={p.id}
             type="button"
             aria-pressed={active}
+            aria-label={p.label}
+            title={p.label}
             onClick={() => choose(p.id)}
-            className={`inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-2.5 text-xs transition ${
+            className={`${BTN} ${
               active
-                ? 'bg-white font-semibold text-forest-deep shadow-2xs'
-                : 'font-medium text-ink-umber hover:bg-white/60'
+                ? 'bg-white font-semibold text-forest-deep shadow-sm'
+                : 'font-medium text-ink-umber hover:bg-white/70'
             }`}
           >
-            <span>{p.icon}</span>
-            <span>{p.label}</span>
+            <LineIcon name={p.icon} />
+            <span className="hidden 2xl:inline">{p.label}</span>
           </button>
         )
       })}
+      <span className="mx-0.5 h-5 w-px bg-sand-border" />
       <button
         type="button"
         aria-pressed={autoSync}
-        title="Automatically sync lighting with your local clock"
+        title="Follow your local clock"
         onClick={toggleAuto}
-        className={`inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-2.5 text-xs font-semibold transition ${
-          autoSync
-            ? 'border border-sage bg-mint text-forest-deep'
-            : 'border border-transparent text-ink-umber hover:bg-white/60'
+        className={`${BTN} font-semibold ${
+          autoSync ? 'bg-[#dcebe0] text-forest-deep' : 'text-ink-umber hover:bg-white/70'
         }`}
       >
-        <svg
-          className="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-          <path d="M3 3v5h5" />
-          <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-          <path d="M16 16h5v5" />
-        </svg>
-        <span>Auto Sync</span>
+        <LineIcon name="auto" />
+        <span>Auto</span>
       </button>
     </div>
   )

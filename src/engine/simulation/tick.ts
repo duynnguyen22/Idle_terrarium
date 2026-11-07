@@ -1,8 +1,10 @@
 import { useStudioStore, type StudioStore } from '@/store/useStudioStore'
+import { computeCareReport } from '../care'
 import type { AsmrCue } from '../interaction'
 import type { EngineWorld } from '../world'
 import { advanceClock } from './clock'
 import type { Rng } from './constants'
+import { updateEnvironment } from './environment'
 import { updateFauna } from './fauna'
 import { updateGrowth } from './growth'
 import { updateMold } from './mold'
@@ -16,6 +18,8 @@ export interface TickDeps {
   now?: Date
   /** Optional audio hook; the engine stays free of audio imports. */
   onCue?: (cue: AsmrCue) => void
+  /** Optional toast hook (e.g. the pool finished cycling); the engine stays free of UI imports. */
+  onToast?: (msg: string) => void
 }
 
 /** Child items follow their parent via offsetX/offsetY; orphans are detached (prototype 2361-2370). */
@@ -33,9 +37,11 @@ export function syncChildren(world: EngineWorld): void {
 }
 
 /**
- * Per-frame simulation step, in the prototype's order: pour spawn / siphon, clock, fauna AI, ambient motes,
+ * Per-frame simulation step, in the prototype's order: frame counter, pour spawn / siphon, clock, environment,
+ * fauna AI, ambient motes,
  * growth, mold cleanup (all skipped at timeSpeed 0, ambient motes included, as the prototype early-returns), then the draw-phase mutations
- * (child sync, firefly drift, stream integration) and the throttled store flush.
+ * (child sync, firefly drift, stream integration), the care report refresh and the throttled store flush
+ * (live gauges to the telemetry store, persisted fields to the studio store).
  */
 export function tick(
   world: EngineWorld,
@@ -45,6 +51,7 @@ export function tick(
 ): void {
   const store = deps.store ?? useStudioStore.getState()
   const rng = deps.rng ?? Math.random
+  world.frame++
   if (world.ambientMotes.length === 0 && world.fireflies.length === 0)
     initWorldParticles(world, rng)
 
@@ -60,15 +67,20 @@ export function tick(
       }
     }
     advanceClock(store, deps.now)
+    updateEnvironment(world, store, dtMs, deps.onToast)
     updateFauna(world, store, dtMs, timestamp, rng)
     if (!store.reducedMotion) updateAmbientMotes(world, dtMs)
     updateGrowth(world, store, dtMs)
-    updateMold(world, store, dtMs)
+    updateMold(world, store, dtMs, rng, deps.onToast)
   }
 
   syncChildren(world)
   if (!store.reducedMotion && (store.lighting === 'night' || store.lighting === 'twilight'))
     updateFireflies(world, dtMs)
-  stepPourParticles(world, store, dtMs, rng)
+  stepPourParticles(world, store, dtMs, rng, deps.onToast)
+  // Care report every 30 frames (prototype 3138, 3307); every frame while paused so edits show at once.
+  // Assign a fresh array; the throttled flush copies it into the telemetry store (compared by content).
+  if (world.frame % 30 === 0 || store.timeSpeed === 0)
+    world.careIssues = computeCareReport({ ...store, ...world.env, items: world.items })
   pushTelemetry(world, store, timestamp)
 }

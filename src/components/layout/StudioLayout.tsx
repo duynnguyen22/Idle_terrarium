@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { LightingControls } from '@/components/nav/LightingControls'
 import { CareToolbar } from '@/components/stage/CareToolbar'
 import { ItemInspector } from '@/components/stage/ItemInspector'
 import { RelaxDock } from '@/components/stage/RelaxDock'
@@ -63,8 +64,9 @@ export function StudioLayout({ children }: { children: ReactNode }) {
             className="absolute inset-0 z-[35] bg-forest-night/40 lg:hidden"
           />
         )}
-        <main className="relative flex-1 overflow-hidden">
+        <main id="canvas-stage" className="relative flex-1 overflow-hidden bg-stage">
           {children}
+          <LightingControls />
           <CareToolbar />
           <ItemInspector />
           <RelaxDock />

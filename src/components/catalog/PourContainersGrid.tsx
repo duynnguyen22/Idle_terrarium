@@ -20,10 +20,10 @@ export function PourContainersGrid() {
     if (!layer) return
     showToast(
       layerId === 'water'
-        ? '🫗 Hold & drag inside the jar to pour a Semi-Aquatic Lake!'
+        ? 'Hold and drag inside the tank to pour water'
         : layerId === 'siphon'
-          ? '🥣 Hold inside the jar to siphon water or scoop substrate'
-          : `🫙 Hold & drag inside the jar to scatter ${layer.name}!`,
+          ? 'Hold inside the tank to siphon water or scoop substrate'
+          : `Hold and drag inside the tank to scatter ${layer.name}`,
     )
   }
 
@@ -37,10 +37,10 @@ export function PourContainersGrid() {
             type="button"
             aria-pressed={active}
             onClick={() => select(layer.id)}
-            className={`flex items-center gap-2 rounded-2xl border p-2 text-left transition ${
+            className={`flex min-w-0 items-center gap-2 rounded-2xl border p-2 text-left transition ${
               active
                 ? 'scale-[1.01] border-forest-deep bg-forest-deep text-white shadow-sm'
-                : 'border-sand-border bg-white text-ink-deep hover:bg-linen'
+                : 'border-sand-border bg-white text-ink-deep hover:bg-sand-warm'
             }`}
           >
             <span dangerouslySetInnerHTML={{ __html: getContainerVectorSVG(layer, active) }} />
