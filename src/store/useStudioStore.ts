@@ -30,6 +30,8 @@ import { DEFAULT_TELEMETRY } from './useTelemetryStore'
 export { DEFAULT_TELEMETRY, type Telemetry } from './useTelemetryStore'
 
 export const STUDIO_STORAGE_KEY = 'botanica_studio_v1'
+/** Persisted-state version; `migrate` upgrades anything older (saves and garden snapshots alike). */
+export const STUDIO_VERSION = 3
 
 export type HardwareKey = 'hasLid' | 'hasGrowLamp' | 'hasFogger'
 export type ActiveTab = 'vessel' | 'substrate' | 'flora' | 'hardscape' | 'fauna' | (string & {})
@@ -271,7 +273,7 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
       }),
       {
         name: STUDIO_STORAGE_KEY,
-        version: 3,
+        version: STUDIO_VERSION,
         storage: createJSONStorage(() => storage),
         partialize,
         migrate: (persisted, version) => migrate(persisted, version) as unknown as StudioStore,
