@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AccountDialog } from '@/components/account/AccountDialog'
@@ -96,5 +96,22 @@ describe('AccountDialog', () => {
     useAccountStore.setState({ phase: 'signedout', user: null, view: 'account', panelOpen: true })
     render(<AccountDialog />)
     expect(screen.getByRole('dialog')).not.toHaveClass('wide')
+  })
+
+  it('same-view updates leave focus alone; a different screen moves it into the panel', async () => {
+    useAccountStore.setState({ phase: 'signedout' })
+    const u = userEvent.setup()
+    render(<Harness />)
+    const chip = screen.getByRole('button', { name: /Sign in/ })
+    await u.click(chip)
+    const panel = screen.getByRole('dialog')
+    expect(panel).toHaveFocus()
+
+    chip.focus()
+    act(() => useAccountStore.getState().setViewData({ email: 'a@b.co' }))
+    expect(chip).toHaveFocus()
+
+    act(() => useAccountStore.getState().goView('signup'))
+    expect(panel).toHaveFocus()
   })
 })

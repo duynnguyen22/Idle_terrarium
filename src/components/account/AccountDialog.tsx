@@ -33,7 +33,8 @@ export function AccountDialog() {
     return () => window.removeEventListener('keydown', onKey, true)
   }, [panelOpen])
 
-  // Focus into the first marked field when the dialog opens or its screen changes; back to the chip on close.
+  // Focus moves only on open and when a different screen replaces the body (its old elements are gone);
+  // re-renders within the same view leave focus where the person put it. Back to the chip on close.
   useEffect(() => {
     if (panelOpen) {
       const panel = panelRef.current
@@ -43,6 +44,7 @@ export function AccountDialog() {
       document.getElementById('btn-account')?.focus()
     }
     wasOpen.current = panelOpen
+    // `view` is a string: the effect re-runs on a screen change, not on same-view store updates.
   }, [panelOpen, view])
 
   if (!panelOpen) return null

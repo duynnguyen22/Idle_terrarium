@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
+import { StrictMode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AUTH_SESSION_KEY, AUTH_USERS_KEY } from '@/auth'
 import { useAccountLifecycle } from '@/hooks/useAccountLifecycle'
@@ -42,6 +43,14 @@ describe('useAccountLifecycle', () => {
       vi.advanceTimersByTime(120_000)
     })
     expect(watchSession).toHaveBeenCalledTimes(3)
+  })
+
+  it('reads the session once under a StrictMode double mount', () => {
+    const { unmount } = renderHook(() => useAccountLifecycle(), { wrapper: StrictMode })
+    expect(initAccount).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(2)
+    unmount()
+    expect(vi.getTimerCount()).toBe(0)
   })
 
   it('watches the two auth storage keys and ignores others', () => {

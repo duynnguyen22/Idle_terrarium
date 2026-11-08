@@ -50,7 +50,10 @@ describe('AccountChip', () => {
     expect(chip).not.toHaveClass('is-signedout')
     expect(chip).toHaveTextContent('DG')
     expect(chip).toHaveTextContent('Saved just now')
-    expect(chip.querySelector('.acct-dot')).toHaveAttribute('data-q', 'ok')
+    expect(chip.querySelector('#acct-dot')).toHaveAttribute('data-q', 'ok')
+    expect(chip.querySelector('#acct-avatar')).toHaveTextContent('DG')
+    expect(chip.querySelector('#acct-name')).toHaveTextContent('Dana Green')
+    expect(chip.querySelector('#acct-status')).toHaveTextContent('Saved just now')
   })
 
   it('ages the saved label every 30 s', () => {

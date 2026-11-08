@@ -35,6 +35,7 @@ export function AccountChip() {
     >
       {status.signedIn ? (
         <span
+          id="acct-avatar"
           className="acct-avatar"
           aria-hidden="true"
           style={{ background: avatarColor(userId) }}
@@ -57,10 +58,12 @@ export function AccountChip() {
         </svg>
       )}
       <span className="acct-text">
-        <span className="acct-name">{status.name}</span>
+        <span id="acct-name" className="acct-name">
+          {status.name}
+        </span>
         <span className="acct-status-row">
-          {status.signedIn && <span className="acct-dot" data-q={status.q} />}
-          <span>{status.text}</span>
+          {status.signedIn && <span id="acct-dot" className="acct-dot" data-q={status.q} />}
+          <span id="acct-status">{status.text}</span>
         </span>
       </span>
     </button>
