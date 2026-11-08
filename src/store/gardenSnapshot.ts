@@ -1,9 +1,9 @@
 import type { GardenSummary } from '@/auth/backend'
 import type { PlacedItem } from '@/data/types'
 import { commitWorld, tryGetWorld } from '@/engine/engineBridge'
+import { seedWorldEnv } from '@/engine/envSeed'
 import { restoreWorld, snapshotWorld } from '@/engine/persistence'
 import type { EngineWorld } from '@/engine/world'
-import { DEFAULT_TELEMETRY } from './useTelemetryStore'
 import { migrate, sanitizeBackdropHaze } from './migrations'
 import {
   partialize,
@@ -16,9 +16,6 @@ import {
 
 /** One saved terrarium: the persisted studio slice, stamped with the version it was written at. */
 export type GardenSnapshot = PersistedStudio & { version?: number }
-
-const finiteOr = (v: unknown, fallback: number): number =>
-  typeof v === 'number' && Number.isFinite(v) ? v : fallback
 
 /** The persisted slice with a fresh world snapshot when a world is live (spec getSnapshot). */
 export function getGardenSnapshot(store: StudioStore, world: EngineWorld | null): GardenSnapshot {
@@ -52,15 +49,7 @@ export function applyGardenSnapshot(snapshot: GardenSnapshot, store: StudioStore
   world.pendingSubstrates = {}
   world.pendingWaterSplit = undefined
   // The env flush is one-way (world -> store), so the gauges must be re-seeded from the snapshot.
-  const d = DEFAULT_TELEMETRY
-  Object.assign(world.env, {
-    humidity: finiteOr(s.envSeed?.humidity, d.humidity),
-    temperature: finiteOr(s.envSeed?.temperature, d.temperature),
-    soilMoisture: finiteOr(s.envSeed?.soilMoisture, d.soilMoisture),
-    nutrients: finiteOr(s.envSeed?.nutrients, d.nutrients),
-    cycleProgress: finiteOr(s.cycleProgress, 1),
-  })
-  world.mineralSpots = finiteOr(s.mineralSpots, 0)
+  seedWorldEnv(world, s)
   commitWorld()
 }
 

@@ -7,6 +7,7 @@ import {
   registerWorld,
   unregisterWorld,
 } from '@/engine/engineBridge'
+import { seedWorldEnv } from '@/engine/envSeed'
 import { seedInitialScene } from '@/engine/presets'
 import { restoreWorld } from '@/engine/persistence'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
@@ -17,7 +18,7 @@ import { createWorld, type EngineWorld } from '@/engine/world'
 import { play } from '@/hooks/useAudio'
 import { showToast } from '@/store/toastStore'
 import { useStudioStore } from '@/store/useStudioStore'
-import { DEFAULT_TELEMETRY, useTelemetryStore } from '@/store/useTelemetryStore'
+import { useTelemetryStore } from '@/store/useTelemetryStore'
 
 /** Longest simulated step; a backgrounded tab resumes with a clamped dt instead of a huge jump. */
 const MAX_DT_MS = 100
@@ -34,31 +35,6 @@ declare global {
   }
 }
 
-const finiteOr = (v: unknown, fallback: number): number =>
-  typeof v === 'number' && Number.isFinite(v) ? v : fallback
-
-/**
- * The environment is not part of the world snapshot. Humidity, temperature, soil moisture and nutrients
- * resume from the persisted `envSeed` (written by the engine every few seconds, rounded to 1 decimal);
- * a missing or non-finite field falls back to the default gauge. O2 and condensation always start from
- * the defaults and re-converge within seconds; cycle progress resumes from the persisted store value.
- */
-function seedEnv(world: EngineWorld): void {
-  const { envSeed, cycleProgress, mineralSpots } = useStudioStore.getState()
-  const seed: Partial<Record<keyof typeof envSeed, unknown>> = envSeed ?? {}
-  const d = DEFAULT_TELEMETRY
-  Object.assign(world.env, {
-    humidity: finiteOr(seed.humidity, d.humidity),
-    temperature: finiteOr(seed.temperature, d.temperature),
-    soilMoisture: finiteOr(seed.soilMoisture, d.soilMoisture),
-    nutrients: finiteOr(seed.nutrients, d.nutrients),
-    o2: d.o2Balance,
-    condensation: d.condensation,
-    cycleProgress,
-  })
-  world.mineralSpots = finiteOr(mineralSpots, 0)
-}
-
 /**
  * Owns the EngineWorld and the single rAF loop for `canvasRef`. The hot path reads the store via
  * `getState()` once per frame and never writes to it. The canvas backing size is owned by the component.
@@ -71,7 +47,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
     if (!ctx) return
 
     const world = createWorld()
-    seedEnv(world)
+    seedWorldEnv(world, useStudioStore.getState())
     const initial = useStudioStore.getState().worldSnapshot
     if (initial) restoreWorld(world, initial)
     registerWorld(world)

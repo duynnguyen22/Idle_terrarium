@@ -401,6 +401,36 @@ describe('account store: saving', () => {
     expect(save).toHaveBeenCalledTimes(2)
     expect(store.getState().lastError).toBe('')
   })
+  it('a flush that fails after sign-out leaves the signed-out state clean', async () => {
+    await signInWithGardens()
+    backend.saveGarden = async () => {
+      throw new BackendError('quota_exceeded')
+    }
+    await store.getState().endSession()
+    expect(store.getState()).toMatchObject({ phase: 'signedout', lastError: '' })
+    expect(toast).not.toHaveBeenCalled()
+  })
+
+  it('signing out cancels a pending unavailable retry', async () => {
+    await signInWithGardens()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const real = backend.saveGarden.bind(backend)
+    const save = vi
+      .spyOn(backend, 'saveGarden')
+      .mockRejectedValueOnce(new BackendError('unavailable'))
+      .mockImplementation(real)
+    await store.getState().flushCloudSave()
+    expect(store.getState().lastError).toBe('Not saved yet, retrying')
+    await store.getState().endSession()
+    expect(save).toHaveBeenCalledTimes(2) // the failed write and the sign-out flush
+
+    // Back in the cloud phase before the retry would have fired: nothing is scheduled by it.
+    await store.getState().beginSession(demoUser, demoSession, { isNew: false })
+    await vi.advanceTimersByTimeAsync(7000)
+    expect(store.getState().saveTimer).toBeNull()
+    await vi.advanceTimersByTimeAsync(2500)
+    expect(save).toHaveBeenCalledTimes(2)
+  })
 })
 
 describe('account store: gardens and journal', () => {
@@ -548,6 +578,23 @@ describe('account store: panel and run', () => {
     })
     expect(store.getState().viewData.error).toBe('Something went wrong. Try again.')
     expect(store.getState().busy).toBe(false)
+  })
+
+  it('run() maps an AuthError with code locked to viewData.lockedUntil', async () => {
+    store.setState({ phase: 'signedout' })
+    store.getState().openAuth('signin', { email: 'a@b.co' })
+    await store.getState().run(async () => {
+      throw new AuthError('locked', 'Too many tries. Try again in 5 minutes.', {
+        field: 'password',
+        until: NOW + 300_000,
+      })
+    })
+    expect(store.getState().busy).toBe(false)
+    expect(store.getState().viewData).toMatchObject({
+      email: 'a@b.co',
+      lockedUntil: NOW + 300_000,
+      fieldErrors: { password: 'Too many tries. Try again in 5 minutes.' },
+    })
   })
 
   it('run() ignores a call while busy', async () => {

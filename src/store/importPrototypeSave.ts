@@ -4,6 +4,7 @@ import { VESSELS_BY_ID, type VesselId } from '@/data/vessels'
 import { MAX_PERSISTED_GRAINS } from '@/engine/persistence'
 import { TERRAIN_POINTS, type WorldEntity } from '@/engine/world'
 import { clamp } from '@/lib/clamp'
+import { finiteOr } from '@/lib/finite'
 import { legacyPoolFields, mapLegacySubstrates, MAX_WATER_SPLIT } from './migrations'
 import type { EnvSeed, StudioState } from './useStudioStore'
 import { DEFAULT_TELEMETRY } from './useTelemetryStore'
@@ -15,10 +16,6 @@ const PUMP_FLOWS: readonly PumpFlow[] = ['off', 'gentle', 'strong']
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
-}
-
-function finiteOr(v: unknown, fallback: number): number {
-  return typeof v === 'number' && Number.isFinite(v) ? v : fallback
 }
 
 /** v6 saves already use the v6 substrate keys; missing or bad depths keep the defaults. */

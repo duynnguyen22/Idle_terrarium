@@ -11,6 +11,7 @@ import {
   type GardenSnapshot,
 } from '@/store/gardenSnapshot'
 import { createStudioStore, partialize, type StudioStoreHook } from '@/store/useStudioStore'
+import { DEFAULT_TELEMETRY } from '@/store/useTelemetryStore'
 
 class MemoryStorage implements Storage {
   private map = new Map<string, string>()
@@ -89,6 +90,8 @@ describe('gardenSnapshot', () => {
 
     world.items = [item('old', 'hardscape')]
     world.moldPatches = [{ x: 0.1, y: 0.1 }]
+    world.env.o2 = 41
+    world.env.condensation = 0.9
     registerWorld(world)
     studio.getState().selectItem('old')
     applyGardenSnapshot(snap, studio)
@@ -110,6 +113,9 @@ describe('gardenSnapshot', () => {
       soilMoisture: 40,
       nutrients: 50,
       cycleProgress: 0.4,
+      // O2 and condensation restart from the defaults rather than keeping the previous garden's.
+      o2: DEFAULT_TELEMETRY.o2Balance,
+      condensation: DEFAULT_TELEMETRY.condensation,
     })
     expect(world.mineralSpots).toBe(0.25)
     expect(studio.getState()).not.toHaveProperty('version')

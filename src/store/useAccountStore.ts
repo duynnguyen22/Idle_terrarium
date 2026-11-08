@@ -180,6 +180,13 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
   const { studio } = deps
 
   return create<AccountStore>()((set, get) => {
+    /** The pending retry after an `unavailable` write; at most one, cancelled on sign-out. */
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
+    const clearRetryTimer = () => {
+      if (retryTimer) clearTimeout(retryTimer)
+      retryTimer = null
+    }
+
     const clearSaveTimer = () => {
       const t = get().saveTimer
       if (t) clearTimeout(t)
@@ -259,6 +266,7 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
 
       async endSession(message) {
         clearSaveTimer()
+        clearRetryTimer()
         // The write starts synchronously, so the state can be cleared before it settles.
         const flushed = get().flushCloudSave()
         set({
@@ -321,12 +329,20 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
               lastError: '',
             }))
         } catch (e) {
-          get().handleCloudError(e)
-          if (errorCode(e) === 'unavailable')
-            setTimeout(
-              () => get().scheduleCloudSave(),
-              RETRY_MIN_MS + Math.random() * RETRY_SPREAD_MS,
-            )
+          // A write that fails after its session ended reports nothing and is not retried.
+          if (get().backend === backend) {
+            get().handleCloudError(e)
+            if (errorCode(e) === 'unavailable') {
+              clearRetryTimer()
+              retryTimer = setTimeout(
+                () => {
+                  retryTimer = null
+                  get().scheduleCloudSave()
+                },
+                RETRY_MIN_MS + Math.random() * RETRY_SPREAD_MS,
+              )
+            }
+          }
         }
         set({ writing: false })
         if (get().pending) {

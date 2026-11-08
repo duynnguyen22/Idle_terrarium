@@ -2,6 +2,7 @@ import { DEFAULT_SUBSTRATES } from '@/data/substrates'
 import type { BackdropId, PumpFlow, RoomEnv, SubstrateDepths } from '@/data/types'
 import { AIR_SOURCES, DEFAULT_ROOM, PH_RANGE, TDS_RANGE, WATER_SOURCES } from '@/engine/room'
 import { clamp } from '@/lib/clamp'
+import { finiteOr } from '@/lib/finite'
 
 /** Upper bound of `waterSplit`: the pool never takes more than 60% of the tank width. */
 export const MAX_WATER_SPLIT = 0.6
@@ -14,23 +15,19 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
 
-function finiteOrZero(v: unknown): number {
-  return typeof v === 'number' && Number.isFinite(v) ? v : 0
-}
-
 /**
  * Maps a pre-v6 substrate record onto the v6 keys: lavarock folds into pebbles, moss into soil.
  * Missing, non-numeric or non-finite depths become 0, so the result never holds NaN.
  */
 export function mapLegacySubstrates(raw: Record<string, unknown>): SubstrateDepths {
   return {
-    pebbles: finiteOrZero(raw.pebbles) + finiteOrZero(raw.lavarock),
-    charcoal: finiteOrZero(raw.charcoal),
-    soil: finiteOrZero(raw.soil) + finiteOrZero(raw.moss),
-    sand: finiteOrZero(raw.sand),
-    leaflitter: finiteOrZero(raw.leaflitter),
-    rivergravel: finiteOrZero(raw.rivergravel),
-    water: finiteOrZero(raw.water),
+    pebbles: finiteOr(raw.pebbles, 0) + finiteOr(raw.lavarock, 0),
+    charcoal: finiteOr(raw.charcoal, 0),
+    soil: finiteOr(raw.soil, 0) + finiteOr(raw.moss, 0),
+    sand: finiteOr(raw.sand, 0),
+    leaflitter: finiteOr(raw.leaflitter, 0),
+    rivergravel: finiteOr(raw.rivergravel, 0),
+    water: finiteOr(raw.water, 0),
   }
 }
 
@@ -56,10 +53,6 @@ export function legacyPoolFields(water: number): {
 export const DEFAULT_BACKDROP: BackdropId = 'none'
 export const DEFAULT_BACKDROP_HAZE = 35
 export const MAX_BACKDROP_HAZE = 80
-
-function finiteOr(v: unknown, fallback: number): number {
-  return typeof v === 'number' && Number.isFinite(v) ? v : fallback
-}
 
 /**
  * Coerces an unknown value into a valid room: unknown water/air ids and non-finite numbers fall
