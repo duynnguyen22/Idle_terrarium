@@ -1,7 +1,9 @@
 import type { Rect } from '@/data/types'
 import type { StudioState } from '@/store/useStudioStore'
 import type { EngineWorld } from '../world'
+import { getCustomBackdrop } from '@/lib/backdropPhoto'
 import { drawBackground } from './background'
+import { drawMiniatureBackdrop } from './backdrop'
 import { drawCondensation, drawMineralSpots } from './condensation'
 import { drawLid, drawPaludariumFrontFrame } from './frame'
 import { drawLamp } from './lamp'
@@ -10,7 +12,7 @@ import { drawParticles } from './particles'
 import { drawPouring } from './pouring'
 import { drawSpecimens } from './specimens'
 import { drawSubstrates } from './substrates'
-import { beginVesselClip, drawVesselRim } from './vessel'
+import { beginVesselClip, drawLampCone, drawVesselRim } from './vessel'
 
 /**
  * Square vessel rect inside a canvas of CSS size `canvasW x canvasH`, centred on the canvas
@@ -47,6 +49,9 @@ export function renderFrame(
   // 3. Everything inside the glass is clipped to the vessel path
   ctx.save()
   beginVesselClip(ctx, world, state, R, timestamp)
+  // 3A. Painted miniature landscape on the back glass, then the lamp's light cone over it
+  drawMiniatureBackdrop(ctx, state, R, getCustomBackdrop())
+  drawLampCone(ctx, world, state, R, timestamp)
   // 4. Land strata, pool gravel bed, bank, surface grains, moss & mold
   drawSubstrates(ctx, world, state, R, timestamp, 'soil')
   // 5. Placed flora, waterfall hardscapes & fauna
