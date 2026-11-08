@@ -1059,16 +1059,29 @@ input[type='range']:disabled {
 .acct-chip:not(.is-signedout) .acct-person {
   display: none;
 }
-/* Below lg the top nav has no room for the chip's text: avatar or person icon only (the label stays as aria-label). */
+/* Below lg the top nav has no room for the chip's text: avatar or person icon only (the label stays as
+   aria-label). The save-status dot stays, as a badge on the avatar's bottom-right corner. */
 @media (width < 64rem) {
   .acct-chip,
   .acct-chip.is-signedout {
+    position: relative;
     width: 36px;
+    gap: 0;
     padding: 0;
     justify-content: center;
   }
-  .acct-text {
+  .acct-name,
+  #acct-status {
     display: none;
+  }
+  .acct-dot {
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    box-shadow: 0 0 0 2px #e7eae3;
+  }
+  .acct-chip:hover .acct-dot {
+    box-shadow: 0 0 0 2px #dde2d8;
   }
 }
 .acct-avatar {

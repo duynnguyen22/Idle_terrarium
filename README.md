@@ -18,14 +18,14 @@ A browser-based terrarium simulator: a living canvas biosphere of plants, soil, 
 
 Sign-in is a prototype: accounts, sessions and saved terrariums live in this browser and nothing is sent anywhere. Verification codes and sign-in links show up on screen instead of by email. Try the demo account **demo@botanica.app** / **terrarium1**.
 
-| Key                              | Storage                         | Holds                                                   |
-| -------------------------------- | ------------------------------- | ------------------------------------------------------- |
-| `botanica_auth_users_v1`         | localStorage                    | Accounts (salted password hashes)                       |
-| `botanica_auth_session_v1`       | localStorage, or sessionStorage | The session; sessionStorage without "Keep me signed in" |
-| `botanica_store_<accountId>`     | localStorage                    | One account's terrariums and growth journal             |
-| `botanica_studio_v1`             | localStorage                    | The open scene and studio settings                      |
-| `botanica_signin_prompt_seen_v1` | localStorage                    | The first-visit sign-up prompt was shown                |
-| `botanica_journal_draft`         | sessionStorage                  | An unsent journal note                                  |
+| Key                              | Storage                         | Holds                                                                          |
+| -------------------------------- | ------------------------------- | ------------------------------------------------------------------------------ |
+| `botanica_auth_users_v1`         | localStorage                    | Accounts (salted password hashes; the demo account's password is stored as-is) |
+| `botanica_auth_session_v1`       | localStorage, or sessionStorage | The session; sessionStorage without "Keep me signed in"                        |
+| `botanica_store_<accountId>`     | localStorage                    | One account's terrariums and growth journal                                    |
+| `botanica_studio_v1`             | localStorage                    | The open scene and studio settings                                             |
+| `botanica_signin_prompt_seen_v1` | localStorage                    | The first-visit sign-up prompt was shown                                       |
+| `botanica_journal_draft`         | sessionStorage                  | An unsent journal note                                                         |
 
 To move to a real backend, replace the two swap points; every caller codes against their interfaces:
 

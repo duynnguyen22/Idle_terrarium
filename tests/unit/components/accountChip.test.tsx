@@ -33,6 +33,7 @@ describe('AccountChip', () => {
     expect(chip).toHaveAttribute('aria-controls', 'acct-panel')
     expect(chip).toHaveAttribute('aria-expanded', 'false')
     expect(chip).toHaveTextContent('to save your work')
+    expect(screen.getByRole('button', { name: 'Sign in to save your work' })).toBe(chip)
     await u.click(chip)
     expect(useAccountStore.getState().panelOpen).toBe(true)
     expect(chip).toHaveAttribute('aria-expanded', 'true')
@@ -41,6 +42,8 @@ describe('AccountChip', () => {
   it('checking: reads One moment', () => {
     render(<TopNav />)
     expect(screen.getByRole('button', { name: /One moment/ })).toHaveClass('is-signedout')
+    // No status text while checking, so the name has no trailing space.
+    expect(screen.getByRole('button', { name: 'One moment' })).toHaveAttribute('id', 'btn-account')
   })
 
   it('signed in: shows initials DG, the name and Saved just now', () => {
@@ -48,6 +51,7 @@ describe('AccountChip', () => {
     render(<TopNav />)
     const chip = screen.getByRole('button', { name: /Dana Green/ })
     expect(chip).not.toHaveClass('is-signedout')
+    expect(screen.getByRole('button', { name: 'Dana Green Saved just now' })).toBe(chip)
     expect(chip).toHaveTextContent('DG')
     expect(chip).toHaveTextContent('Saved just now')
     expect(chip.querySelector('#acct-dot')).toHaveAttribute('data-q', 'ok')

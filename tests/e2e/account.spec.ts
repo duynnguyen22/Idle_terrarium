@@ -29,9 +29,11 @@ test('+Day adds a journal entry visible in the Journal tab', async ({ page }) =>
   const nav = page.locator('#top-nav')
   // Paused, the day only moves when +1 day is pressed, so the entry's day is the one the pill shows.
   await nav.getByRole('button', { name: 'Pause' }).click()
+  const pill = nav.getByText(/ · Day \d+$/)
+  const before = Number((await pill.innerText()).match(/Day (\d+)$/)![1])
+  const day = `Day ${before + 1}`
   await nav.getByRole('button', { name: '+1 day' }).click()
-  const pillDay = await nav.getByText(/ · Day \d+$/).innerText()
-  const day = pillDay.match(/Day \d+$/)![0]
+  await expect(pill).toHaveText(new RegExp(` · ${day}$`))
 
   await page.getByRole('button', { name: /Demo Gardener/ }).click()
   const dialog = page.getByRole('dialog')
