@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { MAX_JOURNAL, createLocalBackend } from '@/auth/backend'
-import type { GardenBackend, GardenRecord, JournalEntry } from '@/auth/backend'
+import type { GardenBackend, GardenRecord, GardenSummary, JournalEntry } from '@/auth/backend'
 
 class MemoryStorage implements Storage {
   private map = new Map<string, string>()
@@ -30,7 +30,7 @@ class FullStorage extends MemoryStorage {
   }
 }
 
-const summary = { vessel: 'jar', day: 3, plants: 2, animals: 1 } as GardenRecord['summary']
+const summary: GardenSummary = { vessel: 'globe', day: 3, plants: 2, animals: 1 }
 const garden = (name: string, updatedAt: number): Omit<GardenRecord, 'id'> => ({
   name,
   createdAt: 1,
