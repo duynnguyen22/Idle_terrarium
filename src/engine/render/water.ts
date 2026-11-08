@@ -15,7 +15,8 @@ export function rippleAmplitude(pumpFlow: PumpFlow): number {
 export const drawWater: RenderFn = (ctx, world, state, R, timestamp) => {
   if (!hasPool(state.waterSplit) || !((state.substrates.water || 0) > 0.4)) return
   const t = terrainOf(world, state)
-  const { cx, r, bottomY, toPy, bankXAt, bankBottom } = bankGeometry(t, R)
+  const { cx, r, kx, bottomY, toPy, bankXAt, bankBottom } = bankGeometry(t, R)
+  const left = cx - r * kx
   const topY = toPy(getWaterTopNormY(t))
   const xEdge = bankXAt(topY)
   // Reduced motion keeps the surface flat, like the held-still flora sway.
@@ -30,11 +31,11 @@ export const drawWater: RenderFn = (ctx, world, state, R, timestamp) => {
   wGrad.addColorStop(1, 'rgba(3, 105, 161, 0.46)')
   ctx.fillStyle = wGrad
   ctx.beginPath()
-  ctx.moveTo(cx - r, topY)
-  for (let x = cx - r; x <= xEdge; x += 10) ctx.lineTo(x, topY + ripple(x))
+  ctx.moveTo(left, topY)
+  for (let x = left; x <= xEdge; x += 10) ctx.lineTo(x, topY + ripple(x))
   ctx.lineTo(xEdge, topY)
   ctx.lineTo(bankBottom.x, bankBottom.y)
-  ctx.lineTo(cx - r, bankBottom.y)
+  ctx.lineTo(left, bankBottom.y)
   ctx.closePath()
   ctx.fill()
 
@@ -42,8 +43,8 @@ export const drawWater: RenderFn = (ctx, world, state, R, timestamp) => {
   ctx.strokeStyle = 'rgba(224, 242, 254, 0.75)'
   ctx.lineWidth = 2
   ctx.beginPath()
-  for (let x = cx - r; x <= xEdge; x += 10) {
-    if (x === cx - r) ctx.moveTo(x, topY + ripple(x))
+  for (let x = left; x <= xEdge; x += 10) {
+    if (x === left) ctx.moveTo(x, topY + ripple(x))
     else ctx.lineTo(x, topY + ripple(x))
   }
   ctx.stroke()

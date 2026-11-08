@@ -37,7 +37,7 @@ export function drawMiniatureBackdrop(
   if (!backdrop || backdrop === 'none') return
   if (backdrop === 'custom' && !custom) return
   const { cx, cy, r } = vesselMetrics(R)
-  const w = Math.round(r * 2)
+  const w = Math.round(R.w)
   const h = Math.round(r * 1.72)
   const x0 = cx - w / 2
   const y0 = cy - r * 0.86

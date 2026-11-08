@@ -93,6 +93,19 @@ test('studio journey: biome, 5x, relax, persistence', async ({ page }) => {
   await expect(page.getByLabel('Pool width')).toHaveValue('32')
 })
 
+test('a wide rectangular tank renders without page errors', async ({ page }) => {
+  const errors: Error[] = []
+  page.on('pageerror', (e) => errors.push(e))
+  await page.goto('/')
+  await page.getByRole('tab', { name: 'Vessel & Soil' }).click()
+  const riparium = page.getByRole('button', { name: /Long Riparium/ })
+  await riparium.click()
+  await expect(riparium).toHaveAttribute('aria-pressed', 'true')
+  await page.waitForTimeout(500)
+  await page.screenshot({ path: 'test-results/riparium-tank.png' })
+  expect(errors).toEqual([])
+})
+
 for (const size of [
   { width: 900, height: 700 },
   { width: 1280, height: 800 },

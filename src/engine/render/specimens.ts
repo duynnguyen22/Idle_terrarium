@@ -8,7 +8,7 @@ import { vesselMetrics, type RenderFn } from './metrics'
  * Mounted children are NOT re-positioned here (the prototype mutated items while drawing); the tick does that.
  */
 export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
-  const { cx, cy, r: Rad } = vesselMetrics(R)
+  const { cy, r: Rad } = vesselMetrics(R)
   const sorted = [...world.items].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
 
   sorted.forEach((item) => {
@@ -16,7 +16,7 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
     if (!def) return
     const sprite = getSprite(item.id as CatalogId)
 
-    const px = cx - Rad + item.x * (Rad * 2)
+    const px = R.x + item.x * R.w
     const py = cy - Rad + item.y * (Rad * 2)
     const drawSize = Rad * 0.36 * (item.scale || 1)
 

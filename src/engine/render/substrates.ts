@@ -23,7 +23,7 @@ function drawLandStrata(
   g: BankGeometry,
   pool: boolean,
 ): void {
-  const { cx, cy, r, bottomY, bankTop, bankBottom } = g
+  const { cx, cy, r, kx, bottomY, bankTop, bankBottom } = g
   const mmPx = MM_TO_NORM * 2 * r
   const contour = world.terrainContour
   const contourMm = (nx: number) => (Array.isArray(contour) ? sampleContour(contour, nx) : 0)
@@ -34,8 +34,8 @@ function drawLandStrata(
     ctx.moveTo(bankBottom.x, bankBottom.y)
     ctx.lineTo(bankTop.x, bankTop.y)
     ctx.lineTo(bankTop.x, cy - r)
-    ctx.lineTo(cx + r, cy - r)
-    ctx.lineTo(cx + r, bankBottom.y)
+    ctx.lineTo(cx + r * kx, cy - r)
+    ctx.lineTo(cx + r * kx, bankBottom.y)
     ctx.closePath()
     ctx.clip()
   }
@@ -56,25 +56,25 @@ function drawLandStrata(
     grad.addColorStop(1, layer.secondaryColor)
     ctx.fillStyle = grad
     ctx.beginPath()
-    ctx.moveTo(cx - r, nextY)
-    for (let x = cx - r; x <= cx + r + 18; x += 18) {
-      const normX = 0.5 + (x - cx) / (r * 2)
+    ctx.moveTo(cx - r * kx, nextY)
+    for (let x = cx - r * kx; x <= cx + r * kx + 18; x += 18) {
+      const normX = 0.5 + (x - cx) / (r * 2 * kx)
       const contourPx = isTop ? contourMm(normX) * mmPx : 0
       ctx.lineTo(x, nextY + Math.sin(x * 0.03 + layerIdx) * 1.4 - contourPx)
     }
-    ctx.lineTo(cx + r, currentY + 6)
-    ctx.lineTo(cx - r, currentY + 6)
+    ctx.lineTo(cx + r * kx, currentY + 6)
+    ctx.lineTo(cx - r * kx, currentY + 6)
     ctx.closePath()
     ctx.fill()
 
     world.substrateGrains.slice(layerIdx * 30, (layerIdx + 1) * 30).forEach((gr) => {
-      const gx = cx - r * 0.8 + num(gr, 'rx') * (r * 1.6)
+      const gx = cx - r * 0.8 * kx + num(gr, 'rx') * (r * 1.6 * kx)
       const gy = nextY + 3 + num(gr, 'ry') * Math.max(2, hPx - 5)
       const shade = num(gr, 'shade')
       ctx.beginPath()
       if (layer.id === 'leaflitter') {
         ctx.fillStyle = shade > 0.66 ? '#b5853f' : shade > 0.33 ? '#9a6b35' : '#6f4620'
-        const lift = isTop ? contourMm(0.5 + (gx - cx) / (2 * r)) * mmPx : 0
+        const lift = isTop ? contourMm(0.5 + (gx - cx) / (2 * r * kx)) * mmPx : 0
         ctx.ellipse(
           gx,
           nextY + 2 + num(gr, 'ry') * Math.max(2, hPx - 2) - lift,
@@ -98,8 +98,8 @@ function drawLandStrata(
       ctx.lineWidth = 1.4
       ctx.setLineDash([4, 2])
       ctx.beginPath()
-      ctx.moveTo(cx - r, nextY)
-      ctx.lineTo(cx + r, nextY)
+      ctx.moveTo(cx - r * kx, nextY)
+      ctx.lineTo(cx + r * kx, nextY)
       ctx.stroke()
       ctx.restore()
     }
@@ -115,22 +115,23 @@ function drawPoolBed(
   state: StudioState,
   g: BankGeometry,
 ): void {
-  const { cx, r, bottomY, toPy, bankTop, bankBottom, bankXAt } = g
+  const { cx, r, kx, bottomY, toPy, bankTop, bankBottom, bankXAt } = g
+  const left = cx - r * kx
   const bedY = toPy(getPoolBedNormY(state.substrates))
   const gravel = SUBSTRATE_LAYERS.find((l) => l.id === 'rivergravel')
   const gravelColor = gravel?.color ?? '#d4a359'
   ctx.save()
   ctx.beginPath()
-  ctx.moveTo(cx - r, bedY)
+  ctx.moveTo(left, bedY)
   ctx.lineTo(bankXAt(bedY), bedY)
   ctx.lineTo(bankBottom.x, bankBottom.y)
-  ctx.lineTo(cx - r, bankBottom.y)
+  ctx.lineTo(left, bankBottom.y)
   ctx.closePath()
   ctx.fillStyle = gravel?.secondaryColor ?? '#a67633'
   ctx.fill()
   ctx.clip()
   world.substrateGrains.slice(0, 80).forEach((gr) => {
-    const gx = cx - r + num(gr, 'rx') * (bankXAt(bedY) - (cx - r) + 10)
+    const gx = left + num(gr, 'rx') * (bankXAt(bedY) - left + 10)
     const gy = bedY + 2 + num(gr, 'ry') * Math.max(3, bottomY - bedY - 2)
     ctx.fillStyle = num(gr, 'shade') > 0.5 ? gravelColor : '#b98a46'
     ctx.beginPath()

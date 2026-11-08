@@ -5,10 +5,10 @@ import { num, str, vesselMetrics, type RenderFn } from './metrics'
  * (position integration and edge bounce) belongs to the simulation tick.
  */
 export const drawParticles: RenderFn = (ctx, world, state, R) => {
-  const { cx, cy, r: Rad } = vesselMetrics(R)
+  const { cy, r: Rad } = vesselMetrics(R)
 
   world.ambientMotes.forEach((m) => {
-    const mx = cx - Rad + num(m, 'x') * (Rad * 2)
+    const mx = R.x + num(m, 'x') * R.w
     const my = cy - Rad + num(m, 'y') * (Rad * 2)
     ctx.fillStyle =
       str(m, 'type') === 'spore' ? 'rgba(163, 230, 53, 0.35)' : 'rgba(255, 255, 255, 0.35)'
@@ -19,7 +19,7 @@ export const drawParticles: RenderFn = (ctx, world, state, R) => {
 
   if (state.lighting === 'night' || state.lighting === 'twilight') {
     world.fireflies.forEach((f) => {
-      const fx = cx - Rad + num(f, 'x') * (Rad * 2)
+      const fx = R.x + num(f, 'x') * R.w
       const fy = cy - Rad + num(f, 'y') * (Rad * 2)
       const fg = ctx.createRadialGradient(fx, fy, 1, fx, fy, 9)
       fg.addColorStop(0, 'rgba(253, 224, 71, 0.85)')

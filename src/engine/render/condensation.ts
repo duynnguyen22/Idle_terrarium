@@ -43,17 +43,17 @@ const GLASS_DROPS: readonly GlassDrop[] = (() => {
 export const drawCondensation: RenderFn = (ctx, world, state, R) => {
   const c = world.env.condensation
   if (!(c > FOG_THRESHOLD) || state.vessel === 'globe') return
-  const { cx, cy, r } = vesselMetrics(R)
+  const { cy, r } = vesselMetrics(R)
   ctx.save()
   ctx.fillStyle = `rgba(255, 255, 255, ${(0.1 * c).toFixed(3)})`
-  ctx.fillRect(cx - r, cy - r, r * 2, r * 2)
+  ctx.fillRect(R.x, R.y, R.w, R.h)
   if (c >= DROPLET_THRESHOLD) {
     const n = Math.floor(GLASS_DROPS.length * Math.min(1, c))
     for (let i = 0; i < n; i++) {
       const g = GLASS_DROPS[i]
       ctx.fillStyle = `rgba(240, 249, 255, ${((0.35 + g.o * 0.35) * c).toFixed(3)})`
       ctx.beginPath()
-      ctx.arc(cx - r + g.x * 2 * r, cy - r + g.y * 2 * r, g.r * (r / 300), 0, Math.PI * 2)
+      ctx.arc(R.x + g.x * R.w, cy - r + g.y * 2 * r, g.r * (r / 300), 0, Math.PI * 2)
       ctx.fill()
     }
   }
@@ -72,13 +72,13 @@ const SPOT_THRESHOLD = 0.03
 export const drawMineralSpots: RenderFn = (ctx, world, state, R) => {
   const ms = world.mineralSpots
   if (!(ms > SPOT_THRESHOLD) || state.vessel === 'globe') return
-  const { cx, cy, r } = vesselMetrics(R)
+  const { cy, r } = vesselMetrics(R)
   const n = Math.floor(GLASS_DROPS.length * Math.min(1, ms * 1.4))
   ctx.save()
   ctx.fillStyle = `rgba(245, 245, 240, ${(0.18 + ms * 0.4).toFixed(3)})`
   for (let i = 0; i < n; i++) {
     const g = GLASS_DROPS[(i * 7) % GLASS_DROPS.length]
-    const gx = cx + (g.x - 0.5) * 2 * r + (i % 5) * 3
+    const gx = R.x + g.x * R.w + (i % 5) * 3
     const gy = cy - r + g.y * 2 * r + 14
     ctx.beginPath()
     ctx.ellipse(gx, gy, (g.r + 1) * (r / 260), (g.r + 0.6) * (r / 300), 0.4, 0, Math.PI * 2)

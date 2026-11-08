@@ -6,10 +6,10 @@ import { num, str, vesselMetrics, type RenderFn } from './metrics'
  * the tilted pour container cursor. Particle spawning, gravity and landing belong to the simulation tick.
  */
 export const drawPouring: RenderFn = (ctx, world, state, R) => {
-  const { cx, cy, r: Rad } = vesselMetrics(R)
+  const { cy, r: Rad } = vesselMetrics(R)
 
   for (const p of world.fallingStreams) {
-    const px = cx - Rad + num(p, 'x') * (Rad * 2)
+    const px = R.x + num(p, 'x') * R.w
     const py = cy - Rad + num(p, 'y') * (Rad * 2)
 
     ctx.save()
@@ -34,7 +34,7 @@ export const drawPouring: RenderFn = (ctx, world, state, R) => {
   if (state.activeTool === 'pour' && state.activePourMaterial && !state.relaxMode) {
     const layer = SUBSTRATE_LAYERS.find((l) => l.id === state.activePourMaterial)
     if (!layer) return
-    const px = cx - Rad + world.pointerNorm.x * (Rad * 2)
+    const px = R.x + world.pointerNorm.x * R.w
     const py = cy - Rad + world.pointerNorm.y * (Rad * 2)
 
     ctx.save()

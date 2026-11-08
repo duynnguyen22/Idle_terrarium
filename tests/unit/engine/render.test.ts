@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { VESSELS, VESSELS_BY_ID, type VesselId } from '@/data/vessels'
+import { VESSELS, VESSELS_BY_ID, vesselKX, type VesselId } from '@/data/vessels'
 import { hasPool } from '@/engine/geometry'
 import { drawCondensation, drawMineralSpots } from '@/engine/render/condensation'
-import { drawLid } from '@/engine/render/frame'
+import { drawLid, drawPaludariumFrontFrame } from '@/engine/render/frame'
 import { vesselMetrics } from '@/engine/render/metrics'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
+import { drawSpecimens } from '@/engine/render/specimens'
 import { drawSubstrates } from '@/engine/render/substrates'
+import { beginVesselClip } from '@/engine/render/vessel'
 import { drawWater, rippleAmplitude } from '@/engine/render/water'
 import { configureSpriteCache } from '@/engine/sprites/spriteCache'
 import { createWorld, type EngineWorld } from '@/engine/world'
@@ -266,5 +268,86 @@ describe('v6 pool, hardware and glass', () => {
         drawLid(ctx, w, { ...state, vessel: 'paludarium_tank', hasLid: true }, R, 0),
       ).calls.filter((c) => c.name === 'fill'),
     ).toHaveLength(0)
+  })
+})
+
+/** Context stub that logs every call with its arguments and the lineWidth in force at that call. */
+function argsContext() {
+  const calls: { name: string; args: number[]; lineWidth: unknown }[] = []
+  const state: Record<string, unknown> = {}
+  const gradient = { addColorStop: () => undefined }
+  const ctx = new Proxy(state, {
+    get(target, prop: string) {
+      if (prop in target) return target[prop]
+      return (...args: number[]) => {
+        calls.push({ name: prop, args, lineWidth: target.lineWidth })
+        return prop.startsWith('create') ? gradient : undefined
+      }
+    },
+    set(target, prop: string, value) {
+      target[prop] = value
+      return true
+    },
+  }) as unknown as CanvasRenderingContext2D
+  return { ctx, calls }
+}
+
+describe('rectangular tanks', () => {
+  it('renderFrame draws every vessel with a populated world', () => {
+    for (const v of VESSELS) {
+      const state = { ...createDefaultState(), vessel: v.id, hasLid: true, hasGrowLamp: true }
+      const R = computeVesselRect(800, 600, false, vesselKX(v.id))
+      expect(() =>
+        renderFrame(makeRecordingContext().ctx, populatedWorld(), state, R, 50),
+      ).not.toThrow()
+    }
+  })
+
+  it('no lid on rect tanks', () => {
+    const R = computeVesselRect(800, 600, false, 2)
+    const roundRects = (vessel: VesselId) => {
+      const { ctx, calls } = argsContext()
+      drawLid(ctx, createWorld(), { ...createDefaultState(), vessel, hasLid: true }, R, 0)
+      return calls.filter((c) => c.name === 'roundRect')
+    }
+    expect(roundRects('rimless_landscape')).toHaveLength(0)
+    expect(roundRects('apothecary')).toHaveLength(1)
+  })
+
+  it('vivarium frame draws doors', () => {
+    const R = computeVesselRect(800, 600, false, 1.55)
+    const { r } = vesselMetrics(R)
+    const { ctx, calls } = argsContext()
+    const state = { ...createDefaultState(), vessel: 'vivarium_front' as VesselId }
+    drawPaludariumFrontFrame(ctx, createWorld(), state, R, 0)
+    const frames = calls.filter((c) => c.name === 'strokeRect')
+    expect(frames).toHaveLength(1)
+    expect(frames[0].args[2]).toBeCloseTo(r * 1.44 * 1.55)
+    expect(frames[0].lineWidth).toBe(5)
+    const handles = calls.filter((c) => c.name === 'roundRect')
+    expect(handles).toHaveLength(2)
+    for (const h of handles) expect(h.args.slice(2, 4)).toEqual([4, 16])
+  })
+
+  it('places a specimen across the full scaled width', () => {
+    const R = computeVesselRect(800, 600, false, 2)
+    const world = createWorld()
+    world.items = [{ ...structuredClone(ITEMS[0]), x: 1, y: 0.5 }]
+    const { ctx, calls } = argsContext()
+    drawSpecimens(ctx, world, createDefaultState(), R, 0)
+    const moves = calls.filter((c) => c.name === 'translate')
+    expect(moves[0].args[0]).toBeCloseTo(R.x + R.w)
+    expect(moves[0].args[1]).toBeCloseTo(R.y + R.h / 2)
+  })
+
+  it('fills the inner glass tint over the whole scaled rect', () => {
+    const R = computeVesselRect(800, 600, false, 2.6)
+    const { ctx, calls } = argsContext()
+    beginVesselClip(ctx, createWorld(), { ...createDefaultState(), vessel: 'riparium_long' }, R, 0)
+    const fill = calls.find((c) => c.name === 'fillRect')
+    expect(fill?.args[0]).toBeCloseTo(R.x)
+    expect(fill?.args[1]).toBeCloseTo(R.y)
+    expect(fill?.args[2]).toBeCloseTo(R.w)
+    expect(fill?.args[3]).toBeCloseTo(R.h)
   })
 })
