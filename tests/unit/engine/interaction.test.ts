@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { HardscapeDef } from '@/data/types'
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
 import { addItem } from '@/engine/items'
 import {
@@ -10,6 +11,23 @@ import {
   updateDrag,
 } from '@/engine/interaction'
 import { createWorld, type EngineWorld } from '@/engine/world'
+
+/** A test-only host with a single mount point half a host size to the right of its centre. */
+const LEDGE = vi.hoisted((): HardscapeDef => ({
+  id: 'test_ledge',
+  name: 'Test Ledge',
+  category: 'hardscape',
+  baseScale: 1,
+  desc: '',
+  mountPoints: [{ ox: 0.5, oy: 0 }],
+}))
+vi.mock('@/data/catalog', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/data/catalog')>()
+  return {
+    ...actual,
+    findCatalogDef: (id: string) => (id === LEDGE.id ? LEDGE : actual.findCatalogDef(id)),
+  }
+})
 
 let world: EngineWorld
 beforeEach(() => {
@@ -36,6 +54,15 @@ describe('hitTest', () => {
   it('misses outside 0.085 * scale', () => {
     place('peacock_fern', 0.5, 0.5)
     expect(hitTest(world, 0.8, 0.8)).toBeNull()
+  })
+  it('hit test scales dx by kx', () => {
+    const item = place('peacock_fern', 0.5, 0.5)
+    item.x = 0.5
+    item.y = 0.5
+    item.scale = 1
+    expect(hitTest(world, 0.57, 0.5)).toBe(item)
+    expect(hitTest(world, 0.57, 0.5, 2)).toBeNull()
+    expect(hitTest(world, 0.53, 0.5, 2)).toBe(item)
   })
 })
 
@@ -71,6 +98,55 @@ describe('drag', () => {
     expect(plant.offsetX).toBeCloseTo(0)
     expect(plant.offsetY).toBeCloseTo(mpy - rock.y)
     expect(world.hoveredSnapTarget).toBe(rock.uid)
+  })
+
+  it('mount points scale by 1/kx', () => {
+    const host = place('river_stones', 0.5, 0.6)
+    Object.assign(host, { id: LEDGE.id, x: 0.5, y: 0.6, scale: 1 })
+    const plant = place('peacock_fern', 0.3, 0.3)
+
+    // Square vessel: the mount point sits at 0.5 + 0.5 * 0.18 = 0.59.
+    beginDrag(world, plant, plant.x, plant.y)
+    updateDrag(world, 0.55, 0.6)
+    expect(plant.parentUid).toBe(host.uid)
+    expect(plant.x).toBeCloseTo(0.59)
+    endDrag(world)
+
+    // kx = 2: the same mount point sits at 0.5 + 0.09 / 2 = 0.545.
+    beginDrag(world, plant, plant.x, plant.y)
+    updateDrag(world, 0.55, 0.6, 2)
+    expect(plant.parentUid).toBe(host.uid)
+    expect(plant.x).toBeCloseTo(0.545)
+    expect(plant.y).toBeCloseTo(0.6)
+    expect(plant.offsetX).toBeCloseTo(0.09)
+    expect(plant.offsetY).toBeCloseTo(0)
+    endDrag(world)
+  })
+
+  it('syncChildren divides offsetX by kx', async () => {
+    const { syncChildren } = await import('@/engine/simulation/tick')
+    const parent = place('river_stones', 0.5, 0.6)
+    const child = place('peacock_fern', 0.7, 0.5)
+    Object.assign(child, { parentUid: parent.uid, offsetX: 0.09, offsetY: -0.05 })
+    syncChildren(world, 2)
+    expect(child.x).toBeCloseTo(0.545)
+    expect(child.y).toBeCloseTo(parent.y - 0.05)
+  })
+
+  it('a mounted child keeps its pixel offset when the vessel changes', async () => {
+    const { syncChildren } = await import('@/engine/simulation/tick')
+    const host = place('river_stones', 0.5, 0.6)
+    Object.assign(host, { id: LEDGE.id, x: 0.5, y: 0.6, scale: 1 })
+    const plant = place('peacock_fern', 0.3, 0.3)
+    beginDrag(world, plant, plant.x, plant.y)
+    updateDrag(world, 0.55, 0.6, 1)
+    endDrag(world)
+    expect(plant.parentUid).toBe(host.uid)
+    expect(plant.offsetX).toBeCloseTo(0.09)
+    expect(plant.x).toBeCloseTo(0.59)
+
+    syncChildren(world, 2.6)
+    expect((plant.x - host.x) * 2.6).toBeCloseTo(0.09)
   })
 
   it('does not snap a non-mountable item', () => {

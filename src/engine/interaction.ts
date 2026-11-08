@@ -21,12 +21,16 @@ export interface ToolEffect {
 
 export type CareTool = 'mist' | 'prune' | 'boost' | 'scrub'
 
-/** Topmost (highest zIndex) item within `0.085 * scale` of (nx, ny). Distance-based, as in the prototype. */
-export function hitTest(world: EngineWorld, nx: number, ny: number): PlacedItem | null {
+/**
+ * Topmost (highest zIndex) item within `0.085 * scale` of (nx, ny). Distance-based, as in the prototype; the
+ * horizontal distance is scaled by the tank's KX so the hit area stays round on screen (prototype 6291).
+ */
+export function hitTest(world: EngineWorld, nx: number, ny: number, kx = 1): PlacedItem | null {
   const sorted = [...world.items].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0))
   return (
-    sorted.find((item) => Math.hypot(item.x - nx, item.y - ny) < HIT_RADIUS * (item.scale || 1)) ??
-    null
+    sorted.find(
+      (item) => Math.hypot((item.x - nx) * kx, item.y - ny) < HIT_RADIUS * (item.scale || 1),
+    ) ?? null
   )
 }
 
@@ -41,9 +45,11 @@ const clampTo = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi,
  * Moves the dragged item to the pointer (plus grab offset), clamped to the play area, snapping to a hardscape
  * mount point within SNAP_RADIUS when the item can mount (flora with canMountOnRock, or any fauna). The item is
  * unmounted first on every move, so dragging away beyond the radius detaches it. Returns the item, or null.
- * Children of the dragged item follow via syncChildren in the tick.
+ * Children of the dragged item follow via syncChildren in the tick. Mount-point x offsets are divided by the
+ * tank's KX so they keep their on-screen distance from the host on a wide tank; offsetX stores the kx-independent
+ * pixel-proportional offset (normalized offset times kx), which syncChildren divides by the current kx.
  */
-export function updateDrag(world: EngineWorld, nx: number, ny: number): PlacedItem | null {
+export function updateDrag(world: EngineWorld, nx: number, ny: number, kx = 1): PlacedItem | null {
   if (!world.draggingId) return null
   const item = world.items.find((i) => i.uid === world.draggingId)
   if (!item) return null
@@ -61,13 +67,13 @@ export function updateDrag(world: EngineWorld, nx: number, ny: number): PlacedIt
       if (!hostDef || hostDef.category !== 'hardscape' || !hostDef.mountPoints) continue
       const hostSize = MOUNT_HOST_SIZE * (host.scale || 1)
       for (const mp of hostDef.mountPoints) {
-        const mpx = host.x + mp.ox * hostSize
+        const mpx = host.x + (mp.ox * hostSize) / kx
         const mpy = host.y + mp.oy * hostSize
         if (Math.hypot(targetX - mpx, targetY - mpy) < SNAP_RADIUS) {
           targetX = mpx
           targetY = mpy
           item.parentUid = host.uid
-          item.offsetX = targetX - host.x
+          item.offsetX = (targetX - host.x) * kx
           item.offsetY = targetY - host.y
           world.hoveredSnapTarget = host.uid
           break snap
@@ -97,6 +103,7 @@ export function applyTool(
   tool: string,
   nx: number,
   ny: number,
+  kx = 1,
 ): ToolEffect | null {
   switch (tool) {
     case 'mist':
@@ -113,7 +120,7 @@ export function applyTool(
       }
       return { toast: '✨ Substrate is already spotless and mold-free!' }
     case 'prune': {
-      const hit = hitTest(world, nx, ny)
+      const hit = hitTest(world, nx, ny, kx)
       if (hit && hit.category === 'flora') {
         hit.scale = Math.max(0.55, (hit.scale || 1) * 0.88)
         return { sound: 'prune', toast: '✂️ Pruned foliage neatly' }

@@ -1,12 +1,15 @@
 import { LineIcon, type IconName } from '@/components/ui/LineIcon'
 import type { LightingId } from '@/data/types'
 import { advanceDay } from '@/engine/simulation/growth'
+import { flushTelemetry } from '@/engine/simulation/telemetry'
+import { refreshCareReport } from '@/engine/simulation/tick'
 import { mutateWorld } from '@/engine/engineBridge'
 import { hasPool } from '@/engine/geometry'
 import { play } from '@/hooks/useAudio'
 import { useLocalClock } from '@/hooks/useLocalClock'
 import { selectDayCount, selectLighting } from '@/store/selectors'
 import { showToast } from '@/store/toastStore'
+import { useAccountStore } from '@/store/useAccountStore'
 import { useStudioStore } from '@/store/useStudioStore'
 
 const PHASE_ICONS: Record<LightingId, IconName> = {
@@ -62,8 +65,17 @@ export function ClockSpeedPill() {
         const cycling = hasPool(s.waterSplit) && after < 1
         msg = `Day ${s.dayCount}: plants grew${cycling ? ', pool still cycling' : ''}`
       }
+      // Like the spec's computeCareReport + renderTelemetry: the new day's issues and gauges reach the
+      // telemetry store now, not at the next throttled push, so the journal entry below records them.
+      refreshCareReport(w, s)
+      flushTelemetry(w, s)
     })
     showToast(msg)
+    // Signed in with a terrarium open: log the new day in its growth journal (spec 6082).
+    const account = useAccountStore.getState()
+    if (account.phase === 'cloud' && account.activeId) {
+      account.addJournalEntry('', true).catch((e: unknown) => account.handleCloudError(e))
+    }
   }
 
   return (

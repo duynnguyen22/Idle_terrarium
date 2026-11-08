@@ -1,8 +1,10 @@
+import { useMemo } from 'react'
 import { BotanistNotes, CareList } from '@/components/telemetry/BotanistNotes'
 import { EcoStats } from '@/components/telemetry/EcoStats'
 import { GaugeBar } from '@/components/telemetry/GaugeBar'
 import type { PlacedItem } from '@/data/types'
 import { idealRange } from '@/engine/care'
+import { envModel, qualityWord } from '@/engine/room'
 import { isLampOn } from '@/engine/simulation/clock'
 import { selectTelemetry } from '@/store/selectors'
 import { useStudioStore, type StudioStore } from '@/store/useStudioStore'
@@ -24,6 +26,9 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
   const t = useTelemetryStore(selectTelemetry)
   const items = useStudioStore(selectItems)
   const lampOn = useStudioStore(selectLampOn)
+  const room = useStudioStore((s) => s.room)
+  const hasLid = useStudioStore((s) => s.hasLid)
+  const m = useMemo(() => envModel(room, hasLid), [room, hasLid])
   const hum = idealRange(items, 'hum')
   const tmp = idealRange(items, 'temp')
   // A corrupt or missing reading must not render as "NaN °C".
@@ -96,6 +101,26 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
           text={`${Math.round(t.nutrients)}%`}
           band={{ lo: 40, hi: 100, tol: 0 }}
           hint="Leaf litter and isopods recycle nutrients slowly"
+        />
+        <GaugeBar
+          gaugeKey="water"
+          label="Water quality"
+          value={m.water}
+          min={0}
+          max={100}
+          text={`${m.water} · ${qualityWord(m.water)}`}
+          band={{ lo: 70, hi: 100, tol: 0 }}
+          hint={`${m.ws.name} · ${m.tds} ppm · pH ${m.ph.toFixed(1)}`}
+        />
+        <GaugeBar
+          gaugeKey="air"
+          label="Air quality"
+          value={m.airEff}
+          min={0}
+          max={100}
+          text={`${m.airEff} · ${qualityWord(m.airEff)}`}
+          band={{ lo: 70, hi: 100, tol: 0 }}
+          hint={`${m.as.name}${room.purifier ? ' · purifier on' : ''}`}
         />
         <GaugeBar
           gaugeKey="o2"

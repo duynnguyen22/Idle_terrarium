@@ -5,10 +5,14 @@ import { RightTelemetry } from '@/components/layout/RightTelemetry'
 import { TopNav } from '@/components/layout/TopNav'
 import { LightingControls } from '@/components/nav/LightingControls'
 import { GaugeBar } from '@/components/telemetry/GaugeBar'
+import { DEFAULT_ROOM } from '@/engine/room'
 import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { showToast, useToastStore } from '@/store/toastStore'
 import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+import { useAccountStore } from '@/store/useAccountStore'
+import { createLocalBackend } from '@/auth/backend'
+import { MemoryStorage } from './auth/authHarness'
 import {
   createDefaultTelemetry,
   useTelemetryStore,
@@ -30,6 +34,7 @@ const item = (uid: string, category: PlacedItem['category']): PlacedItem => ({
 })
 
 let world: EngineWorld
+const initialAccount = useAccountStore.getState()
 const user = () => ({ click: (el: HTMLElement) => act(() => void fireEvent.click(el)) })
 
 beforeEach(() => {
@@ -42,6 +47,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  useAccountStore.setState(initialAccount, true)
   unregisterWorld()
   vi.useRealTimers()
 })
@@ -97,6 +103,63 @@ describe('TopNav speed controls', () => {
     await user().click(screen.getByRole('button', { name: '+1 day' }))
     expect(world.env.cycleProgress).toBe(1)
     expect(useToastStore.getState().message).toBe('Day 2: plants grew. The pool has cycled.')
+  })
+
+  it('+Day writes an automatic journal entry when signed in, and nothing when signed out', async () => {
+    const backend = createLocalBackend('u_demo', new MemoryStorage())
+    const addJournal = vi.spyOn(backend, 'addJournal')
+    // The fresh report after the advance has a warn (dry substrate) and an info (low nutrients).
+    world.env.soilMoisture = 30
+    world.env.nutrients = 30
+    render(<TopNav />)
+    const plusDay = screen.getByRole('button', { name: '+1 day' })
+
+    // Signed out: the backend is never touched.
+    useAccountStore.setState({ phase: 'signedout', activeId: 'g_a', backend })
+    await user().click(plusDay)
+    await act(async () => {})
+    expect(useStudioStore.getState().dayCount).toBe(2)
+    expect(addJournal).not.toHaveBeenCalled()
+
+    // Signed in with an open terrarium: one automatic entry for the new day, no extra toast.
+    useAccountStore.setState({ phase: 'cloud', activeId: 'g_a', backend })
+    await user().click(plusDay)
+    await vi.waitFor(() => expect(useAccountStore.getState().journal).toHaveLength(1))
+    const saved = await backend.listJournal('g_a')
+    expect(saved).toHaveLength(1)
+    expect(saved[0]).toMatchObject({ day: 3, auto: true, note: '' })
+    expect(saved[0].issues).toEqual(['The substrate is drying out and the moss looks pale.'])
+    expect(useToastStore.getState().message).toMatch(/^Day 3: plants grew/)
+
+    // Signed in but no terrarium open yet: nothing either.
+    useAccountStore.setState({ activeId: null })
+    await user().click(plusDay)
+    await act(async () => {})
+    expect(addJournal).toHaveBeenCalledTimes(1)
+  })
+
+  it('+Day refreshes the care report so the automatic entry records the new day', async () => {
+    const backend = createLocalBackend('u_demo', new MemoryStorage())
+    // The telemetry store still holds the previous day's flush.
+    useTelemetryStore.setState({
+      telemetry: {
+        ...createDefaultTelemetry(),
+        nutrients: 88,
+        careIssues: [{ level: 'warn', text: 'Yesterday’s stale warning.' }],
+      },
+    })
+    world.env.nutrients = 50
+    world.env.soilMoisture = 30
+    // Inside the throttle window: a throttled push would skip the flush.
+    world.lastTelemetryPush = performance.now()
+    useAccountStore.setState({ phase: 'cloud', activeId: 'g_a', backend })
+    render(<TopNav />)
+    await user().click(screen.getByRole('button', { name: '+1 day' }))
+    await vi.waitFor(() => expect(useAccountStore.getState().journal).toHaveLength(1))
+    const [saved] = await backend.listJournal('g_a')
+    expect(saved.metrics.nutrients).toBe(48)
+    expect(saved.issues).toEqual(['The substrate is drying out and the moss looks pale.'])
+    expect(useTelemetryStore.getState().telemetry.nutrients).toBe(48)
   })
 })
 
@@ -192,6 +255,33 @@ const withTelemetry = (partial: Partial<Telemetry>) =>
 const warn = (text: string): CareIssue => ({ level: 'warn', text })
 
 describe('RightTelemetry', () => {
+  it('renders water and air gauges from the room model', () => {
+    useStudioStore.setState({ room: { ...DEFAULT_ROOM, water: 'tap' } })
+    render(<RightTelemetry />)
+    expect(screen.getByTestId('gauge-water')).toHaveAttribute('data-in-band', 'false')
+    expect(screen.getByText('55 · Poor')).toBeInTheDocument()
+    expect(screen.getByText('Tap water · 180 ppm · pH 7.2')).toBeInTheDocument()
+    expect(screen.getByTestId('gauge-air')).toHaveAttribute('data-in-band', 'true')
+    expect(screen.getByText('100 · Good')).toBeInTheDocument()
+    expect(screen.getByText('Clean indoor air')).toBeInTheDocument()
+  })
+
+  it('orders the gauges nutrients, water, air, O2 as in the prototype', () => {
+    render(<RightTelemetry />)
+    const ids = [...document.querySelectorAll('[data-testid^="gauge-"]')]
+      .map((el) => el.getAttribute('data-testid'))
+      .filter((id) =>
+        ['gauge-nutrients', 'gauge-water', 'gauge-air', 'gauge-o2'].includes(id ?? ''),
+      )
+    expect(ids).toEqual(['gauge-nutrients', 'gauge-water', 'gauge-air', 'gauge-o2'])
+  })
+
+  it('notes an active purifier on the air gauge', () => {
+    useStudioStore.setState({ room: { ...DEFAULT_ROOM, air: 'traffic', purifier: true } })
+    render(<RightTelemetry />)
+    expect(screen.getByText('Near a busy road · purifier on')).toBeInTheDocument()
+  })
+
   it('+Spore adds a mold patch to the world', async () => {
     render(<RightTelemetry />)
     await user().click(screen.getByRole('button', { name: /Spore/ }))

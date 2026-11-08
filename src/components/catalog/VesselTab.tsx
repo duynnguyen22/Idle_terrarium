@@ -2,6 +2,7 @@ import { mutateWorld } from '@/engine/engineBridge'
 import { selectHardware } from '@/store/selectors'
 import { showToast } from '@/store/toastStore'
 import { useStudioStore } from '@/store/useStudioStore'
+import { BackdropSection } from './BackdropSection'
 import { BiomeRecipes } from './BiomeRecipes'
 import { HardwarePanel } from './HardwarePanel'
 import { PourContainersGrid } from './PourContainersGrid'
@@ -40,6 +41,8 @@ export function VesselTab() {
         <VesselGrid />
         <HardwarePanel />
       </section>
+
+      <BackdropSection />
 
       <section>
         <h2 className={`${H2} mb-2`}>Build recipes</h2>

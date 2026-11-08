@@ -24,6 +24,11 @@ export interface VesselDef {
   name: string
   desc: string
   evapMultiplier: number
+  /** Horizontal stretch of the tank interior (rectangular tanks). */
+  kx?: number
+  rect?: boolean
+  doors?: boolean
+  low?: boolean
 }
 
 export interface SubstrateLayerDef {
@@ -110,4 +115,20 @@ export interface PlacedItem {
   vy?: number
   aiState?: AiState
   aiTimer?: number
+}
+
+export type WaterSourceId = 'tap' | 'tap_treated' | 'filtered' | 'ro' | 'rain'
+export type AirSourceId = 'clean' | 'traffic' | 'smoke' | 'voc' | 'aerosol'
+export type BackdropId =
+  'none' | 'karst' | 'terraces' | 'pines' | 'alpine' | 'falls' | 'mesa' | 'custom'
+
+/** The room the tank sits in: what goes into the water and what the lid keeps out of the air. */
+export interface RoomEnv {
+  water: WaterSourceId
+  /** Dissolved minerals in ppm, before the source's own correction. */
+  tds: number
+  /** Water pH as a real number (7.2), not tenths. */
+  ph: number
+  air: AirSourceId
+  purifier: boolean
 }

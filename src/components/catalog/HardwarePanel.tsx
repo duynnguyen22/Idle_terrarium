@@ -18,11 +18,11 @@ const FLOWS: { flow: PumpFlow; label: string }[] = [
 
 const ICON_BASE =
   'inline-flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg transition-colors'
-const ICON_OFF = 'bg-[#eef1ea] text-[#8a948c]'
-const ICON_ON = 'bg-[#dcebe0] text-[#1b5e3b]'
+export const ICON_OFF = 'bg-[#eef1ea] text-[#8a948c]'
+export const ICON_ON = 'bg-[#dcebe0] text-[#1b5e3b]'
 const ICON_LIT = 'bg-[#fbf0cc] text-[#9a6a00]'
 
-function Glyph({ d }: { d: string }) {
+export function Glyph({ d }: { d: string }) {
   return (
     <svg
       className="h-[17px] w-[17px]"
@@ -50,7 +50,7 @@ function HwText({ label, sub, subId }: { label: string; sub: string; subId?: str
   )
 }
 
-function SwitchRow({
+export function SwitchRow({
   label,
   sub,
   checked,

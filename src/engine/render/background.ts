@@ -9,7 +9,7 @@ export function drawBackground(
   R: Rect,
   view: { w: number; h: number },
 ): void {
-  const { cx, cy, r } = vesselMetrics(R)
+  const { cx, cy, r, kx } = vesselMetrics(R)
   const { w: W, h: H } = view
 
   const bgGrad = ctx.createLinearGradient(0, 0, 0, H)
@@ -34,6 +34,6 @@ export function drawBackground(
   // Wooden studio base board
   ctx.fillStyle = '#cbbba0'
   ctx.beginPath()
-  ctx.roundRect(cx - r * 0.78, cy + r * 0.84, r * 1.56, r * 0.06, 6)
+  ctx.roundRect(cx - r * 0.78 * kx, cy + r * 0.84, r * 1.56 * kx, r * 0.06, 6)
   ctx.fill()
 }

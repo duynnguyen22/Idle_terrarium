@@ -60,7 +60,24 @@ export function pushTelemetry(
 ): boolean {
   if (now - world.lastTelemetryPush < TELEMETRY_INTERVAL_MS) return false
   world.lastTelemetryPush = now
+  flushTelemetry(world, store, state)
+  if (now - world.lastEnvSeedPush >= ENV_SEED_INTERVAL_MS) {
+    world.lastEnvSeedPush = now
+    flushEnvSeed(world, store)
+  }
+  return true
+}
 
+/**
+ * The unthrottled body of pushTelemetry (everything but the env seed cadence): pending substrates,
+ * the live gauges and care issues, cycle progress and a pending water split. Called directly when a
+ * discrete change (e.g. +1 day) must reach the stores before the next throttled push.
+ */
+export function flushTelemetry(
+  world: EngineWorld,
+  store: StudioStore,
+  state: Pick<StudioState, 'substrates' | 'cycleProgress'> = store,
+): void {
   const keys = Object.keys(world.pendingSubstrates) as (keyof SubstrateDepths)[]
   if (keys.some((k) => world.pendingSubstrates[k])) {
     store.setSubstrates(effectiveSubstrates(world, state.substrates))
@@ -85,11 +102,6 @@ export function pushTelemetry(
     store.setWaterSplit(world.pendingWaterSplit)
     world.pendingWaterSplit = undefined
   }
-  if (now - world.lastEnvSeedPush >= ENV_SEED_INTERVAL_MS) {
-    world.lastEnvSeedPush = now
-    flushEnvSeed(world, store)
-  }
-  return true
 }
 
 /**
@@ -97,7 +109,10 @@ export function pushTelemetry(
  * hidden or the engine unmounts, so a care change made just before a reload is not lost).
  * setEnvSeed rounds to 1 decimal and skips set() when nothing changed.
  */
-export function flushEnvSeed(world: EngineWorld, store: Pick<StudioStore, 'setEnvSeed'>): void {
+export function flushEnvSeed(
+  world: EngineWorld,
+  store: Pick<StudioStore, 'setEnvSeed' | 'setMineralSpots' | 'mineralSpots'>,
+): void {
   const env = world.env
   store.setEnvSeed({
     humidity: env.humidity,
@@ -105,4 +120,6 @@ export function flushEnvSeed(world: EngineWorld, store: Pick<StudioStore, 'setEn
     soilMoisture: env.soilMoisture,
     nutrients: env.nutrients,
   })
+  const spots = +world.mineralSpots.toFixed(3)
+  if (spots !== store.mineralSpots) store.setMineralSpots(spots)
 }

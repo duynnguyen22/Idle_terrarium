@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { mapLegacySubstrates, migrate } from '@/store/migrations'
+import type { RoomEnv } from '@/data/types'
+import { mapLegacySubstrates, migrate, sanitizeRoom } from '@/store/migrations'
 
 describe('mapLegacySubstrates', () => {
   it('folds lavarock into pebbles and moss into soil, leaflitter starts at 0', () => {
@@ -128,13 +129,85 @@ describe('migrate', () => {
     })
   })
 
-  it('returns v2 state unchanged', () => {
-    const v2 = { substrates: { pebbles: 1 }, pumpFlow: 'off', waterSplit: 0.1 }
-    expect(migrate(v2, 2)).toEqual(v2)
+  it('v2 → v3 adds room, backdrop, haze and mineralSpots defaults', () => {
+    const out = migrate({ vessel: 'globe', substrates: {} }, 2) as Record<string, unknown>
+    expect(out.room).toEqual({
+      water: 'tap_treated',
+      tds: 180,
+      ph: 7.2,
+      air: 'clean',
+      purifier: false,
+    })
+    expect(out).toMatchObject({
+      vessel: 'globe',
+      backdrop: 'none',
+      backdropHaze: 35,
+      mineralSpots: 0,
+    })
+  })
+
+  it('a v1 save runs through both steps', () => {
+    expect(migrate({ substrates: { water: 0 } }, 1)).toMatchObject({
+      setupDay: 1,
+      room: { water: 'tap_treated' },
+      backdrop: 'none',
+    })
+  })
+
+  it('returns v3 state unchanged', () => {
+    const v3 = {
+      substrates: { pebbles: 1 },
+      room: { water: 'ro', tds: 90, ph: 6.6, air: 'smoke', purifier: true },
+      backdrop: 'karst',
+      backdropHaze: 10,
+      mineralSpots: 3,
+    }
+    expect(migrate(v3, 3)).toEqual(v3)
+  })
+
+  it('clamps an out-of-range room on migrate', () => {
+    const out = migrate(
+      { room: { water: 'ro', tds: 9000, ph: 2, air: 'clean', purifier: true } },
+      3,
+    ) as {
+      room: RoomEnv
+    }
+    expect(out.room).toMatchObject({ tds: 600, ph: 5.5 })
   })
 
   it('returns non-object persisted values as an empty object', () => {
     expect(migrate(null, 1)).toEqual({})
     expect(migrate('x', 1)).toEqual({})
+  })
+})
+
+describe('sanitizeRoom', () => {
+  it('falls back to defaults for unknown ids and junk values', () => {
+    expect(sanitizeRoom({ water: 'toString', air: 'constructor' })).toMatchObject({
+      water: 'tap_treated',
+      air: 'clean',
+    })
+    expect(sanitizeRoom({ water: 'lava', tds: 'x', ph: NaN, air: 7, purifier: 'yes' })).toEqual({
+      water: 'tap_treated',
+      tds: 180,
+      ph: 7.2,
+      air: 'clean',
+      purifier: false,
+    })
+  })
+
+  it('returns the defaults for a non-object', () => {
+    expect(sanitizeRoom(null)).toEqual({
+      water: 'tap_treated',
+      tds: 180,
+      ph: 7.2,
+      air: 'clean',
+      purifier: false,
+    })
+  })
+
+  it('keeps valid values', () => {
+    const room: RoomEnv = { water: 'rain', tds: 300, ph: 6.9, air: 'voc', purifier: true }
+    expect(sanitizeRoom(room)).toEqual(room)
   })
 })

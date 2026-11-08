@@ -1,4 +1,4 @@
-import { VESSELS } from '@/data/vessels'
+import { VESSELS_FOR_PICKER } from '@/data/vessels'
 import { getVesselPreviewSVG } from '@/lib/vesselPreview'
 import { selectVessel } from '@/store/selectors'
 import { useStudioStore } from '@/store/useStudioStore'
@@ -8,7 +8,7 @@ export function VesselGrid() {
   const setVessel = useStudioStore((s) => s.setVessel)
   return (
     <div className="grid grid-cols-2 gap-2">
-      {VESSELS.map((v) => {
+      {VESSELS_FOR_PICKER.map((v) => {
         const active = v.id === vessel
         return (
           <button

@@ -55,7 +55,7 @@ describe('studio store', () => {
     expect(store.getState()).toMatchObject({ hasLid: false, dayCount: 2, selectedId: 'x' })
     expect(store.getState().substrates.sand).toBe(5)
     const stored = JSON.parse(localStorage.getItem(STUDIO_STORAGE_KEY) ?? '{}')
-    expect(stored.version).toBe(2)
+    expect(stored.version).toBe(3)
     expect(stored.state.dayCount).toBe(2)
     expect(stored.state).not.toHaveProperty('selectedId')
     store.getState().resetStudio()
@@ -215,5 +215,82 @@ describe('studio store', () => {
       cycleProgress: 1,
     })
     expect(s.substrates).not.toHaveProperty('lavarock')
+  })
+
+  it('defaults the room, backdrop, haze and mineral spots', () => {
+    expect(createStudioStore(localStorage).getState()).toMatchObject({
+      room: { water: 'tap_treated', tds: 180, ph: 7.2, air: 'clean', purifier: false },
+      backdrop: 'none',
+      backdropHaze: 35,
+      mineralSpots: 0,
+    })
+  })
+
+  it('setRoom clamps tds to 20–600 and ph to 5.5–8.5 and merges the patch', () => {
+    const s = createStudioStore(localStorage)
+    s.getState().setRoom({ tds: 5, ph: 9 })
+    expect(s.getState().room).toMatchObject({ water: 'tap_treated', tds: 20, ph: 8.5 })
+    s.getState().setRoom({ tds: 5000, ph: 1, purifier: true })
+    expect(s.getState().room).toMatchObject({ tds: 600, ph: 5.5, purifier: true })
+  })
+
+  it('setBackdropHaze clamps to 0–80 and persists', () => {
+    const s = createStudioStore(localStorage)
+    s.getState().setBackdropHaze(95)
+    expect(s.getState().backdropHaze).toBe(80)
+    expect(partialize(s.getState()).backdropHaze).toBe(80)
+    s.getState().setBackdropHaze(-4)
+    expect(s.getState().backdropHaze).toBe(0)
+  })
+
+  it('persists room, backdrop and mineral spots at version 3', () => {
+    const s = createStudioStore(localStorage)
+    s.getState().setRoom({ water: 'rain', air: 'smoke' })
+    s.getState().setBackdrop('karst')
+    s.getState().setMineralSpots(0.5)
+    const stored = JSON.parse(localStorage.getItem(STUDIO_STORAGE_KEY) ?? '{}')
+    expect(stored.version).toBe(3)
+    expect(stored.state).toMatchObject({
+      room: { water: 'rain', air: 'smoke' },
+      backdrop: 'karst',
+      mineralSpots: 0.5,
+    })
+  })
+
+  it('hydrates a v2 save with the v3 defaults', () => {
+    localStorage.setItem(STUDIO_STORAGE_KEY, JSON.stringify({ state: { dayCount: 5 }, version: 2 }))
+    expect(createStudioStore(localStorage).getState()).toMatchObject({
+      dayCount: 5,
+      room: { water: 'tap_treated' },
+      backdrop: 'none',
+    })
+  })
+
+  it('sanitizes a hand-edited v3 save on hydration', () => {
+    localStorage.setItem(
+      STUDIO_STORAGE_KEY,
+      JSON.stringify({
+        state: {
+          room: { water: 'lava', tds: 9000, ph: 2, air: 'clean', purifier: false },
+          backdropHaze: 500,
+        },
+        version: 3,
+      }),
+    )
+    expect(createStudioStore(localStorage).getState()).toMatchObject({
+      room: { water: 'tap_treated', tds: 600, ph: 5.5 },
+      backdropHaze: 80,
+    })
+  })
+
+  it('ignores non-finite haze and mineral spots and clamps spots to 0–1', () => {
+    const s = createStudioStore(localStorage)
+    s.getState().setBackdropHaze(Number.NaN)
+    s.getState().setMineralSpots(Number.NaN)
+    expect(s.getState()).toMatchObject({ backdropHaze: 35, mineralSpots: 0 })
+    s.getState().setMineralSpots(3)
+    expect(s.getState().mineralSpots).toBe(1)
+    s.getState().setMineralSpots(-1)
+    expect(s.getState().mineralSpots).toBe(0)
   })
 })

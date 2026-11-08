@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { AccountDialog } from '@/components/account/AccountDialog'
 import { LightingControls } from '@/components/nav/LightingControls'
 import { CareToolbar } from '@/components/stage/CareToolbar'
 import { ItemInspector } from '@/components/stage/ItemInspector'
 import { RelaxDock } from '@/components/stage/RelaxDock'
 import { Toast } from '@/components/stage/Toast'
+import { useAccountLifecycle } from '@/hooks/useAccountLifecycle'
 import { useAudio } from '@/hooks/useAudio'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
@@ -18,6 +20,7 @@ export function StudioLayout({ children }: { children: ReactNode }) {
   useKeyboardShortcuts()
   useRelaxMode()
   useAudio()
+  useAccountLifecycle()
   useReducedMotion()
   // Below the lg breakpoint the sidebars are slide-over drawers; only one is open at a time (local UI state).
   const [drawer, setDrawer] = useState<DrawerSide | null>(null)
@@ -71,6 +74,7 @@ export function StudioLayout({ children }: { children: ReactNode }) {
           <ItemInspector />
           <RelaxDock />
           <Toast />
+          <AccountDialog />
         </main>
         <RightTelemetry drawerOpen={drawer === 'right'} />
       </div>

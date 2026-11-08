@@ -1,5 +1,5 @@
 import type { MistBead, SprayParticle } from '../simulation/mist'
-import { vesselMetrics, type RenderFn } from './metrics'
+import { normToPx, normToPy, vesselMetrics, type RenderFn } from './metrics'
 
 /**
  * Draw-only half of the artifact's drawMistSpray: spray droplets (fine mist puffs and falling drops),
@@ -7,9 +7,9 @@ import { vesselMetrics, type RenderFn } from './metrics'
  * Spawning, motion and landing belong to the simulation tick.
  */
 export const drawMist: RenderFn = (ctx, world, state, R) => {
-  const { cx, cy, r: Rad } = vesselMetrics(R)
-  const toPx = (nx: number) => cx - Rad + nx * 2 * Rad
-  const toPy = (ny: number) => cy - Rad + ny * 2 * Rad
+  const { r: Rad } = vesselMetrics(R)
+  const toPx = (nx: number) => normToPx(R, nx)
+  const toPy = (ny: number) => normToPy(R, ny)
   const spray = world.sprayParticles as unknown as SprayParticle[]
   const beads = world.mistBeads as unknown as MistBead[]
 

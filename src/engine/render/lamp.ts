@@ -7,7 +7,7 @@ import { vesselMetrics, type RenderFn } from './metrics'
  */
 export const drawLamp: RenderFn = (ctx, _world, state, R) => {
   if (!state.hasGrowLamp) return
-  const { cx, cy, r: Rad } = vesselMetrics(R)
+  const { cx, cy, r: Rad, kx } = vesselMetrics(R)
   ctx.save()
   const topY = cy - Rad * 0.84
   const lampY = topY - Rad * 0.13
@@ -21,8 +21,8 @@ export const drawLamp: RenderFn = (ctx, _world, state, R) => {
   ctx.lineTo(cx + Rad * 0.04, lampY)
   ctx.stroke()
 
-  // Circular black aluminum halo housing
-  const puckW = Rad * 0.42
+  // Black aluminum halo housing, a long bar over the wide tanks
+  const puckW = kx > 1 ? Rad * 0.62 * kx : Rad * 0.42
   const puckH = Rad * 0.07
   ctx.fillStyle = '#0f172a'
   ctx.beginPath()

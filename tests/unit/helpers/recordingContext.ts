@@ -33,3 +33,33 @@ export function record(fn: (ctx: CanvasRenderingContext2D) => void) {
   fn(ctx)
   return { calls: calls.map((name) => ({ name })), fillStyles }
 }
+
+/**
+ * Like `makeRecordingContext`, but logs every call with its arguments and every property
+ * assignment, so two traces can be compared for exact equality.
+ */
+export function makeTraceContext() {
+  const trace: string[] = []
+  const state: Record<string, unknown> = {}
+  const gradient = (kind: string) => ({
+    addColorStop: (...args: unknown[]) =>
+      trace.push(`${kind}.addColorStop(${JSON.stringify(args)})`),
+  })
+  const ctx = new Proxy(state, {
+    get(target, prop: string) {
+      if (prop in target) return target[prop]
+      return (...args: unknown[]) => {
+        trace.push(`${prop}(${JSON.stringify(args)})`)
+        if (prop === 'createLinearGradient' || prop === 'createRadialGradient')
+          return gradient(prop)
+        return undefined
+      }
+    },
+    set(target, prop: string, value) {
+      trace.push(`${prop}=${typeof value === 'object' ? 'gradient' : String(value)}`)
+      target[prop] = value
+      return true
+    },
+  }) as unknown as CanvasRenderingContext2D
+  return { ctx, trace }
+}

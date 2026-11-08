@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { dismissWelcomePrompt } from './helpers'
 
 /** Live item count via the dev-only `window.__botanica` handle (see useTerrariumEngine). */
 const liveItemCount = (page: Page) =>
@@ -11,6 +12,8 @@ const liveItemCount = (page: Page) =>
 
 /** Items in the v6 Falls Lake scene: moss wall, falls, boulders, 9 flora, 5 fauna. */
 const FALLS_ITEM_COUNT = 17
+
+test.beforeEach(({ page }) => dismissWelcomePrompt(page))
 
 test('first run seeds the Falls Lake scene without clicking Biome', async ({ page }) => {
   await page.goto('/')
@@ -81,12 +84,28 @@ test('studio journey: biome, 5x, relax, persistence', async ({ page }) => {
       waterSplit: state.waterSplit,
     }
   })
-  expect(persisted).toEqual({ version: 2, items: count, pumpFlow: 'strong', waterSplit: 0.32 })
+  // STUDIO_VERSION in src/store/useStudioStore.ts; importing it here would run the store, which needs localStorage.
+  expect(persisted).toEqual({ version: 3, items: count, pumpFlow: 'strong', waterSplit: 0.32 })
   await expect.poll(() => liveItemCount(page)).toBe(count)
   await expect(
     page.getByRole('radiogroup', { name: 'Waterfall pump' }).getByRole('radio', { name: 'Strong' }),
   ).toBeChecked()
   await expect(page.getByLabel('Pool width')).toHaveValue('32')
+})
+
+test('a wide rectangular tank renders without page errors', async ({ page }) => {
+  const errors: Error[] = []
+  page.on('pageerror', (e) => errors.push(e))
+  await page.goto('/')
+  await page.getByRole('tab', { name: 'Vessel & Soil' }).click()
+  const riparium = page.getByRole('button', { name: /Long Riparium/ })
+  await riparium.click()
+  await expect(riparium).toHaveAttribute('aria-pressed', 'true')
+  // Let a couple of frames render the new tank before checking for page errors.
+  await page.evaluate(
+    () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))),
+  )
+  expect(errors).toEqual([])
 })
 
 for (const size of [

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { AccountChip } from '@/components/account/AccountChip'
 import { LineIcon } from '@/components/ui/LineIcon'
 import { startAudioFromGesture, stopAudio } from '@/hooks/useAudio'
 import { mutateWorld } from '@/engine/engineBridge'
@@ -122,6 +123,7 @@ export function UtilityActions() {
 
   return (
     <div className="flex shrink-0 items-center gap-1.5">
+      <AccountChip />
       <button
         type="button"
         onClick={enterRelax}

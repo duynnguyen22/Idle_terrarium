@@ -1,5 +1,6 @@
 import { CatalogGrid } from '@/components/catalog/CatalogGrid'
 import { PlantingStageToggle } from '@/components/catalog/PlantingStageToggle'
+import { RoomTab } from '@/components/catalog/RoomTab'
 import { VesselTab } from '@/components/catalog/VesselTab'
 import { TabIcon, type TabIconName } from '@/components/ui/StudioIcons'
 import { selectActiveTab } from '@/store/selectors'
@@ -11,6 +12,7 @@ const TABS = [
   { id: 'flora', label: 'Flora' },
   { id: 'hardscape', label: 'Hardscape' },
   { id: 'fauna', label: 'Fauna' },
+  { id: 'room', label: 'Room' },
 ] as const satisfies readonly { id: TabIconName; label: string }[]
 
 const BLURB = 'text-[11px] leading-relaxed text-stone'
@@ -50,6 +52,8 @@ function ActivePanel({ tab }: { tab: string }) {
           <CatalogGrid category="fauna" />
         </div>
       )
+    case 'room':
+      return <RoomTab />
     default:
       return <VesselTab />
   }
@@ -69,7 +73,7 @@ export function LeftSidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
     >
       <div
         role="tablist"
-        className="grid grid-cols-4 gap-1 border-b border-sand-border bg-sand-light p-2"
+        className="grid grid-cols-5 gap-1 border-b border-sand-border bg-sand-light p-2"
       >
         {TABS.map((t) => {
           const active = t.id === activeTab

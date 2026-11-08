@@ -19,6 +19,29 @@ export function getVesselPreviewSVG(vesselId: string, active: boolean): string {
         <line x1="11" y1="41" x2="53" y2="41" stroke="${strokeCol}" stroke-width="2"/>
         <circle cx="15" cy="37" r="1.6" fill="${strokeCol}"/>
       </svg>`
+    case 'vivarium_front':
+      return `${open}
+        <rect x="6" y="16" width="52" height="36" rx="2" fill="${glassFill}" stroke="${strokeCol}" stroke-width="2.2"/>
+        <rect x="6" y="16" width="52" height="5" fill="${strokeCol}" opacity="0.7"/>
+        <rect x="8" y="42" width="48" height="9" fill="${soilCol}"/>
+        <path d="M8,42 Q20,38 32,41 T56,40" fill="${mossCol}"/>
+        <line x1="32" y1="21" x2="32" y2="38" stroke="${strokeCol}" stroke-width="1.6"/>
+        <rect x="28.5" y="27" width="2" height="6" rx="1" fill="${strokeCol}"/><rect x="33.5" y="27" width="2" height="6" rx="1" fill="${strokeCol}"/>
+      </svg>`
+    case 'rimless_landscape':
+      return `${open}
+        <rect x="3" y="20" width="58" height="29" rx="1.5" fill="${glassFill}" stroke="${strokeCol}" stroke-width="1.6"/>
+        <path d="M4,40 Q14,30 22,36 Q32,26 42,34 Q52,30 60,38 L60,48 L4,48 Z" fill="${mossCol}" opacity="0.55"/>
+        <rect x="4" y="43" width="56" height="5" fill="${soilCol}"/>
+        <path d="M26,40 L30,30 L34,40 Z" fill="${strokeCol}" opacity="0.55"/>
+      </svg>`
+    case 'riparium_long':
+      return `${open}
+        <rect x="2" y="24" width="60" height="22" rx="1.5" fill="${glassFill}" stroke="${strokeCol}" stroke-width="1.6"/>
+        <rect x="3" y="36" width="34" height="9" fill="#38bdf8" opacity="0.55"/>
+        <path d="M37,45 L42,34 Q50,31 61,33 L61,45 Z" fill="${soilCol}"/>
+        <path d="M44,33 Q46,26 50,24 M52,32 Q54,27 58,26" stroke="${mossCol}" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </svg>`
     case 'wardian':
       return `${open}
         <path d="M26,8 L38,8 L44,22 L44,52 L20,52 L20,22 Z" fill="${glassFill}" stroke="${strokeCol}" stroke-width="2"/>

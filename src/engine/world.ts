@@ -65,6 +65,8 @@ export interface EngineWorld {
   env: EnvState
   /** Tick counter (increments every tick, paused or not). */
   frame: number
+  /** Hard-water residue on the glass, 0 to 1; flushed to the store with the env seed. */
+  mineralSpots: number
   /** Latest care report; flushed into the telemetry store's careIssues. */
   careIssues: CareIssue[]
   /** Water split the engine wants written to the store on the next flush. */
@@ -113,6 +115,7 @@ export function createWorld(): EngineWorld {
       bloomTimer: 0,
     },
     frame: 0,
+    mineralSpots: 0,
     careIssues: [],
   }
 }

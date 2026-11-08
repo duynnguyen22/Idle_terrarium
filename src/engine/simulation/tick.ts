@@ -1,5 +1,7 @@
+import { vesselKX } from '@/data/vessels'
 import { useStudioStore, type StudioStore } from '@/store/useStudioStore'
 import { computeCareReport } from '../care'
+import { envModel } from '../room'
 import type { AsmrCue } from '../interaction'
 import type { EngineWorld } from '../world'
 import { advanceClock } from './clock'
@@ -23,18 +25,31 @@ export interface TickDeps {
   onToast?: (msg: string) => void
 }
 
-/** Child items follow their parent via offsetX/offsetY; orphans are detached (prototype 2361-2370). */
-export function syncChildren(world: EngineWorld): void {
+/**
+ * Child items follow their parent via offsetX/offsetY; orphans are detached (prototype 2361-2370). offsetX is
+ * kx-independent and divided by the current tank's kx, so a child keeps its pixel offset across vessel switches.
+ */
+export function syncChildren(world: EngineWorld, kx = 1): void {
   for (const item of world.items) {
     if (!item.parentUid || item.uid === world.draggingId) continue
     const parent = world.items.find((p) => p.uid === item.parentUid)
     if (parent) {
-      item.x = parent.x + (item.offsetX || 0)
+      item.x = parent.x + (item.offsetX || 0) / kx
       item.y = parent.y + (item.offsetY || 0)
     } else {
       item.parentUid = null
     }
   }
+}
+
+/** Recomputes the care report from the store and the live world into `world.careIssues` (a fresh array). */
+export function refreshCareReport(world: EngineWorld, store: StudioStore): void {
+  world.careIssues = computeCareReport({
+    ...store,
+    ...world.env,
+    items: world.items,
+    mineralSpots: world.mineralSpots,
+  })
 }
 
 /**
@@ -68,7 +83,8 @@ export function tick(
       }
     }
     advanceClock(store, deps.now)
-    updateEnvironment(world, store, dtMs, deps.onToast)
+    const em = envModel(store.room, store.hasLid)
+    updateEnvironment(world, { ...store, airEff: em.airEff, tds: em.tds }, dtMs, deps.onToast)
     updateFauna(world, store, dtMs, timestamp, rng)
     if (!store.reducedMotion) updateAmbientMotes(world, dtMs)
     updateGrowth(world, store, dtMs)
@@ -87,13 +103,12 @@ export function tick(
   }
   stepMistParticles(world, store, dtMs, rng)
 
-  syncChildren(world)
+  syncChildren(world, vesselKX(store.vessel))
   if (!store.reducedMotion && (store.lighting === 'night' || store.lighting === 'twilight'))
     updateFireflies(world, dtMs)
   stepPourParticles(world, store, dtMs, rng, deps.onToast)
   // Care report every 30 frames (prototype 3138, 3307); every frame while paused so edits show at once.
   // Assign a fresh array; the throttled flush copies it into the telemetry store (compared by content).
-  if (world.frame % 30 === 0 || store.timeSpeed === 0)
-    world.careIssues = computeCareReport({ ...store, ...world.env, items: world.items })
+  if (world.frame % 30 === 0 || store.timeSpeed === 0) refreshCareReport(world, store)
   pushTelemetry(world, store, timestamp)
 }

@@ -1,4 +1,7 @@
 import { expect, test } from '@playwright/test'
+import { dismissWelcomePrompt } from './helpers'
+
+test.beforeEach(({ page }) => dismissWelcomePrompt(page))
 
 test('Relax Mode hides the chrome, shows the dock, idles, and exits', async ({ page }) => {
   await page.goto('/')
