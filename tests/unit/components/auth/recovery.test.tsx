@@ -2,12 +2,15 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { createLocalAuthService } from '@/auth'
+import { AccountDialog } from '@/components/account/AccountDialog'
 import {
   demoSession,
   demoUser,
   fakeAuth,
   MemoryStorage,
+  makeEnv,
   renderAuth,
+  renderIn,
   type Harness,
 } from './authHarness'
 
@@ -139,6 +142,39 @@ describe('ResetScreen', () => {
     )
     expect(env.store.getState().view).toBe('reset')
   })
+
+  it('a too-weak password shows the service’s message on the password field', async () => {
+    const auth = localAuth()
+    auth.getSession() // seeds the demo account
+    await auth.requestPasswordReset('demo@botanica.app')
+    renderAuth('reset', {
+      auth,
+      viewData: {
+        ...viewData,
+        email: 'demo@botanica.app',
+        code: auth.devCode('demo@botanica.app') ?? '',
+        password: 'short',
+      },
+    })
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Update password' }))
+    const err = await screen.findByText('Use at least 8 characters with a letter and a number.')
+    expect(err).toHaveAttribute('id', 'auth-password-err')
+  })
+
+  it('sends a partial code without the empty-box placeholders', async () => {
+    const resetPassword = vi.fn(() => Promise.resolve())
+    renderAuth('reset', {
+      auth: fakeAuth({ resetPassword }),
+      viewData: { ...viewData, code: '48 91', password: 'newgarden9' },
+    })
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Update password' }))
+    await vi.waitFor(() => expect(resetPassword).toHaveBeenCalled())
+    expect(resetPassword).toHaveBeenCalledWith({
+      email: 'linh@example.com',
+      code: '4891',
+      password: 'newgarden9',
+    })
+  })
 })
 
 describe('ResetDoneScreen', () => {
@@ -226,6 +262,42 @@ describe('MagicSentScreen', () => {
     )
     expect(env.store.getState().phase).toBe('signedout')
   })
+
+  it('Open the link is disabled while the link is being opened', async () => {
+    let finish: () => void = () => {}
+    const completeMagicLink = vi.fn(
+      () =>
+        new Promise<never>((_, reject) => {
+          finish = () => reject(new Error('stop'))
+        }),
+    )
+    const env = renderAuth('magicSent', {
+      auth: fakeAuth({ completeMagicLink }),
+      viewData: { email: 'demo@botanica.app' },
+    })
+    const btn = screen.getByRole('button', { name: 'Open the link' })
+    await userEvent.setup().click(btn)
+    expect(btn).toBeDisabled()
+    finish()
+    await vi.waitFor(() => expect(env.store.getState().busy).toBe(false))
+    expect(btn).toBeEnabled()
+  })
+
+  it('arriving from sign-in, the dialog focuses Open the link', async () => {
+    const sendMagicLink = vi.fn(() => Promise.resolve())
+    const env = makeEnv('signin', {
+      auth: fakeAuth({ sendMagicLink }),
+      viewData: { email: 'demo@botanica.app' },
+    })
+    renderIn(env, <AccountDialog />)
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Email me a sign-in link instead' }))
+    const btn = await screen.findByRole('button', { name: 'Open the link' })
+    expect(sendMagicLink).toHaveBeenCalledWith('demo@botanica.app')
+    expect(btn).toBeEnabled()
+    expect(document.activeElement).toBe(btn)
+  })
 })
 
 describe('ProviderScreen', () => {
@@ -264,6 +336,23 @@ describe('ProviderScreen', () => {
     })
     expect(env.store.getState().phase).toBe('cloud')
     expect(env.toast).toHaveBeenCalledWith('Signed in with Google')
+  })
+
+  it('a new account from the provider goes to onboarding without a toast', async () => {
+    const signInWithProvider = vi.fn(() =>
+      Promise.resolve({ session: demoSession, user: demoUser, isNew: true }),
+    )
+    const env = renderAuth('provider', {
+      auth: fakeAuth({ signInWithProvider }),
+      viewData: { provider: 'Apple', email: 'demo@botanica.app', name: 'Demo Gardener' },
+    })
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Continue with Apple' }))
+    await vi.waitFor(() => expect(env.store.getState().phase).toBe('onboarding'))
+    expect(signInWithProvider).toHaveBeenCalledWith('Apple', {
+      email: 'demo@botanica.app',
+      name: 'Demo Gardener',
+    })
+    expect(env.toast).not.toHaveBeenCalled()
   })
 
   it('an invalid email shows the service’s message under the field', async () => {

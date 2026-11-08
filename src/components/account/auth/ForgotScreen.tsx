@@ -11,6 +11,7 @@ export function ForgotScreen() {
     e.preventDefault()
     void store.getState().run(async () => {
       await auth.requestPasswordReset(store.getState().viewData.email ?? '')
+      store.setState({ busy: false })
       store.getState().goView('reset', {
         code: '',
         password: '',

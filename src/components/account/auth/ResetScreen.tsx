@@ -22,7 +22,12 @@ export function ResetScreen() {
     e.preventDefault()
     void store.getState().run(async () => {
       const v = store.getState().viewData
-      await auth.resetPassword({ email, code: v.code ?? '', password: v.password ?? '' })
+      await auth.resetPassword({
+        email,
+        code: (v.code ?? '').replace(/\s/g, ''),
+        password: v.password ?? '',
+      })
+      store.setState({ busy: false })
       store.getState().goView('resetDone', { password: '' })
     })
   }

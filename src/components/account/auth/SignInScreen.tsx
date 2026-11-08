@@ -40,6 +40,9 @@ export function SignInScreen() {
   const sendLink = () =>
     void store.getState().run(async () => {
       await auth.sendMagicLink(store.getState().viewData.email ?? '')
+      // Clear busy before the screen changes: the dialog focuses "Open the link" on arrival,
+      // and a disabled button cannot take focus.
+      store.setState({ busy: false })
       store.getState().goView('magicSent', { resendAt: Date.now() + RESEND_WINDOW_MS })
     })
 
