@@ -1,5 +1,6 @@
 import { useEffect, type RefObject } from 'react'
 import { ALL_CATALOG_DEFS, type CatalogId } from '@/data/catalog'
+import { vesselKX } from '@/data/vessels'
 import {
   commitWorld,
   isOwnSnapshot,
@@ -98,10 +99,8 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.imageSmoothingEnabled = true
       ctx.imageSmoothingQuality = 'high'
-      renderFrame(ctx, world, state, computeVesselRect(W, H, state.relaxMode), timestamp, {
-        w: W,
-        h: H,
-      })
+      const R = computeVesselRect(W, H, state.relaxMode, vesselKX(state.vessel))
+      renderFrame(ctx, world, state, R, timestamp, { w: W, h: H })
       ctx.restore()
     }
 

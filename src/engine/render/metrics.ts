@@ -11,9 +11,12 @@ export type RenderFn = (
   timestamp: number,
 ) => void
 
-/** Prototype drawing math is written against the vessel centre and radius (R = half the square's side). */
-export function vesselMetrics(R: Rect): { cx: number; cy: number; r: number } {
-  return { cx: R.x + R.w / 2, cy: R.y + R.h / 2, r: R.w / 2 }
+/**
+ * Prototype drawing math is written against the vessel centre, radius (R = half the rect's height) and the
+ * tank's horizontal stretch KX (rect width / height; 1 for every square vessel).
+ */
+export function vesselMetrics(R: Rect): { cx: number; cy: number; r: number; kx: number } {
+  return { cx: R.x + R.w / 2, cy: R.y + R.h / 2, r: R.h / 2, kx: R.w / R.h }
 }
 
 /** Reads a numeric field of a loosely typed particle; missing or non-numeric values read as `fallback`. */

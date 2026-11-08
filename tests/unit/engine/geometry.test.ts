@@ -93,6 +93,22 @@ describe('traceVesselPath', () => {
     traceVesselPath({ beginPath: vi.fn(), arc } as unknown as CanvasRenderingContext2D, 'globe', R)
     expect(arc).toHaveBeenCalledWith(100, 100, 86, 0, Math.PI * 2)
   })
+  it('draws a wide tank as a rect scaled horizontally by kx (R.w / R.h)', () => {
+    const wide = { x: 0, y: 0, w: 200 * 2.6, h: 200 }
+    const roundRect = vi.fn()
+    traceVesselPath(
+      { beginPath: vi.fn(), roundRect } as unknown as CanvasRenderingContext2D,
+      'riparium_long',
+      wide,
+    )
+    expect(roundRect).toHaveBeenCalledTimes(1)
+    const [x, y, w, h] = roundRect.mock.calls[0] as number[]
+    const r = wide.h / 2
+    expect(w).toBeCloseTo(r * 1.44 * 2.6, 6)
+    expect(h).toBeCloseTo(r * 1.68, 6)
+    expect(x + w / 2).toBeCloseTo(wide.w / 2, 6)
+    expect(y + h / 2).toBeCloseTo(wide.h / 2, 6)
+  })
 })
 
 describe('v6 pool geometry', () => {

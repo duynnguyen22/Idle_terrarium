@@ -1,5 +1,6 @@
 import type { Rect, SubstrateDepths } from '@/data/types'
 import { LAND_LAYER_IDS } from '@/data/substrates'
+import { isRectTank } from '@/data/vessels'
 import { clamp } from '@/lib/clamp'
 
 /** Contour is sampled across normalized x in [0.15, 0.85]. */
@@ -91,16 +92,21 @@ export function toNormalized(
   }
 }
 
-/** Builds the vessel outline path. R is the square vessel rect (centre = R.x + R.w/2, radius = R.w/2). */
+/**
+ * Builds the vessel outline path. R is the vessel rect (centre = R.x + R.w/2, radius = R.h/2); rectangular
+ * tanks stretch horizontally by KX = R.w / R.h (prototype 2721-2729).
+ */
 export function traceVesselPath(ctx: CanvasRenderingContext2D, vessel: string, R: Rect): void {
   const cx = R.x + R.w / 2
   const cy = R.y + R.h / 2
-  const r = R.w / 2
+  const r = R.h / 2
+  const kx = R.w / R.h
   ctx.beginPath()
+  if (isRectTank(vessel)) {
+    ctx.roundRect(cx - r * 0.72 * kx, cy - r * 0.84, r * 1.44 * kx, r * 1.68, 4)
+    return
+  }
   switch (vessel) {
-    case 'paludarium_tank':
-      ctx.roundRect(cx - r * 0.72, cy - r * 0.84, r * 1.44, r * 1.68, 4)
-      break
     case 'wardian':
       ctx.moveTo(cx - r * 0.38, cy - r * 0.84)
       ctx.lineTo(cx + r * 0.38, cy - r * 0.84)

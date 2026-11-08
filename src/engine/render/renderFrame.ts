@@ -15,15 +15,20 @@ import { drawSubstrates } from './substrates'
 import { beginVesselClip, drawLampCone, drawVesselRim } from './vessel'
 
 /**
- * Square vessel rect inside a canvas of CSS size `canvasW x canvasH`, centred on the canvas
- * (prototype-v6 getStageGeometry): radius = min(0.62W, 0.46H), or min(0.62W, 0.48H) in relax mode,
- * so a narrow canvas fits its width and a wide one its height.
+ * Vessel rect inside a canvas of CSS size `canvasW x canvasH`, centred on the canvas (prototype
+ * getStageGeometry 1966-1970): radius = min(0.62W / max(1, 0.92·kx), 0.46H), or 0.48H in relax mode, so a
+ * narrow canvas fits its width and a wide one its height. The rect is 2r tall and 2r·kx wide (square at kx = 1).
  */
-export function computeVesselRect(canvasW: number, canvasH: number, relaxMode = false): Rect {
-  const r = Math.min(canvasW * 0.62, canvasH * (relaxMode ? 0.48 : 0.46))
+export function computeVesselRect(
+  canvasW: number,
+  canvasH: number,
+  relaxMode = false,
+  kx = 1,
+): Rect {
+  const r = Math.min((canvasW * 0.62) / Math.max(1, kx * 0.92), canvasH * (relaxMode ? 0.48 : 0.46))
   const cx = canvasW * 0.5
   const cy = canvasH * 0.5
-  return { x: cx - r, y: cy - r, w: r * 2, h: r * 2 }
+  return { x: cx - r * kx, y: cy - r, w: 2 * r * kx, h: 2 * r }
 }
 
 /**

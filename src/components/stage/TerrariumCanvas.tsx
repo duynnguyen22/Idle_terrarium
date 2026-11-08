@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { vesselKX } from '@/data/vessels'
 import { commitWorld, getWorld, tryGetWorld } from '@/engine/engineBridge'
 import { toNormalized } from '@/engine/geometry'
 import { applyTool, beginDrag, endDrag, hitTest, updateDrag } from '@/engine/interaction'
@@ -70,7 +71,8 @@ export function TerrariumCanvas() {
     const canvas = canvasRef.current
     if (!canvas) return { nx: 0, ny: 0 }
     const rect = canvas.getBoundingClientRect()
-    const R = computeVesselRect(rect.width, rect.height, useStudioStore.getState().relaxMode)
+    const { relaxMode, vessel } = useStudioStore.getState()
+    const R = computeVesselRect(rect.width, rect.height, relaxMode, vesselKX(vessel))
     return toNormalized(clientX, clientY, rect, R)
   }
 
@@ -88,7 +90,7 @@ export function TerrariumCanvas() {
         x: Math.max(0.14, Math.min(0.86, nx)),
         y: Math.max(0.1, Math.min(0.86, ny)),
       }
-      updateDrag(world, nx, ny)
+      updateDrag(world, nx, ny, vesselKX(useStudioStore.getState().vessel))
     }
     const onUp = () => {
       let world
@@ -136,7 +138,8 @@ export function TerrariumCanvas() {
       return
     }
 
-    const effect = applyTool(world, store.activeTool, nx, ny)
+    const kx = vesselKX(store.vessel)
+    const effect = applyTool(world, store.activeTool, nx, ny, kx)
     if (effect?.hold) {
       e.currentTarget.setPointerCapture?.(e.pointerId)
       return
@@ -148,7 +151,7 @@ export function TerrariumCanvas() {
       return
     }
 
-    const hit = hitTest(world, nx, ny)
+    const hit = hitTest(world, nx, ny, kx)
     if (hit) {
       store.selectItem(hit.uid)
       beginDrag(world, hit, nx, ny)

@@ -3,6 +3,7 @@ import { VESSELS, VESSELS_BY_ID, type VesselId } from '@/data/vessels'
 import { hasPool } from '@/engine/geometry'
 import { drawCondensation, drawMineralSpots } from '@/engine/render/condensation'
 import { drawLid } from '@/engine/render/frame'
+import { vesselMetrics } from '@/engine/render/metrics'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
 import { drawSubstrates } from '@/engine/render/substrates'
 import { drawWater, rippleAmplitude } from '@/engine/render/water'
@@ -152,6 +153,20 @@ describe('computeVesselRect', () => {
     expect(computeVesselRect(400, 900).w).toBeCloseTo(400 * 0.62 * 2)
     expect(computeVesselRect(400, 900, true).w).toBeCloseTo(400 * 0.62 * 2)
     expect(computeVesselRect(1000, 600, true).w).toBeGreaterThan(computeVesselRect(1000, 600).w)
+  })
+
+  it('scales the vessel rect horizontally by kx and keeps the radius from the height', () => {
+    const R = computeVesselRect(1000, 600, false, 2)
+    expect(R.h / 2).toBeCloseTo(276, 0)
+    expect(R.w).toBeCloseTo(R.h * 2)
+    expect(R.x + R.w / 2).toBeCloseTo(500)
+    expect(vesselMetrics(R)).toMatchObject({ r: R.h / 2, kx: 2 })
+  })
+
+  it('fits a 2.6 tank inside a narrow canvas', () => {
+    const R = computeVesselRect(400, 900, false, 2.6)
+    expect(R.w).toBeLessThanOrEqual((400 * 0.62 * 2) / 0.92 + 0.001)
+    expect(R.w / R.h).toBeCloseTo(2.6)
   })
 })
 
