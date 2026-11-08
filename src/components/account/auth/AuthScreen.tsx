@@ -1,6 +1,8 @@
+import { AccountScreen } from '@/components/account/AccountScreen'
 import type { AuthView } from '@/store/useAccountStore'
 import { ForgotScreen } from './ForgotScreen'
 import { MagicSentScreen } from './MagicSentScreen'
+import { OnboardingScreen } from './OnboardingScreen'
 import { ProviderScreen } from './ProviderScreen'
 import { ResetDoneScreen } from './ResetDoneScreen'
 import { ResetScreen } from './ResetScreen'
@@ -22,10 +24,7 @@ function Checking() {
   )
 }
 
-/**
- * The dialog body's view switch. Tasks 12-14 add the onboarding and account views; until then
- * those render nothing.
- */
+/** The dialog body's view switch. */
 export function AuthScreen({ view }: { view: AuthView }) {
   switch (view) {
     case 'checking':
@@ -46,7 +45,9 @@ export function AuthScreen({ view }: { view: AuthView }) {
       return <MagicSentScreen />
     case 'provider':
       return <ProviderScreen />
-    default:
-      return null
+    case 'onboarding':
+      return <OnboardingScreen />
+    case 'account':
+      return <AccountScreen />
   }
 }
