@@ -105,6 +105,16 @@ describe('AccountScreen', () => {
   it('Sign out ends the session and shows the success banner on sign in', async () => {
     const signOut = vi.fn(() => Promise.resolve())
     const env = await signedIn({ signOut })
+    // Values typed on the Profile tab must not follow onto the sign-in screen.
+    act(() =>
+      env.store.getState().setViewData({
+        name: 'Demo Gardener',
+        current: 'old-secret1',
+        next: 'new-secret2',
+        confirmEmail: 'demo@botanica.app',
+        saved: 'password',
+      }),
+    )
     await userEvent.setup().click(screen.getByRole('button', { name: 'Sign out' }))
     await vi.waitFor(() => expect(env.store.getState().view).toBe('signin'))
     expect(signOut).toHaveBeenCalledTimes(1)
@@ -113,7 +123,15 @@ describe('AccountScreen', () => {
     expect(s.user).toBeNull()
     expect(s.gardens).toEqual([])
     expect(s.busy).toBe(false)
-    expect(s.viewData).toMatchObject({ email: 'demo@botanica.app', password: '' })
+    expect(s.viewData).toMatchObject({
+      email: 'demo@botanica.app',
+      password: '',
+      name: '',
+      current: '',
+      next: '',
+      confirmEmail: '',
+    })
+    expect(s.viewData.saved).toBeUndefined()
     expect(env.toast).toHaveBeenCalledWith('Signed out')
     expect(await screen.findByRole('status')).toHaveTextContent(
       'You’re signed out. Your terrariums are safe in your account.',

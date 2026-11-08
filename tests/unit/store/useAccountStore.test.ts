@@ -327,6 +327,47 @@ describe('account store: saving', () => {
     expect(store.getState().saveTimer).toBeNull()
   })
 
+  it('detachActiveGarden cancels the pending save, waits for a write under way and returns the open id', async () => {
+    await signInWithGardens()
+    let release!: () => void
+    const save = vi
+      .spyOn(backend, 'saveGarden')
+      .mockImplementationOnce(() => new Promise<void>((r) => (release = r)))
+    const flushing = store.getState().flushCloudSave()
+    expect(store.getState().writing).toBe(true)
+    // A save requested during the write would normally run once it lands.
+    void store.getState().flushCloudSave()
+    expect(store.getState().pending).toBe(true)
+
+    let detached: string | null | undefined
+    const detaching = store
+      .getState()
+      .detachActiveGarden()
+      .then((id) => (detached = id))
+    expect(store.getState().activeId).toBeNull()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(detached).toBeUndefined()
+    release()
+    await flushing
+    await detaching
+    expect(detached).toBe('g_a')
+    expect(store.getState()).toMatchObject({ writing: false, pending: false, saveTimer: null })
+
+    store.getState().scheduleCloudSave()
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(save).toHaveBeenCalledTimes(1)
+  })
+
+  it('attachActiveGarden reopens a terrarium only while signed in', async () => {
+    await signInWithGardens()
+    await store.getState().detachActiveGarden()
+    store.getState().attachActiveGarden('g_a')
+    expect(store.getState().activeId).toBe('g_a')
+    await store.getState().endSession()
+    store.getState().attachActiveGarden('g_a')
+    expect(store.getState().activeId).toBeNull()
+  })
+
   it('serialises concurrent flushes: a second flush during a write saves again afterwards', async () => {
     await signInWithGardens()
     const real = backend.saveGarden.bind(backend)
@@ -672,8 +713,16 @@ describe('account store: panel and run', () => {
 
   it('setUser replaces the signed-in user', () => {
     store.setState({ user: { ...demoUser, name: 'Old' } })
-    store.getState().setUser({ ...demoUser, name: 'New Name' })
+    expect(store.getState().setUser({ ...demoUser, name: 'New Name' })).toBe(true)
     expect(store.getState().user?.name).toBe('New Name')
+  })
+
+  it('setUser ignores a user when nobody or someone else is signed in', () => {
+    expect(store.getState().setUser({ ...demoUser, name: 'Late' })).toBe(false)
+    expect(store.getState().user).toBeNull()
+    store.setState({ user: { ...demoUser, id: 'u_other', name: 'Other' } })
+    expect(store.getState().setUser({ ...demoUser, name: 'Late' })).toBe(false)
+    expect(store.getState().user).toMatchObject({ id: 'u_other', name: 'Other' })
   })
 })
 

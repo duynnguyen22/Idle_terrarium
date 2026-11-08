@@ -1,6 +1,6 @@
 import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AuthError, type AuthService, type PublicUser } from '@/auth'
 import { AccountChip } from '@/components/account/AccountChip'
 import { AccountDialog } from '@/components/account/AccountDialog'
@@ -14,6 +14,8 @@ function CurrentScreen() {
 }
 
 const MIN = 60_000
+
+afterEach(() => vi.restoreAllMocks())
 
 /** Signed in (phase cloud) with one terrarium open, on the Profile & security tab. */
 async function signedIn({
@@ -126,6 +128,22 @@ describe('ProfileTab', () => {
     expect(env.store.getState().busy).toBe(false)
   })
 
+  it('a profile reply that arrives after the session ended changes nothing', async () => {
+    let reply!: (u: PublicUser) => void
+    const updateProfile = vi.fn(() => new Promise<PublicUser>((r) => (reply = r)))
+    const env = await signedIn({ auth: { updateProfile } })
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Save profile' }))
+    expect(updateProfile).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      env.store.getState().goView('signin')
+      await env.store.getState().endSession()
+    })
+    await act(async () => reply({ ...demoUser, name: 'Too Late' }))
+    await vi.waitFor(() => expect(env.store.getState().busy).toBe(false))
+    expect(env.store.getState().user).toBeNull()
+    expect(env.store.getState().viewData.saved).toBeUndefined()
+  })
+
   it('an empty name shows the service field error under Display name', async () => {
     const updateProfile = vi.fn(() =>
       Promise.reject(new AuthError('invalid_name', 'Enter your name.', { field: 'name' })),
@@ -198,6 +216,9 @@ describe('ProfileTab', () => {
     await vi.waitFor(() => expect(env.store.getState().view).toBe('signup'))
     expect(deleteAll).toHaveBeenCalledTimes(1)
     expect(deleteAccount).toHaveBeenCalledWith('u_demo')
+    expect(deleteAll.mock.invocationCallOrder[0]).toBeLessThan(
+      deleteAccount.mock.invocationCallOrder[0] ?? 0,
+    )
     expect(await env.backend.listGardens()).toEqual([])
     const s = env.store.getState()
     expect(s.phase).toBe('signedout')
@@ -207,8 +228,28 @@ describe('ProfileTab', () => {
       kind: 'info',
       text: 'Your account and its data were deleted.',
     })
-    expect(s.viewData).toMatchObject({ current: '', next: '', confirmEmail: '' })
+    expect(s.viewData).toMatchObject({ name: '', current: '', next: '', confirmEmail: '' })
+    expect(s.viewData.saved).toBeUndefined()
     expect(env.toast).toHaveBeenCalledWith('Account deleted')
+  })
+
+  it('a failed account deletion keeps the session, reopens the terrarium and shows the error', async () => {
+    const deleteAccount = vi.fn(() =>
+      Promise.reject(new AuthError('no_account', 'We couldn’t find that account.')),
+    )
+    const env = await signedIn({ auth: { deleteAccount } })
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Delete account…' }))
+    await user.type(screen.getByLabelText('Type demo@botanica.app to confirm'), 'demo@botanica.app')
+    await user.click(screen.getByRole('button', { name: 'Delete my account' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('We couldn’t find that account.')
+    const s = env.store.getState()
+    expect(s).toMatchObject({ phase: 'cloud', activeId: 'g_a', busy: false })
+    expect(s.user?.id).toBe('u_demo')
+    // The open terrarium is written back under its own name and the list matches the storage.
+    expect((await env.backend.listGardens()).map((g) => g.name)).toEqual(['Alpha'])
+    expect(s.gardens.map((g) => g.name)).toEqual(['Alpha'])
+    expect(env.toast).not.toHaveBeenCalledWith('Account deleted')
   })
 
   it('Cancel closes the delete confirmation without deleting', async () => {
@@ -231,7 +272,7 @@ describe('ProfileTab', () => {
     expect(s.phase).toBe('signedout')
     expect(s.user).toBeNull()
     expect(s.busy).toBe(false)
-    expect(s.viewData).toMatchObject({ email: 'demo@botanica.app', password: '' })
+    expect(s.viewData).toMatchObject({ email: 'demo@botanica.app', password: '', name: '' })
     expect(env.toast).toHaveBeenCalledWith('Signed out of every device')
     expect(await screen.findByRole('status')).toHaveTextContent(
       'You’re signed out everywhere. Sign in again on the devices you use.',

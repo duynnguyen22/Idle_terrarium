@@ -4,15 +4,12 @@ import { useAccount, useAuthEnv } from '@/components/account/auth/authEnv'
 import { AuthField } from '@/components/account/auth/AuthField'
 import { FormError } from '@/components/account/auth/AuthPieces'
 import { StrengthBlock } from '@/components/account/auth/StrengthBlock'
-import { timeAgo, type ViewData } from '@/store/useAccountStore'
+import { CLEARED_ACCOUNT_FORM, timeAgo } from '@/store/useAccountStore'
 
 const SIGNED_OUT_EVERYWHERE_TEXT =
   'You’re signed out everywhere. Sign in again on the devices you use.'
 const DELETED_TEXT = 'Your account and its data were deleted.'
 const MISMATCH_TEXT = 'That doesn’t match your email.'
-
-/** The profile tab's own form values, cleared on the way out so they do not follow the person to sign in. */
-const CLEARED: ViewData = { current: '', next: '', confirmEmail: '', confirmDeleteAccount: false }
 
 function ProfileCard({ user }: { user: PublicUser }) {
   const { store, auth } = useAuthEnv()
@@ -30,8 +27,8 @@ function ProfileCard({ user }: { user: PublicUser }) {
     void store.getState().run(async () => {
       const name = store.getState().viewData.name ?? user.name
       const next = await auth.updateProfile(user.id, { name })
-      store.getState().setUser(next)
-      store.getState().setViewData({ saved: 'profile' })
+      // A reply that arrives after the session ended changes nothing.
+      if (store.getState().setUser(next)) store.getState().setViewData({ saved: 'profile' })
     })
   }
 
@@ -112,7 +109,7 @@ function SessionsCard({ user }: { user: PublicUser }) {
       // sign-in screen arrives ready (no "Please wait…") and the dialog focuses it.
       store.setState({ busy: false })
       store.getState().goView('signin', {
-        ...CLEARED,
+        ...CLEARED_ACCOUNT_FORM,
         email: user.email,
         password: '',
         banner: { kind: 'success', text: SIGNED_OUT_EVERYWHERE_TEXT },
@@ -155,17 +152,26 @@ function ConfirmDelete({ user, onCancel }: { user: PublicUser; onCancel: () => v
     void store.getState().run(async () => {
       // Close the open terrarium first: endSession's final save (and any pending debounced save)
       // would otherwise write it back into the storage deleteAll just emptied.
-      store.setState({ activeId: null })
+      const openId = await store.getState().detachActiveGarden()
       try {
         await store.getState().backend?.deleteAll()
       } catch {
         // The storage is already gone; the account is deleted either way.
       }
-      await auth.deleteAccount(user.id)
+      try {
+        await auth.deleteAccount(user.id)
+      } catch (e) {
+        // The account is still there: reopen the terrarium and write it back (under its own name,
+        // still in the list), then match the list to the storage. run() shows the error.
+        const s = store.getState()
+        s.attachActiveGarden(openId)
+        await s.flushCloudSave()
+        await s.refreshGardens()
+        throw e
+      }
       store.setState({ busy: false })
       store.getState().goView('signup', {
-        ...CLEARED,
-        name: '',
+        ...CLEARED_ACCOUNT_FORM,
         banner: { kind: 'info', text: DELETED_TEXT },
       })
       await store.getState().endSession('Account deleted')

@@ -58,6 +58,19 @@ export interface ViewData {
   resendAt?: number
 }
 
+/**
+ * The account tabs' form values, cleared when a sign-out or deletion leaves the account view so
+ * typed passwords, the confirm email and the display name do not follow onto the next auth screen.
+ */
+export const CLEARED_ACCOUNT_FORM: ViewData = {
+  name: '',
+  current: '',
+  next: '',
+  confirmEmail: '',
+  confirmDeleteAccount: false,
+  saved: undefined,
+}
+
 export interface AccountState {
   phase: AccountPhase
   user: PublicUser | null
@@ -99,8 +112,18 @@ export interface AccountActions {
   openAuth(view: AuthView, data?: ViewData): void
   goView(view: AuthView, data?: ViewData): void
   setViewData(patch: ViewData): void
-  /** Replaces the signed-in user's public profile (after a profile edit). */
-  setUser(user: PublicUser): void
+  /**
+   * Replaces the signed-in user's public profile (after a profile edit). Ignored, returning false,
+   * when nobody is signed in or a different user is, so a late reply cannot revive an ended session.
+   */
+  setUser(user: PublicUser): boolean
+  /**
+   * Closes the open terrarium without a final save: cancels the pending and retry saves, waits for a
+   * write already under way, and returns the id that was open. Used before wiping the storage.
+   */
+  detachActiveGarden(): Promise<string | null>
+  /** Reopens a terrarium closed by detachActiveGarden, while the session is still signed in. */
+  attachActiveGarden(id: string | null): void
   setTab(tab: AccountTab): void
   setRenaming(id: string | null): void
   setConfirmDelete(id: string | null): void
@@ -184,6 +207,8 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
   return create<AccountStore>()((set, get) => {
     /** The pending retry after an `unavailable` write; at most one, cancelled on sign-out. */
     let retryTimer: ReturnType<typeof setTimeout> | null = null
+    /** The garden write under way, if any (it never rejects). */
+    let inFlight: Promise<void> | null = null
     const clearRetryTimer = () => {
       if (retryTimer) clearTimeout(retryTimer)
       retryTimer = null
@@ -201,6 +226,47 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
       const snapshot = getGardenSnapshot(s, deps.getWorld())
       const summary = gardenSummary(s, snapshot.worldSnapshot?.items ?? [])
       return { name, createdAt, updatedAt, summary, snapshot }
+    }
+
+    /** Writes one garden body and books the result; reports failures and retries `unavailable` ones. */
+    const writeGarden = async (
+      id: string,
+      backend: GardenBackend,
+      body: ReturnType<typeof sceneBody>,
+      at: number,
+    ) => {
+      try {
+        await backend.saveGarden(id, body)
+        // A session that ended during the write keeps its cleared state.
+        if (get().backend === backend)
+          set((st) => ({
+            gardens: st.gardens.some((x) => x.id === id)
+              ? st.gardens.map((x) => (x.id === id ? { ...x, ...body } : x))
+              : [{ id, ...body }, ...st.gardens],
+            lastSaved: at,
+            lastError: '',
+          }))
+      } catch (e) {
+        // A write that fails after its session ended reports nothing and is not retried.
+        if (get().backend === backend) {
+          get().handleCloudError(e)
+          if (errorCode(e) === 'unavailable') {
+            clearRetryTimer()
+            retryTimer = setTimeout(
+              () => {
+                retryTimer = null
+                get().scheduleCloudSave()
+              },
+              RETRY_MIN_MS + Math.random() * RETRY_SPREAD_MS,
+            )
+          }
+        }
+      }
+      set({ writing: false })
+      if (get().pending) {
+        set({ pending: false })
+        get().scheduleCloudSave()
+      }
     }
 
     /** Runs a scene edit on the live world, or on a scratch world built from the stored snapshot. */
@@ -319,38 +385,25 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
         const at = now()
         const g = s.gardens.find((x) => x.id === id)
         const body = sceneBody(g?.name || DEFAULT_GARDEN_NAME, g?.createdAt || at, at)
-        try {
-          await backend.saveGarden(id, body)
-          // A session that ended during the write keeps its cleared state.
-          if (get().backend === backend)
-            set((st) => ({
-              gardens: st.gardens.some((x) => x.id === id)
-                ? st.gardens.map((x) => (x.id === id ? { ...x, ...body } : x))
-                : [{ id, ...body }, ...st.gardens],
-              lastSaved: at,
-              lastError: '',
-            }))
-        } catch (e) {
-          // A write that fails after its session ended reports nothing and is not retried.
-          if (get().backend === backend) {
-            get().handleCloudError(e)
-            if (errorCode(e) === 'unavailable') {
-              clearRetryTimer()
-              retryTimer = setTimeout(
-                () => {
-                  retryTimer = null
-                  get().scheduleCloudSave()
-                },
-                RETRY_MIN_MS + Math.random() * RETRY_SPREAD_MS,
-              )
-            }
-          }
-        }
-        set({ writing: false })
-        if (get().pending) {
-          set({ pending: false })
-          get().scheduleCloudSave()
-        }
+        const write = writeGarden(id, backend, body, at)
+        inFlight = write
+        await write
+        if (inFlight === write) inFlight = null
+      },
+
+      async detachActiveGarden() {
+        const prev = get().activeId
+        // Cleared first so a write that finishes below does not schedule another save.
+        set({ activeId: null, pending: false })
+        clearSaveTimer()
+        clearRetryTimer()
+        if (inFlight) await inFlight
+        return prev
+      },
+
+      attachActiveGarden(id) {
+        if (get().phase !== 'cloud' || !get().backend) return
+        set({ activeId: id })
       },
 
       async createGarden(kind, name) {
@@ -522,7 +575,11 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
         set((s) => ({ viewData: { ...s.viewData, ...patch } }))
       },
 
-      setUser: (user) => set({ user }),
+      setUser(user) {
+        if (get().user?.id !== user.id) return false
+        set({ user })
+        return true
+      },
       setTab: (tab) => set({ tab }),
       setRenaming: (renaming) => set({ renaming }),
       setConfirmDelete: (confirmDelete) => set({ confirmDelete }),

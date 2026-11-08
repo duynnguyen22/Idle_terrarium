@@ -1,5 +1,10 @@
 import { useAccount, useAuthEnv } from '@/components/account/auth/authEnv'
-import { avatarColor, initialsOf, type AccountTab } from '@/store/useAccountStore'
+import {
+  avatarColor,
+  CLEARED_ACCOUNT_FORM,
+  initialsOf,
+  type AccountTab,
+} from '@/store/useAccountStore'
 import { GardensTab } from './GardensTab'
 import { JournalTab } from './JournalTab'
 import { ProfileTab } from './ProfileTab'
@@ -33,6 +38,7 @@ export function AccountScreen() {
       // Move to sign in before ending the session: endSession flips the phase at once and then
       // waits on the save flush, and the dialog would otherwise show an empty sign-in screen.
       store.getState().goView('signin', {
+        ...CLEARED_ACCOUNT_FORM,
         email: user.email,
         password: '',
         banner: { kind: 'success', text: SIGNED_OUT_TEXT },
