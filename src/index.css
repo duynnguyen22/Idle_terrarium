@@ -277,6 +277,27 @@
 .sidebar-tab[aria-selected='true'] .tab-ic .eye {
   fill: #e03131;
 }
+.tab-ic .sky {
+  fill: currentColor;
+  fill-opacity: 0.08;
+  stroke: none;
+}
+.tab-ic .drop {
+  fill: currentColor;
+  fill-opacity: 0.25;
+}
+.tab-ic .wind {
+  stroke-width: 1.4;
+}
+.sidebar-tab[aria-selected='true'] .tab-ic .sky {
+  fill: #8ecae6;
+  fill-opacity: 0.45;
+}
+.sidebar-tab[aria-selected='true'] .tab-ic .drop {
+  fill: #2b8cc4;
+  fill-opacity: 0.9;
+  stroke: #1c6e9c;
+}
 
 .stage-card {
   background: #fff;
@@ -355,4 +376,113 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Room tab: score card and source radio lists (artifact .env-*). */
+.env-scores {
+  display: grid;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid #e1e5dc;
+  border-radius: 14px;
+  padding: 12px;
+}
+.env-score-l {
+  font-size: 12px;
+  font-weight: 500;
+  color: #3f4a42;
+}
+.env-score-v {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #163022;
+  font-variant-numeric: tabular-nums;
+}
+.env-score-v[data-q='fair'] {
+  color: #9a6a00;
+}
+.env-score-v[data-q='bad'] {
+  color: #b42318;
+}
+.env-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #e4e8e0;
+  margin-top: 6px;
+  overflow: hidden;
+}
+.env-fill {
+  height: 100%;
+  width: 90%;
+  border-radius: 999px;
+  background: #2f8a4e;
+  transition:
+    width 0.4s ease,
+    background 0.3s ease;
+}
+.env-fill[data-q='fair'] {
+  background: #d4a017;
+}
+.env-fill[data-q='bad'] {
+  background: #d1432f;
+}
+.env-score-n {
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: #5b665e;
+}
+.env-list {
+  display: grid;
+  gap: 4px;
+  background: #fff;
+  border: 1px solid #e1e5dc;
+  border-radius: 14px;
+  padding: 4px;
+}
+.env-opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+.env-opt:hover {
+  background: #f1f4ef;
+}
+.env-opt[aria-checked='true'] {
+  background: #e6efe8;
+}
+.env-dot {
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  border-radius: 999px;
+  border: 1.6px solid #9aa59c;
+  flex-shrink: 0;
+  transition:
+    border-color 0.15s ease,
+    border-width 0.15s ease;
+}
+.env-opt[aria-checked='true'] .env-dot {
+  border: 4.5px solid #1b3b2b;
+}
+.env-txt {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.env-txt b {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #163022;
+}
+.env-txt small {
+  font-size: 10.5px;
+  color: #5b665e;
+  line-height: 1.35;
+}
+input[type='range']:disabled {
+  opacity: 0.45;
 }
