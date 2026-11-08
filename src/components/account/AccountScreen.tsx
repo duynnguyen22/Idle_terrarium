@@ -17,25 +17,25 @@ export function AccountScreen() {
   const tab = useAccount((s) => s.tab)
   const cloud = useAccount((s) => s.backend?.kind === 'cloud')
   const busy = useAccount((s) => s.busy)
-  // The session can end while this view is still current (Sign out, then the move to sign in).
+  // Only guards renders outside AccountDialog (test harnesses), which show the account view
+  // whatever the phase; the dialog renders this view only while a user is signed in.
   if (!user) return null
 
   const selectTab = (id: AccountTab) => {
-    store.getState().setTab(id)
-    store.setState({ viewData: {} })
+    store.setState({ tab: id, viewData: {} })
   }
 
   const signOut = () =>
     void store.getState().run(async () => {
       await auth.signOut()
-      await store.getState().endSession('Signed out')
-      // Clear busy before the screen changes so the sign-in screen's controls can take focus.
-      store.setState({ busy: false })
+      // Move to sign in before ending the session: endSession flips the phase at once and then
+      // waits on the save flush, and the dialog would otherwise show an empty sign-in screen.
       store.getState().goView('signin', {
         email: user.email,
         password: '',
         banner: { kind: 'success', text: SIGNED_OUT_TEXT },
       })
+      await store.getState().endSession('Signed out')
     })
 
   return (

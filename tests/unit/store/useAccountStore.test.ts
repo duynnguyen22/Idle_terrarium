@@ -634,6 +634,16 @@ describe('account store: panel and run', () => {
     expect(store.getState().panelOpen).toBe(false)
   })
 
+  it('closePanel clears an open rename and delete confirmation', () => {
+    store.setState({ phase: 'cloud', panelOpen: true, renaming: 'g_a', confirmDelete: 'g_b' })
+    store.getState().closePanel()
+    expect(store.getState()).toMatchObject({
+      panelOpen: false,
+      renaming: null,
+      confirmDelete: null,
+    })
+  })
+
   it('openPanel shows the checking view while checking and sign-in when signed out', () => {
     store.getState().openPanel()
     expect(store.getState()).toMatchObject({ panelOpen: true, view: 'checking' })

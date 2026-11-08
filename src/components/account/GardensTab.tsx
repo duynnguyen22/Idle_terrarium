@@ -10,17 +10,6 @@ function RenameInput({ garden }: { garden: GardenRecord }) {
   const ref = useRef<HTMLInputElement>(null)
   useEffect(() => ref.current?.focus(), [])
 
-  // Escape cancels. The dialog's own Escape listener (window, capture) closes the panel and stops
-  // the event before it reaches this input, so the cancel listens on window too; like the spec,
-  // Escape here both cancels the rename and closes the dialog.
-  useEffect(() => {
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape' && e.target === ref.current) store.getState().setRenaming(null)
-    }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [store])
-
   const done = () => {
     const s = store.getState()
     // Enter already saved and closed the editor; the blur that follows must not save again.
@@ -29,6 +18,9 @@ function RenameInput({ garden }: { garden: GardenRecord }) {
   }
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') done()
+    // Inside the dialog, Escape never gets here: the dialog's capture listener closes the panel and
+    // closePanel() clears the rename. This covers the editor rendered outside the dialog.
+    if (e.key === 'Escape') store.getState().setRenaming(null)
   }
 
   return (
@@ -52,7 +44,7 @@ function GardenRow({ garden, active }: { garden: GardenRecord; active: boolean }
   const s = garden.summary
   const vessel = VESSELS_BY_ID[s.vessel]?.name ?? 'Terrarium'
   const meta = `${vessel} · day ${s.day || 1} · ${s.plants || 0} plants, ${s.animals || 0} animals · ${timeAgo(garden.updatedAt)}`
-  const act = store.getState()
+  const actions = store.getState()
 
   return (
     <li className={`garden-row${active ? ' is-active' : ''}`}>
@@ -66,11 +58,11 @@ function GardenRow({ garden, active }: { garden: GardenRecord; active: boolean }
             <button
               type="button"
               className="g-btn danger"
-              onClick={() => void act.deleteGarden(garden.id)}
+              onClick={() => void actions.deleteGarden(garden.id)}
             >
               Delete
             </button>
-            <button type="button" className="g-btn" onClick={() => act.setConfirmDelete(null)}>
+            <button type="button" className="g-btn" onClick={() => actions.setConfirmDelete(null)}>
               Keep
             </button>
           </>
@@ -82,19 +74,19 @@ function GardenRow({ garden, active }: { garden: GardenRecord; active: boolean }
               <button
                 type="button"
                 className="g-btn primary"
-                onClick={() => void act.openGarden(garden.id)}
+                onClick={() => void actions.openGarden(garden.id)}
               >
                 Open
               </button>
             )}
-            <button type="button" className="g-btn" onClick={() => act.setRenaming(garden.id)}>
+            <button type="button" className="g-btn" onClick={() => actions.setRenaming(garden.id)}>
               Rename
             </button>
             {!active && (
               <button
                 type="button"
                 className="g-btn"
-                onClick={() => act.setConfirmDelete(garden.id)}
+                onClick={() => actions.setConfirmDelete(garden.id)}
               >
                 Delete
               </button>

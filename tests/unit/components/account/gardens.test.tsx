@@ -122,6 +122,27 @@ describe('AccountScreen', () => {
   })
 })
 
+describe('AccountScreen in the dialog', () => {
+  it('Sign out lands on sign in with the banner, focus on the password and busy cleared', async () => {
+    const signOut = vi.fn(() => Promise.resolve())
+    const env = makeEnv('signin', { auth: fakeAuth({ signOut }) })
+    await seed(env, 'g_a', 'Alpha', 'globe', Date.now())
+    await act(() => env.store.getState().beginSession(demoUser, demoSession, { isNew: false }))
+    renderIn(env, <AccountDialog />)
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Sign out' }))
+    await vi.waitFor(() => expect(env.store.getState().phase).toBe('signedout'))
+    await vi.waitFor(() => expect(env.store.getState().busy).toBe(false))
+    expect(signOut).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Welcome back')
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'You’re signed out. Your terrariums are safe in your account.',
+    )
+    expect(screen.getByLabelText('Email')).toHaveValue('demo@botanica.app')
+    expect(document.activeElement).toBe(document.getElementById('auth-password'))
+    expect(env.toast).toHaveBeenCalledWith('Signed out')
+  })
+})
+
 describe('GardensTab', () => {
   it('gardens tab lists saved terrariums with their meta line and marks the open one', async () => {
     const env = await signedIn()
@@ -217,6 +238,37 @@ describe('GardensTab', () => {
     expect(env.store.getState().renaming).toBeNull()
     expect(screen.getByText('Mossy Corner')).toBeInTheDocument()
     expect(env.store.getState().gardens.find((g) => g.id === 'g_b')?.name).toBe('Mossy Corner')
+  })
+
+  it('Enter then leaving the field saves the name once', async () => {
+    const env = await signedIn()
+    const rename = vi.spyOn(env.backend, 'renameGarden')
+    const u = userEvent.setup()
+    await u.click(row('Other').getByRole('button', { name: 'Rename' }))
+    const input = screen.getByRole('textbox', { name: 'Terrarium name' })
+    await u.clear(input)
+    await u.type(input, 'Once{Enter}')
+    await u.tab()
+    await vi.waitFor(() =>
+      expect(env.store.getState().gardens.find((g) => g.id === 'g_b')?.name).toBe('Once'),
+    )
+    expect(rename).toHaveBeenCalledTimes(1)
+    expect(rename).toHaveBeenCalledWith('g_b', 'Once')
+  })
+
+  it('a whitespace-only name closes the editor without renaming', async () => {
+    const env = await signedIn()
+    const rename = vi.spyOn(env.backend, 'renameGarden')
+    const u = userEvent.setup()
+    await u.click(row('Other').getByRole('button', { name: 'Rename' }))
+    const input = screen.getByRole('textbox', { name: 'Terrarium name' })
+    await u.clear(input)
+    await u.type(input, '   {Enter}')
+    expect(screen.queryByRole('textbox', { name: 'Terrarium name' })).toBeNull()
+    expect(env.store.getState().renaming).toBeNull()
+    expect(rename).not.toHaveBeenCalled()
+    expect(screen.getByText('Other')).toBeInTheDocument()
+    expect(env.store.getState().gardens.find((g) => g.id === 'g_b')?.name).toBe('Other')
   })
 
   it('Rename saves on blur', async () => {

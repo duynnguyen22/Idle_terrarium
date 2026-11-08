@@ -503,7 +503,8 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
       closePanel() {
         // Onboarding must finish before the panel can close.
         if (get().phase === 'onboarding') return
-        set({ panelOpen: false })
+        // An open rename or delete confirmation does not survive the panel closing.
+        set({ panelOpen: false, renaming: null, confirmDelete: null })
       },
 
       openAuth(view, data = {}) {
