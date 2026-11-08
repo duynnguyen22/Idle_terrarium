@@ -117,5 +117,14 @@ describe('backdropPhoto', () => {
       expect(photo.getCustomBackdrop()).toBe(img)
       expect(cb).toHaveBeenCalledTimes(1)
     })
+
+    it('bumps the revision on every published photo', async () => {
+      expect(photo.getCustomBackdropRevision()).toBe(0)
+      await photo.setCustomBackdropFromFile(pngFile())
+      expect(photo.getCustomBackdropRevision()).toBe(1)
+      localStorage.setItem(KEY, JPEG)
+      await photo.loadCustomBackdrop()
+      expect(photo.getCustomBackdropRevision()).toBe(2)
+    })
   })
 })

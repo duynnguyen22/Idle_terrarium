@@ -12,10 +12,19 @@ const MAX_SIDE = 1600
 const JPEG_QUALITY = 0.86
 
 let customImg: HTMLImageElement | null = null
+let revision = 0
 const listeners = new Set<() => void>()
 
 export function getCustomBackdrop(): HTMLImageElement | null {
   return customImg
+}
+
+/**
+ * Bumps every time a photo is published. The renderer keys its painted-scene cache on this, so a
+ * replaced photo is always repainted (two photos can share a data URL length).
+ */
+export function getCustomBackdropRevision(): number {
+  return revision
 }
 
 /** Calls `cb` whenever the photo changes; returns the unsubscribe function. */
@@ -28,6 +37,7 @@ export function subscribeCustomBackdrop(cb: () => void): () => void {
 
 function publish(img: HTMLImageElement): void {
   customImg = img
+  revision++
   listeners.forEach((cb) => cb())
 }
 

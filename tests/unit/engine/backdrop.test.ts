@@ -4,6 +4,7 @@ import type { BackdropId } from '@/data/types'
 import { drawMiniatureBackdrop, paintBackdrop, resetBackdropCache } from '@/engine/render/backdrop'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
 import { createWorld } from '@/engine/world'
+import { getCustomBackdrop, loadCustomBackdrop } from '@/lib/backdropPhoto'
 import { createDefaultState, type StudioState } from '@/store/useStudioStore'
 import { makeRecordingContext, makeTraceContext } from '../helpers/recordingContext'
 
@@ -151,6 +152,46 @@ describe('drawMiniatureBackdrop', () => {
     expect(spy).toHaveBeenCalledTimes(3)
   })
 
+  it('repaints when the photo is replaced by one with an equal-length data URL', async () => {
+    /** jsdom never decodes images: this one "loads" on the next tick. */
+    class FakeImage {
+      width = 300
+      height = 200
+      complete = false
+      onload: (() => void) | null = null
+      private source = ''
+      get src() {
+        return this.source
+      }
+      set src(v: string) {
+        this.source = v
+        setTimeout(() => {
+          this.complete = true
+          this.onload?.()
+        }, 0)
+      }
+    }
+    vi.stubGlobal('Image', FakeImage)
+    const drawn: unknown[] = []
+    const offscreen = makeRecordingContext().ctx
+    Object.assign(offscreen, { drawImage: (img: unknown) => drawn.push(img) })
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(offscreen as never)
+    const state = stateWith({ backdrop: 'custom' })
+    try {
+      localStorage.setItem('botanica_backdrop_photo_v1', 'data:image/jpeg;base64,AAAA')
+      const first = await loadCustomBackdrop()
+      drawMiniatureBackdrop(makeRecordingContext().ctx, state, R, getCustomBackdrop())
+      localStorage.setItem('botanica_backdrop_photo_v1', 'data:image/jpeg;base64,BBBB')
+      const second = await loadCustomBackdrop()
+      expect(second?.src.length).toBe(first?.src.length)
+      drawMiniatureBackdrop(makeRecordingContext().ctx, state, R, getCustomBackdrop())
+      expect(drawn).toEqual([first, second])
+    } finally {
+      localStorage.clear()
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('draws nothing when the offscreen canvas has no 2D context', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
     const { ctx, calls } = makeRecordingContext()
@@ -162,6 +203,16 @@ describe('drawMiniatureBackdrop', () => {
 })
 
 describe('renderFrame', () => {
+  it('still paints the lamp cone inside the glass with no backdrop', () => {
+    const { ctx, calls } = makeRecordingContext()
+    const state = stateWith({ backdrop: 'none', hasGrowLamp: true, lighting: 'sunlight' })
+    renderFrame(ctx, createWorld(), state, R, 0, { w: 800, h: 600 })
+    const clip = calls.indexOf('clip')
+    expect(clip).toBeGreaterThan(-1)
+    expect(calls.indexOf('createRadialGradient', clip)).toBeGreaterThan(clip)
+    expect(calls).not.toContain('drawImage')
+  })
+
   it('paints the backdrop inside the vessel clip, under the lamp cone', () => {
     stubOffscreenContext()
     const { ctx, calls } = makeRecordingContext()

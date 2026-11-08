@@ -1,4 +1,5 @@
 import type { Rect } from '@/data/types'
+import { getCustomBackdropRevision } from '@/lib/backdropPhoto'
 import type { StudioState } from '@/store/useStudioStore'
 import { paintBackdrop } from './backdropPainters'
 import { vesselMetrics } from './metrics'
@@ -12,7 +13,7 @@ const PHASE_TINT: Partial<Record<StudioState['lighting'], string>> = {
   dawn: 'rgba(255, 196, 150, 0.14)',
 }
 
-/** The painted scene is redrawn only when its key (backdrop, size, DPR, photo) changes. */
+/** The painted scene is redrawn only when its key (backdrop, size, DPR, photo revision) changes. */
 const cache: { key: string; canvas: HTMLCanvasElement | null } = { key: '', canvas: null }
 
 /** Forgets the painted scene (tests, or after the custom photo changes outside the key). */
@@ -41,7 +42,7 @@ export function drawMiniatureBackdrop(
   const x0 = cx - w / 2
   const y0 = cy - r * 0.86
   const dpr = Math.min(globalThis.devicePixelRatio || 1, 2)
-  const key = `${backdrop}|${w}|${h}|${dpr}|${custom?.src.length ?? 0}`
+  const key = `${backdrop}|${w}|${h}|${dpr}|${custom ? getCustomBackdropRevision() : 0}`
   if (cache.key !== key || !cache.canvas) {
     const off = cache.canvas ?? document.createElement('canvas')
     off.width = Math.max(1, Math.round(w * dpr))
