@@ -10,6 +10,9 @@ import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { showToast, useToastStore } from '@/store/toastStore'
 import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+import { useAccountStore } from '@/store/useAccountStore'
+import { createLocalBackend } from '@/auth/backend'
+import { MemoryStorage } from './auth/authHarness'
 import {
   createDefaultTelemetry,
   useTelemetryStore,
@@ -31,6 +34,7 @@ const item = (uid: string, category: PlacedItem['category']): PlacedItem => ({
 })
 
 let world: EngineWorld
+const initialAccount = useAccountStore.getState()
 const user = () => ({ click: (el: HTMLElement) => act(() => void fireEvent.click(el)) })
 
 beforeEach(() => {
@@ -43,6 +47,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  useAccountStore.setState(initialAccount, true)
   unregisterWorld()
   vi.useRealTimers()
 })
@@ -98,6 +103,45 @@ describe('TopNav speed controls', () => {
     await user().click(screen.getByRole('button', { name: '+1 day' }))
     expect(world.env.cycleProgress).toBe(1)
     expect(useToastStore.getState().message).toBe('Day 2: plants grew. The pool has cycled.')
+  })
+
+  it('+Day writes an automatic journal entry when signed in, and nothing when signed out', async () => {
+    const backend = createLocalBackend('u_demo', new MemoryStorage())
+    const addJournal = vi.spyOn(backend, 'addJournal')
+    useTelemetryStore.setState({
+      telemetry: {
+        ...createDefaultTelemetry(),
+        careIssues: [
+          { level: 'warn', text: 'The soil is drying out.' } as CareIssue,
+          { level: 'info', text: 'All good otherwise.' } as CareIssue,
+        ],
+      },
+    })
+    render(<TopNav />)
+    const plusDay = screen.getByRole('button', { name: '+1 day' })
+
+    // Signed out: the backend is never touched.
+    useAccountStore.setState({ phase: 'signedout', activeId: 'g_a', backend })
+    await user().click(plusDay)
+    await act(async () => {})
+    expect(useStudioStore.getState().dayCount).toBe(2)
+    expect(addJournal).not.toHaveBeenCalled()
+
+    // Signed in with an open terrarium: one automatic entry for the new day, no extra toast.
+    useAccountStore.setState({ phase: 'cloud', activeId: 'g_a', backend })
+    await user().click(plusDay)
+    await vi.waitFor(() => expect(useAccountStore.getState().journal).toHaveLength(1))
+    const saved = await backend.listJournal('g_a')
+    expect(saved).toHaveLength(1)
+    expect(saved[0]).toMatchObject({ day: 3, auto: true, note: '' })
+    expect(saved[0].issues).toEqual(['The soil is drying out.'])
+    expect(useToastStore.getState().message).toMatch(/^Day 3: plants grew/)
+
+    // Signed in but no terrarium open yet: nothing either.
+    useAccountStore.setState({ activeId: null })
+    await user().click(plusDay)
+    await act(async () => {})
+    expect(addJournal).toHaveBeenCalledTimes(1)
   })
 })
 

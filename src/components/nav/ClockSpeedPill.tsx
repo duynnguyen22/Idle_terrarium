@@ -7,6 +7,7 @@ import { play } from '@/hooks/useAudio'
 import { useLocalClock } from '@/hooks/useLocalClock'
 import { selectDayCount, selectLighting } from '@/store/selectors'
 import { showToast } from '@/store/toastStore'
+import { useAccountStore } from '@/store/useAccountStore'
 import { useStudioStore } from '@/store/useStudioStore'
 
 const PHASE_ICONS: Record<LightingId, IconName> = {
@@ -64,6 +65,11 @@ export function ClockSpeedPill() {
       }
     })
     showToast(msg)
+    // Signed in with a terrarium open: log the new day in its growth journal (spec 5250).
+    const account = useAccountStore.getState()
+    if (account.phase === 'cloud' && account.activeId) {
+      account.addJournalEntry('', true).catch((e: unknown) => account.handleCloudError(e))
+    }
   }
 
   return (

@@ -1,6 +1,7 @@
 import { useAccount, useAuthEnv } from '@/components/account/auth/authEnv'
 import { avatarColor, initialsOf, type AccountTab } from '@/store/useAccountStore'
 import { GardensTab } from './GardensTab'
+import { JournalTab } from './JournalTab'
 
 const TABS: [AccountTab, string][] = [
   ['terrariums', 'Terrariums'],
@@ -73,8 +74,8 @@ export function AccountScreen() {
       </div>
       <div id="acct-tabpanel" role="tabpanel" aria-labelledby={`acct-tab-${tab}`}>
         {tab === 'terrariums' && <GardensTab />}
-        {/* Tasks 13 and 14 replace these placeholders with the Journal and Profile tabs. */}
-        {tab === 'journal' && <div data-tab="journal" />}
+        {tab === 'journal' && <JournalTab />}
+        {/* Task 14 replaces this placeholder with the Profile tab. */}
         {tab === 'profile' && <div data-tab="profile" />}
       </div>
       <div className="acct-foot">
