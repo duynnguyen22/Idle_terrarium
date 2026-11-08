@@ -134,9 +134,15 @@ export function createLocalAuthService(opts: LocalAuthOptions = {}): AuthService
   const signOutDelay = opts.latency ?? (() => wait(200))
   const pending: Record<string, PendingCode> = {}
 
+  /**
+   * The stored accounts, or {} when storage is unreadable or holds anything but a plain
+   * object. Callers that await (hashing) must call this again afterwards and mutate the
+   * fresh copy, so parallel calls don't overwrite each other's writes.
+   */
   const readUsers = (): Users => {
     try {
-      return JSON.parse(local().getItem(AUTH_USERS_KEY) || '{}') as Users
+      const parsed: unknown = JSON.parse(local().getItem(AUTH_USERS_KEY) || '{}')
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Users) : {}
     } catch {
       return {}
     }
@@ -251,19 +257,25 @@ export function createLocalAuthService(opts: LocalAuthOptions = {}): AuthService
       await latency()
       const key = norm(email)
       requireEmail(key)
-      const users = readUsers()
-      const u = users[key]
-      if (!u)
-        throw new AuthError('no_account', 'There’s no account with this email.', { field: 'email' })
-      if (u.provider && u.provider !== 'password' && !u.hash && !u.demoPw) {
+      const noAccount = () =>
+        new AuthError('no_account', 'There’s no account with this email.', { field: 'email' })
+      const lockedError = (until: number) => new AuthError('locked', MSG.locked, { until })
+      const before = readUsers()[key]
+      if (!before) throw noAccount()
+      if (before.provider && before.provider !== 'password' && !before.hash && !before.demoPw) {
         throw new AuthError(
           'use_provider',
-          `This account signs in with ${u.provider}. Use that button above.`,
+          `This account signs in with ${before.provider}. Use that button above.`,
         )
       }
-      const lock = u.lockedUntil || 0
-      if (now() < lock) throw new AuthError('locked', MSG.locked, { until: lock })
-      if (!(await checkPassword(u, password))) {
+      if (now() < (before.lockedUntil || 0)) throw lockedError(before.lockedUntil!)
+      const passwordOk = await checkPassword(before, password)
+      // Re-read after hashing: a parallel attempt may have counted a failure or set a lockout
+      const users = readUsers()
+      const u = users[key]
+      if (!u) throw noAccount()
+      if (now() < (u.lockedUntil || 0)) throw lockedError(u.lockedUntil!)
+      if (!passwordOk) {
         u.failed = (u.failed || 0) + 1
         if (u.failed >= MAX_FAILED) {
           u.lockedUntil = now() + LOCKOUT
@@ -306,19 +318,27 @@ export function createLocalAuthService(opts: LocalAuthOptions = {}): AuthService
         })
       }
       const salt = newSalt()
-      users[key] = {
+      const hashed = await hash(salt, password)
+      // Re-read after hashing: a parallel sign-up may have taken the email meanwhile
+      const fresh = readUsers()
+      if (fresh[key]) {
+        throw new AuthError('email_taken', 'An account with this email already exists.', {
+          field: 'email',
+        })
+      }
+      fresh[key] = {
         id: rid('usr'),
         name: name.trim().slice(0, NAME_MAX),
         email: email.trim(),
         salt,
-        hash: await hash(salt, password),
+        hash: hashed,
         verified: false,
         createdAt: now(),
         sessionVersion: 1,
       }
-      writeUsers(users)
+      writeUsers(fresh)
       issueCode(key, 'verify')
-      return { email: users[key].email }
+      return { email: fresh[key].email }
     },
 
     async verifyEmail({ email, code, remember }) {
@@ -366,11 +386,15 @@ export function createLocalAuthService(opts: LocalAuthOptions = {}): AuthService
       if (!passwordStrength(password).ok) {
         throw new AuthError('weak_password', MSG.weak, { field: 'password' })
       }
+      const salt = newSalt()
+      const hashed = await hash(salt, password)
+      // Re-check after hashing: a parallel reset may have used the code
+      if (pending[key] !== p) throw new AuthError('bad_code', MSG.badCode, { field: 'code' })
       const users = readUsers()
       const u = users[key]
       if (!u) throw new AuthError('no_account', MSG.notFound)
-      u.salt = newSalt()
-      u.hash = await hash(u.salt, password)
+      u.salt = salt
+      u.hash = hashed
       delete u.demoPw
       u.verified = true
       u.failed = 0
@@ -455,10 +479,9 @@ export function createLocalAuthService(opts: LocalAuthOptions = {}): AuthService
 
     async changePassword(userId, { current, next }) {
       await latency()
-      const users = readUsers()
-      const u = findById(users, userId)
-      if (!u) throw new AuthError('no_account', MSG.notFound)
-      if ((u.hash || u.demoPw) && !(await checkPassword(u, current))) {
+      const before = findById(readUsers(), userId)
+      if (!before) throw new AuthError('no_account', MSG.notFound)
+      if ((before.hash || before.demoPw) && !(await checkPassword(before, current))) {
         throw new AuthError('wrong_password', 'Your current password isn’t right.', {
           field: 'current',
         })
@@ -466,8 +489,14 @@ export function createLocalAuthService(opts: LocalAuthOptions = {}): AuthService
       if (!passwordStrength(next).ok) {
         throw new AuthError('weak_password', MSG.weak, { field: 'next' })
       }
-      u.salt = newSalt()
-      u.hash = await hash(u.salt, next)
+      const salt = newSalt()
+      const hashed = await hash(salt, next)
+      // Re-read after hashing so a parallel profile edit is not overwritten
+      const users = readUsers()
+      const u = findById(users, userId)
+      if (!u) throw new AuthError('no_account', MSG.notFound)
+      u.salt = salt
+      u.hash = hashed
       delete u.demoPw
       writeUsers(users)
     },

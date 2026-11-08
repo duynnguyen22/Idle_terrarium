@@ -593,10 +593,83 @@ describe('local AuthService', () => {
     ).rejects.toMatchObject({ code: 'no_account' })
   })
 
-  it('corrupt users JSON is treated as empty', () => {
-    local.setItem(AUTH_USERS_KEY, '{nope')
-    expect(() => svc.getSession()).not.toThrow()
-    expect(users()['demo@botanica.app']).toMatchObject({ id: 'usr_demo' })
+  it.each(['{nope', 'null', '[]', '42', '"text"'])(
+    'corrupt users JSON %s is treated as empty',
+    (raw) => {
+      local.setItem(AUTH_USERS_KEY, raw)
+      expect(() => svc.getSession()).not.toThrow()
+      expect(users()['demo@botanica.app']).toMatchObject({ id: 'usr_demo' })
+    },
+  )
+
+  it('non-object users JSON breaks neither getSession nor signIn', async () => {
+    await signInDemo()
+    local.setItem(AUTH_USERS_KEY, 'null')
+    // getSession reseeds the demo user with the same id, so the session survives
+    expect(svc.getSession().user?.id).toBe('usr_demo')
+    await expect(
+      svc.signIn({ email: 'x@y.zz', password: 'a', remember: true }),
+    ).rejects.toMatchObject({ code: 'no_account' })
+  })
+
+  it('parallel wrong passwords on a hashed account all count toward the lockout', async () => {
+    await signUpVerified()
+    const wrong = () => svc.signIn({ email: 'a@b.cc', password: 'abcdefg2', remember: true })
+    const results = await Promise.allSettled([wrong(), wrong(), wrong(), wrong(), wrong()])
+    const codes = results.map((r) =>
+      r.status === 'rejected' ? (r.reason as AuthError).code : 'ok',
+    )
+    expect(codes.filter((c) => c === 'wrong_password')).toHaveLength(4)
+    expect(codes.filter((c) => c === 'locked')).toHaveLength(1)
+    // The fifth failure locks and resets the counter, as the spec does
+    expect(users()['a@b.cc']).toMatchObject({ failed: 0, lockedUntil: t + 60000 })
+    await expect(
+      svc.signIn({ email: 'a@b.cc', password: 'abcdefg1', remember: true }),
+    ).rejects.toMatchObject({ code: 'locked', until: t + 60000 })
+  })
+
+  it('a wrong password that lands during a lockout set by a parallel call is refused as locked', async () => {
+    await signUpVerified()
+    const wrong = () => svc.signIn({ email: 'a@b.cc', password: 'abcdefg2', remember: true })
+    const results = await Promise.allSettled(Array.from({ length: 7 }, wrong))
+    const codes = results.map((r) =>
+      r.status === 'rejected' ? (r.reason as AuthError).code : 'ok',
+    )
+    expect(codes.filter((c) => c === 'locked')).toHaveLength(3)
+    expect(users()['a@b.cc']).toMatchObject({ failed: 0, lockedUntil: t + 60000 })
+  })
+
+  it('parallel sign-ups for the same email create one account', async () => {
+    const results = await Promise.allSettled([
+      svc.signUp({ name: 'One', email: 'a@b.cc', password: 'abcdefg1' }),
+      svc.signUp({ name: 'Two', email: 'A@B.cc', password: 'abcdefg1' }),
+    ])
+    expect(results.map((r) => r.status)).toEqual(['fulfilled', 'rejected'])
+    expect((results[1] as PromiseRejectedResult).reason).toMatchObject({ code: 'email_taken' })
+    expect(users()['a@b.cc']).toMatchObject({ name: 'One' })
+  })
+
+  it('changePassword does not undo a profile update made while it was hashing', async () => {
+    const { user } = await signUpVerified()
+    await Promise.all([
+      svc.changePassword(user.id, { current: 'abcdefg1', next: 'newpass12' }),
+      svc.updateProfile(user.id, { name: 'Renamed' }),
+    ])
+    expect(users()['a@b.cc']).toMatchObject({ name: 'Renamed' })
+    await expect(
+      svc.signIn({ email: 'a@b.cc', password: 'newpass12', remember: true }),
+    ).resolves.toMatchObject({ user: { name: 'Renamed' } })
+  })
+
+  it('resetPassword does not undo a profile update made while it was hashing', async () => {
+    const { user } = await signUpVerified()
+    await svc.requestPasswordReset('a@b.cc')
+    const code = svc.devCode('a@b.cc')!
+    await Promise.all([
+      svc.resetPassword({ email: 'a@b.cc', code, password: 'newpass12' }),
+      svc.updateProfile(user.id, { name: 'Renamed' }),
+    ])
+    expect(users()['a@b.cc']).toMatchObject({ name: 'Renamed', sessionVersion: 2 })
   })
 
   it('a corrupt session is treated as signed out', () => {
