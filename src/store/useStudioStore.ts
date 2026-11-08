@@ -194,6 +194,8 @@ export function partialize(s: StudioStore) {
   }
 }
 
+export type PersistedStudio = ReturnType<typeof partialize>
+
 export type StudioStoreHook = UseBoundStore<StoreApi<StudioStore>>
 
 /**
