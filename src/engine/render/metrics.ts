@@ -19,6 +19,11 @@ export function vesselMetrics(R: Rect): { cx: number; cy: number; r: number; kx:
   return { cx: R.x + R.w / 2, cy: R.y + R.h / 2, r: R.h / 2, kx: R.w / R.h }
 }
 
+/** Maps a normalized x (0..1 across the vessel rect) to pixels. */
+export const normToPx = (R: Rect, nx: number) => R.x + nx * R.w
+/** Maps a normalized y (0..1 down the vessel rect) to pixels. */
+export const normToPy = (R: Rect, ny: number) => R.y + ny * R.h
+
 /** Reads a numeric field of a loosely typed particle; missing or non-numeric values read as `fallback`. */
 export function num(entity: WorldEntity, key: string, fallback = 0): number {
   const v = entity[key]

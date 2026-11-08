@@ -1,6 +1,6 @@
 import { findCatalogDef, type CatalogId } from '@/data/catalog'
 import { getSprite } from '../sprites/spriteCache'
-import { vesselMetrics, type RenderFn } from './metrics'
+import { normToPx, vesselMetrics, type RenderFn } from './metrics'
 
 /**
  * Placed flora, hardscape and fauna (prototype renderPlacedSpecimens): sprite blit with scale, rotation, flip
@@ -16,7 +16,7 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
     if (!def) return
     const sprite = getSprite(item.id as CatalogId)
 
-    const px = R.x + item.x * R.w
+    const px = normToPx(R, item.x)
     const py = cy - Rad + item.y * (Rad * 2)
     const drawSize = Rad * 0.36 * (item.scale || 1)
 

@@ -101,8 +101,10 @@ test('a wide rectangular tank renders without page errors', async ({ page }) => 
   const riparium = page.getByRole('button', { name: /Long Riparium/ })
   await riparium.click()
   await expect(riparium).toHaveAttribute('aria-pressed', 'true')
-  await page.waitForTimeout(500)
-  await page.screenshot({ path: 'test-results/riparium-tank.png' })
+  // Let a couple of frames render the new tank before checking for page errors.
+  await page.evaluate(
+    () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))),
+  )
   expect(errors).toEqual([])
 })
 

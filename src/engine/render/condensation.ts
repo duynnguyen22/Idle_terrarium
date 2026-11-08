@@ -1,4 +1,4 @@
-import { vesselMetrics, type RenderFn } from './metrics'
+import { normToPx, vesselMetrics, type RenderFn } from './metrics'
 
 /** Below this condensation level the glass shows no droplets (only, above 0.05, a faint fog). */
 export const DROPLET_THRESHOLD = 0.18
@@ -53,7 +53,7 @@ export const drawCondensation: RenderFn = (ctx, world, state, R) => {
       const g = GLASS_DROPS[i]
       ctx.fillStyle = `rgba(240, 249, 255, ${((0.35 + g.o * 0.35) * c).toFixed(3)})`
       ctx.beginPath()
-      ctx.arc(R.x + g.x * R.w, cy - r + g.y * 2 * r, g.r * (r / 300), 0, Math.PI * 2)
+      ctx.arc(normToPx(R, g.x), cy - r + g.y * 2 * r, g.r * (r / 300), 0, Math.PI * 2)
       ctx.fill()
     }
   }
@@ -78,7 +78,7 @@ export const drawMineralSpots: RenderFn = (ctx, world, state, R) => {
   ctx.fillStyle = `rgba(245, 245, 240, ${(0.18 + ms * 0.4).toFixed(3)})`
   for (let i = 0; i < n; i++) {
     const g = GLASS_DROPS[(i * 7) % GLASS_DROPS.length]
-    const gx = R.x + g.x * R.w + (i % 5) * 3
+    const gx = normToPx(R, g.x) + (i % 5) * 3
     const gy = cy - r + g.y * 2 * r + 14
     ctx.beginPath()
     ctx.ellipse(gx, gy, (g.r + 1) * (r / 260), (g.r + 0.6) * (r / 300), 0.4, 0, Math.PI * 2)

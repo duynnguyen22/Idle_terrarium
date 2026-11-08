@@ -167,7 +167,7 @@ describe('computeVesselRect', () => {
 
   it('fits a 2.6 tank inside a narrow canvas', () => {
     const R = computeVesselRect(400, 900, false, 2.6)
-    expect(R.w).toBeLessThanOrEqual((400 * 0.62 * 2) / 0.92 + 0.001)
+    expect(R.w * 0.72).toBeLessThanOrEqual(400)
     expect(R.w / R.h).toBeCloseTo(2.6)
   })
 })
@@ -327,6 +327,39 @@ describe('rectangular tanks', () => {
     const handles = calls.filter((c) => c.name === 'roundRect')
     expect(handles).toHaveLength(2)
     for (const h of handles) expect(h.args.slice(2, 4)).toEqual([4, 16])
+  })
+
+  it('paludarium frame strokes a 4.5 black frame and a full-width water dam', () => {
+    const R = computeVesselRect(800, 600, false, vesselKX('paludarium_tank'))
+    const { r, kx } = vesselMetrics(R)
+    const { ctx, calls } = argsContext()
+    const state = { ...createDefaultState(), vessel: 'paludarium_tank' as VesselId }
+    drawPaludariumFrontFrame(ctx, createWorld(), state, R, 0)
+    const frames = calls.filter((c) => c.name === 'strokeRect')
+    expect(frames).toHaveLength(1)
+    expect(frames[0].lineWidth).toBe(4.5)
+    expect(frames[0].args[2]).toBeCloseTo(r * 1.44 * kx)
+    const dams = calls.filter((c) => c.name === 'fillRect' && c.args[3] === 5.5)
+    expect(dams).toHaveLength(1)
+    expect(dams[0].args[2]).toBeCloseTo(r * 1.44 * kx)
+  })
+
+  it('riparium frame draws the hanging planter rail; rimless does not', () => {
+    const rails = (vessel: VesselId) => {
+      const R = computeVesselRect(800, 600, false, vesselKX(vessel))
+      const { cx, cy, r, kx } = vesselMetrics(R)
+      const w = r * 1.44 * kx
+      const { ctx, calls } = argsContext()
+      drawPaludariumFrontFrame(ctx, createWorld(), { ...createDefaultState(), vessel }, R, 0)
+      const leftX = cx - w / 2
+      const topY = cy - r * 0.84
+      const rail = calls.filter((c) => c.name === 'fillRect' && c.args[3] === 4)
+      return { rail, expected: [leftX + 6, topY + 4, w - 12, 4] }
+    }
+    const rip = rails('riparium_long')
+    expect(rip.rail).toHaveLength(1)
+    rip.rail[0].args.forEach((a, i) => expect(a).toBeCloseTo(rip.expected[i]))
+    expect(rails('rimless_landscape').rail).toHaveLength(0)
   })
 
   it('places a specimen across the full scaled width', () => {

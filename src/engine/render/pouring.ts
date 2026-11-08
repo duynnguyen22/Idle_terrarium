@@ -1,5 +1,5 @@
 import { SUBSTRATE_LAYERS } from '@/data/substrates'
-import { num, str, vesselMetrics, type RenderFn } from './metrics'
+import { normToPx, num, str, vesselMetrics, type RenderFn } from './metrics'
 
 /**
  * Draw-only half of prototype drawInteractivePouringContainerAndParticles: falling stream particles and
@@ -9,7 +9,7 @@ export const drawPouring: RenderFn = (ctx, world, state, R) => {
   const { cy, r: Rad } = vesselMetrics(R)
 
   for (const p of world.fallingStreams) {
-    const px = R.x + num(p, 'x') * R.w
+    const px = normToPx(R, num(p, 'x'))
     const py = cy - Rad + num(p, 'y') * (Rad * 2)
 
     ctx.save()
@@ -34,7 +34,7 @@ export const drawPouring: RenderFn = (ctx, world, state, R) => {
   if (state.activeTool === 'pour' && state.activePourMaterial && !state.relaxMode) {
     const layer = SUBSTRATE_LAYERS.find((l) => l.id === state.activePourMaterial)
     if (!layer) return
-    const px = R.x + world.pointerNorm.x * R.w
+    const px = normToPx(R, world.pointerNorm.x)
     const py = cy - Rad + world.pointerNorm.y * (Rad * 2)
 
     ctx.save()
