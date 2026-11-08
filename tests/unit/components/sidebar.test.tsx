@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { VesselGrid } from '@/components/catalog/VesselGrid'
 import { CareToolbar } from '@/components/stage/CareToolbar'
 import { ItemInspector } from '@/components/stage/ItemInspector'
 import { LeftSidebar } from '@/components/layout/LeftSidebar'
@@ -373,5 +374,18 @@ describe('ItemInspector', () => {
     expect(world.items).toHaveLength(0)
     expect(state().selectedId).toBeNull()
     expect(screen.queryByTestId('insp-name')).not.toBeInTheDocument()
+  })
+})
+
+describe('vessel grid', () => {
+  it('shows the nine vessels in picker order and selects a rectangular tank', () => {
+    render(<VesselGrid />)
+    const names = screen.getAllByRole('button').map((b) => b.textContent)
+    expect(names[0]).toContain('Paludarium Tank')
+    expect(names[1]).toContain('Front-Opening Vivarium')
+    expect(names[3]).toContain('Long Riparium')
+    expect(names).toHaveLength(9)
+    click(screen.getByRole('button', { name: /Long Riparium/ }))
+    expect(state().vessel).toBe('riparium_long')
   })
 })

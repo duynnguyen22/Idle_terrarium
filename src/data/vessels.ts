@@ -27,6 +27,32 @@ export const VESSELS = [
     desc: 'Tapered condensation vessel',
     evapMultiplier: 0.5,
   },
+  {
+    id: 'vivarium_front',
+    name: 'Front-Opening Vivarium',
+    desc: '60 × 45 cm, hinged doors',
+    evapMultiplier: 0.6,
+    kx: 1.55,
+    rect: true,
+    doors: true,
+  },
+  {
+    id: 'rimless_landscape',
+    name: 'Rimless Landscape',
+    desc: '90 × 45 cm aquascape',
+    evapMultiplier: 0.65,
+    kx: 2.0,
+    rect: true,
+  },
+  {
+    id: 'riparium_long',
+    name: 'Long Riparium',
+    desc: '120 × 40 cm shoreline',
+    evapMultiplier: 0.7,
+    kx: 2.6,
+    rect: true,
+    low: true,
+  },
 ] as const satisfies readonly VesselDef[]
 
 export type VesselId = (typeof VESSELS)[number]['id']
@@ -34,3 +60,19 @@ export type VesselId = (typeof VESSELS)[number]['id']
 export const VESSELS_BY_ID: Readonly<Record<VesselId, VesselDef>> = Object.fromEntries(
   VESSELS.map((v) => [v.id, v]),
 ) as Record<VesselId, VesselDef>
+
+export function vesselKX(id: string): number {
+  return (VESSELS_BY_ID as Readonly<Record<string, VesselDef | undefined>>)[id]?.kx ?? 1
+}
+
+export function isRectTank(id: string): boolean {
+  const def = (VESSELS_BY_ID as Readonly<Record<string, VesselDef | undefined>>)[id]
+  return id === 'paludarium_tank' || !!def?.rect
+}
+
+const pickerRank = (v: { id: string }) => (isRectTank(v.id) ? 1 : 0)
+
+/** Rectangular tanks first (spec 2370), otherwise in table order. */
+export const VESSELS_FOR_PICKER: readonly (typeof VESSELS)[number][] = [...VESSELS].sort(
+  (a, b) => pickerRank(b) - pickerRank(a),
+)

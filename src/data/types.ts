@@ -24,6 +24,11 @@ export interface VesselDef {
   name: string
   desc: string
   evapMultiplier: number
+  /** Horizontal stretch of the tank interior (rectangular tanks). */
+  kx?: number
+  rect?: boolean
+  doors?: boolean
+  low?: boolean
 }
 
 export interface SubstrateLayerDef {

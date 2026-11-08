@@ -7,18 +7,57 @@ import {
   POUR_CONTAINERS,
   SUBSTRATE_LAYERS,
 } from '@/data/substrates'
-import { VESSELS, VESSELS_BY_ID } from '@/data/vessels'
+import { VESSELS, VESSELS_BY_ID, VESSELS_FOR_PICKER, isRectTank, vesselKX } from '@/data/vessels'
 import { createItemId } from '@/lib/ids'
 import { formatClock, formatDepthMm } from '@/lib/format'
 import { clamp } from '@/lib/clamp'
 
 describe('catalog data', () => {
+  it('carries the rectangular tank flags from the spec', () => {
+    expect(VESSELS_BY_ID.vivarium_front).toMatchObject({
+      kx: 1.55,
+      rect: true,
+      doors: true,
+      evapMultiplier: 0.6,
+    })
+    expect(VESSELS_BY_ID.rimless_landscape).toMatchObject({
+      kx: 2.0,
+      rect: true,
+      desc: '90 × 45 cm aquascape',
+    })
+    expect(VESSELS_BY_ID.riparium_long).toMatchObject({
+      kx: 2.6,
+      rect: true,
+      low: true,
+      desc: '120 × 40 cm shoreline',
+    })
+    expect(vesselKX('riparium_long')).toBe(2.6)
+    expect(vesselKX('globe')).toBe(1)
+    expect(isRectTank('paludarium_tank')).toBe(true)
+    expect(isRectTank('vivarium_front')).toBe(true)
+    expect(isRectTank('teardrop')).toBe(false)
+  })
+
+  it('lists rectangular tanks first in the picker, in spec order', () => {
+    expect(VESSELS_FOR_PICKER.map((v) => v.id)).toEqual([
+      'paludarium_tank',
+      'vivarium_front',
+      'rimless_landscape',
+      'riparium_long',
+      'apothecary',
+      'wardian',
+      'globe',
+      'cylinder',
+      'teardrop',
+    ])
+  })
+
   it('has prototype counts', () => {
     expect(FLORA).toHaveLength(12)
     expect(HARDSCAPE).toHaveLength(10)
     expect(FAUNA).toHaveLength(8)
     expect(CATALOG.flora).toBe(FLORA)
-    expect(VESSELS).toHaveLength(6)
+    expect(VESSELS).toHaveLength(9)
     expect(POUR_CONTAINERS).toHaveLength(8)
     expect(BIOME_PRESETS).toHaveLength(4)
     expect(SOUND_PRESETS.map((s) => s.id)).toEqual(['stream', 'rain', 'forest', 'night'])
