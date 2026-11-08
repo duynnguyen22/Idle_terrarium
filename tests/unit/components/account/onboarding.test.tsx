@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { useAccount } from '@/components/account/auth/authEnv'
 import { AuthScreen } from '@/components/account/auth/AuthScreen'
-import { demoSession, demoUser, makeEnv, renderIn } from '../auth/authHarness'
+import { BackendError } from '@/auth/backend'
+import { demoSession, demoUser, fakeAuth, makeEnv, renderIn } from '../auth/authHarness'
 
 function CurrentScreen() {
   const view = useAccount((s) => s.view)
@@ -98,5 +99,28 @@ describe('OnboardingScreen', () => {
     await u.click(screen.getByRole('button', { name: 'Start growing' }))
     await vi.waitFor(() => expect(env.store.getState().phase).toBe('cloud'))
     expect(createGarden).toHaveBeenCalledWith('empty', 'Bare')
+  })
+
+  it('a full storage shows the storage-full message and offers a way out', async () => {
+    const signOut = vi.fn(() => Promise.resolve())
+    const env = makeEnv('signin', { auth: fakeAuth({ signOut }) })
+    await act(() => env.store.getState().beginSession(demoUser, demoSession, { isNew: true }))
+    renderIn(env, <CurrentScreen />)
+    env.backend.saveGarden = () => Promise.reject(new BackendError('quota_exceeded'))
+    const u = userEvent.setup()
+    expect(screen.queryByRole('button', { name: 'Sign out for now' })).toBeNull()
+    await u.click(screen.getByRole('button', { name: 'Start growing' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Your storage is full. Delete an old terrarium or journal entries.',
+    )
+    expect(env.store.getState().phase).toBe('onboarding')
+
+    await u.click(screen.getByRole('button', { name: 'Sign out for now' }))
+    await vi.waitFor(() => expect(env.store.getState().phase).toBe('signedout'))
+    expect(signOut).toHaveBeenCalledTimes(1)
+    expect(env.store.getState().view).toBe('signin')
+    expect(env.store.getState().viewData).toMatchObject({ email: demoUser.email, error: null })
+    expect(env.store.getState().busy).toBe(false)
+    expect(env.toast).toHaveBeenCalledWith('Signed out')
   })
 })

@@ -1,4 +1,4 @@
-import { act, screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { VesselId } from '@/data/vessels'
@@ -315,6 +315,20 @@ describe('GardensTab', () => {
     await vi.waitFor(() => expect(screen.getByText('4 saved')).toBeInTheDocument())
     expect(row('Terrarium 4').getByText('Open')).toHaveClass('g-badge')
     expect(env.toast).toHaveBeenCalledTimes(2)
+  })
+
+  it('a second click while a terrarium is being created does not start another', async () => {
+    const env = await signedIn()
+    const create = vi.spyOn(env.store.getState(), 'createGarden')
+    const button = screen.getByRole('button', { name: 'New empty tank' })
+    fireEvent.click(button)
+    fireEvent.click(button)
+    fireEvent.click(screen.getByRole('button', { name: 'New Falls Lake build' }))
+    expect(button).toBeDisabled()
+    await vi.waitFor(() => expect(env.toast).toHaveBeenCalledWith('New terrarium started'))
+    expect(create).toHaveBeenCalledTimes(1)
+    expect((await env.backend.listGardens()).length).toBe(3)
+    expect(button).toBeEnabled()
   })
 })
 

@@ -80,6 +80,32 @@ describe('JournalTab', () => {
     expect(env.toast).toHaveBeenCalledTimes(1)
   })
 
+  it('Log today keeps the note and the draft when the entry is not stored', async () => {
+    const env = await signedIn()
+    const u = userEvent.setup()
+    const ta = screen.getByRole('textbox', { name: 'Journal note' })
+    await u.type(ta, 'Keep me')
+
+    // No terrarium open: addJournalEntry stores nothing.
+    act(() => env.store.setState({ activeId: null }))
+    const add = vi.spyOn(env.store.getState(), 'addJournalEntry')
+    await u.click(screen.getByRole('button', { name: 'Log today' }))
+    await vi.waitFor(() => expect(add).toHaveBeenCalledTimes(1))
+    await expect(add.mock.results[0]?.value).resolves.toBe(false)
+    expect(ta).toHaveValue('Keep me')
+    expect(sessionStorage.getItem(DRAFT)).toBe('Keep me')
+
+    // A failed write keeps it too.
+    act(() => env.store.setState({ activeId: 'g_a' }))
+    vi.spyOn(env.backend, 'addJournal').mockRejectedValueOnce(new Error('offline'))
+    await u.click(screen.getByRole('button', { name: 'Log today' }))
+    await vi.waitFor(() => expect(add).toHaveBeenCalledTimes(2))
+    await expect(add.mock.results[1]?.value).resolves.toBe(false)
+    expect(ta).toHaveValue('Keep me')
+    expect(sessionStorage.getItem(DRAFT)).toBe('Keep me')
+    expect(env.toast).not.toHaveBeenCalledWith('Logged in your growth journal')
+  })
+
   it('entries show day, chips with quality tiers and warn issues', async () => {
     const env = await signedIn()
     const first = entry()

@@ -2,6 +2,8 @@ import { act, renderHook } from '@testing-library/react'
 import { StrictMode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AUTH_SESSION_KEY, AUTH_USERS_KEY } from '@/auth'
+import { snapshotWorld } from '@/engine/persistence'
+import { createWorld } from '@/engine/world'
 import { useAccountLifecycle } from '@/hooks/useAccountLifecycle'
 import { useAccountStore } from '@/store/useAccountStore'
 import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
@@ -68,6 +70,25 @@ describe('useAccountLifecycle', () => {
     act(() => useStudioStore.setState({ selectedId: 'x' }))
     expect(scheduleCloudSave).not.toHaveBeenCalled()
     act(() => useStudioStore.setState({ dayCount: useStudioStore.getState().dayCount + 1 }))
+    expect(scheduleCloudSave).toHaveBeenCalledTimes(1)
+  })
+
+  it('simulation writes (env seed, cycle progress, glass residue) do not schedule a save; an item edit does', () => {
+    renderHook(() => useAccountLifecycle())
+    act(() => {
+      const s = useStudioStore.getState()
+      s.setEnvSeed({ humidity: 61.3, temperature: 23.4, soilMoisture: 47.2, nutrients: 66.1 })
+      s.setCycleProgress(0.42)
+      s.setMineralSpots(0.25)
+    })
+    expect(useStudioStore.getState()).toMatchObject({
+      envSeed: { humidity: 61.3 },
+      cycleProgress: 0.42,
+      mineralSpots: 0.25,
+    })
+    expect(scheduleCloudSave).not.toHaveBeenCalled()
+    // The engine commits a world snapshot after an item is placed, moved or removed.
+    act(() => useStudioStore.getState().setWorldSnapshot(snapshotWorld(createWorld())))
     expect(scheduleCloudSave).toHaveBeenCalledTimes(1)
   })
 

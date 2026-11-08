@@ -104,7 +104,8 @@ export interface AccountActions {
   openGarden(id: string): Promise<void>
   renameGarden(id: string, name: string): Promise<void>
   deleteGarden(id: string): Promise<void>
-  addJournalEntry(note: string, auto: boolean): Promise<void>
+  /** Resolves true once the entry is stored; false when nothing is open or the write failed. */
+  addJournalEntry(note: string, auto: boolean): Promise<boolean>
   refreshGardens(): Promise<void>
   refreshJournal(): Promise<void>
   openPanel(): void
@@ -160,6 +161,7 @@ const WELCOME_TEXT =
 const EXPIRED_TEXT = 'Your session ended. Sign in again to keep saving.'
 const REVOKED_TEXT = 'You were signed out on this device.'
 const QUOTA_TOAST = 'Your storage is full. Delete an old terrarium or journal entries.'
+const QUOTA_STATUS = 'Storage is full'
 
 const endedBanner = (ended: string | undefined): ViewData['banner'] => ({
   kind: 'info',
@@ -413,27 +415,43 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
           clearSaveTimer()
           await get().flushCloudSave()
         }
-        if (kind === 'empty') {
-          editScene((world) => {
-            const cycleProgress = hasPool(studio.getState().waterSplit) ? 0 : 1
-            world.items = []
-            world.moldPatches = []
-            world.surfaceGrains = []
-            // The env flush is one-way (world -> store), so the live gauge is reset too.
-            world.env.cycleProgress = cycleProgress
-            studio.setState({ dayCount: 1, setupDay: 1, cycleProgress, selectedId: null })
-          })
-        } else if (kind === 'falls') {
-          editScene((world) => {
-            studio.setState({ dayCount: 1, selectedId: null })
-            applyPreset(world, 'falls', studio.getState())
-          })
-        }
+        // Close the open terrarium first, so no save can write the new scene over it, and keep its
+        // scene so a failed create can put both back.
+        const openId = await get().detachActiveGarden()
+        const prev = getGardenSnapshot(studio.getState(), deps.getWorld())
         const id = backend.newGardenId()
-        const at = now()
-        const body = sceneBody(name.trim().slice(0, MAX_GARDEN_NAME) || DEFAULT_GARDEN_NAME, at, at)
-        await backend.saveGarden(id, body)
-        await backend.setProfile({ activeGardenId: id })
+        let saved = false
+        let body: ReturnType<typeof sceneBody>
+        let at: number
+        try {
+          if (kind === 'empty') {
+            editScene((world) => {
+              const cycleProgress = hasPool(studio.getState().waterSplit) ? 0 : 1
+              world.items = []
+              world.moldPatches = []
+              world.surfaceGrains = []
+              // The env flush is one-way (world -> store), so the live gauge is reset too.
+              world.env.cycleProgress = cycleProgress
+              studio.setState({ dayCount: 1, setupDay: 1, cycleProgress, selectedId: null })
+            })
+          } else if (kind === 'falls') {
+            editScene((world) => {
+              studio.setState({ dayCount: 1, selectedId: null })
+              applyPreset(world, 'falls', studio.getState())
+            })
+          }
+          at = now()
+          body = sceneBody(name.trim().slice(0, MAX_GARDEN_NAME) || DEFAULT_GARDEN_NAME, at, at)
+          await backend.saveGarden(id, body)
+          saved = true
+          await backend.setProfile({ activeGardenId: id })
+        } catch (e) {
+          // Best effort: a half-made terrarium should not linger in the list.
+          if (saved) await backend.deleteGarden(id).catch(() => undefined)
+          if (kind !== 'current') applyGardenSnapshot(prev, studio)
+          get().attachActiveGarden(openId)
+          throw e
+        }
         set({ activeId: id, lastSaved: at, phase: 'cloud' })
         await get().refreshGardens()
         await get().refreshJournal()
@@ -488,7 +506,7 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
 
       async addJournalEntry(note, auto) {
         const { phase, activeId, backend } = get()
-        if (phase !== 'cloud' || !activeId || !backend) return
+        if (phase !== 'cloud' || !activeId || !backend) return false
         const s = studio.getState()
         const t = useTelemetryStore.getState().telemetry
         const m = envModel(s.room, s.hasLid)
@@ -516,8 +534,10 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
           await backend.addJournal(activeId, entry)
           await get().refreshJournal()
           if (!auto) deps.toast('Logged in your growth journal')
+          return true
         } catch (e) {
           get().handleCloudError(e)
+          return false
         }
       },
 
@@ -605,6 +625,8 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
               return
             }
             get().setViewData(patch)
+          } else if (errorCode(e) === 'quota_exceeded') {
+            get().setViewData({ error: QUOTA_TOAST })
           } else {
             get().setViewData({ error: 'Something went wrong. Try again.' })
             console.error(e)
@@ -615,8 +637,10 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
 
       handleCloudError(e) {
         if (errorCode(e) === 'quota_exceeded') {
-          set({ lastError: 'Storage is full' })
-          deps.toast(QUOTA_TOAST)
+          // Toast once on entering the storage-full state, not on every failed attempt.
+          const already = get().lastError === QUOTA_STATUS
+          set({ lastError: QUOTA_STATUS })
+          if (!already) deps.toast(QUOTA_TOAST)
         } else {
           set({ lastError: 'Not saved yet, retrying' })
         }

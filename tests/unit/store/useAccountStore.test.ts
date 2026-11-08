@@ -423,6 +423,26 @@ describe('account store: saving', () => {
     expect(store.getState().writing).toBe(false)
   })
 
+  it('consecutive quota failures toast once; a new failure after a save toasts again', async () => {
+    await signInWithGardens()
+    const real = backend.saveGarden.bind(backend)
+    const save = vi
+      .spyOn(backend, 'saveGarden')
+      .mockRejectedValueOnce(new BackendError('quota_exceeded'))
+      .mockRejectedValueOnce(new BackendError('quota_exceeded'))
+      .mockImplementationOnce(real)
+      .mockRejectedValueOnce(new BackendError('quota_exceeded'))
+    await store.getState().flushCloudSave()
+    await store.getState().flushCloudSave()
+    expect(store.getState().lastError).toBe('Storage is full')
+    expect(toast).toHaveBeenCalledTimes(1)
+    await store.getState().flushCloudSave()
+    expect(store.getState().lastError).toBe('')
+    await store.getState().flushCloudSave()
+    expect(save).toHaveBeenCalledTimes(4)
+    expect(toast).toHaveBeenCalledTimes(2)
+  })
+
   it('unavailable sets the retry message and retries after 4 to 7 s', async () => {
     await signInWithGardens()
     vi.spyOn(Math, 'random').mockReturnValue(0)
@@ -512,6 +532,45 @@ describe('account store: gardens and journal', () => {
     expect(all.find((x) => x.id === 'g_a')?.snapshot?.vessel).toBe('teardrop')
     expect(store.getState().activeId).toBe(g.id)
     expect(store.getState().gardens).toHaveLength(3)
+  })
+
+  it('a failed createGarden restores the open garden and scene, so the next save cannot overwrite it', async () => {
+    await signInWithGardens()
+    // Writes to the existing gardens succeed; the new record does not fit.
+    const real = backend.saveGarden.bind(backend)
+    vi.spyOn(backend, 'saveGarden').mockImplementation((id, body) =>
+      id === 'g_a' || id === 'g_b'
+        ? real(id, body)
+        : Promise.reject(new BackendError('quota_exceeded')),
+    )
+    await store.getState().run(async () => {
+      await store.getState().createGarden('empty', 'New')
+    })
+    expect(store.getState().viewData.error).toBe(
+      'Your storage is full. Delete an old terrarium or journal entries.',
+    )
+    expect(store.getState().activeId).toBe('g_a')
+    expect(studio.getState().vessel).toBe('globe')
+    expect(world.items.map((i) => i.uid)).toEqual(['a1'])
+
+    // The save the scene change would have scheduled writes the old garden back unchanged.
+    store.getState().scheduleCloudSave()
+    await vi.advanceTimersByTimeAsync(2500)
+    const all = await backend.listGardens()
+    expect(all.map((g) => g.id).sort()).toEqual(['g_a', 'g_b'])
+    const a = all.find((g) => g.id === 'g_a')!
+    expect(a.snapshot?.vessel).toBe('globe')
+    expect(a.snapshot?.worldSnapshot?.items.map((i) => i.uid)).toEqual(['a1'])
+    expect(await backend.getProfile()).toEqual({ activeGardenId: 'g_a' })
+  })
+
+  it('a createGarden whose profile write fails removes the half-made garden', async () => {
+    await signInWithGardens()
+    vi.spyOn(backend, 'setProfile').mockRejectedValueOnce(new BackendError('unavailable'))
+    await expect(store.getState().createGarden('falls', 'Falls')).rejects.toThrow()
+    expect((await backend.listGardens()).map((g) => g.id).sort()).toEqual(['g_a', 'g_b'])
+    expect(store.getState().activeId).toBe('g_a')
+    expect(studio.getState().vessel).toBe('globe')
   })
 
   it('renameGarden trims, ignores blanks and updates the list; deleteGarden keeps the open one', async () => {

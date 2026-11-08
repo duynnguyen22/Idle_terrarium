@@ -103,14 +103,20 @@ export function GardensTab() {
   const { store, toast } = useAuthEnv()
   const gardens = useAccount((s) => s.gardens)
   const activeId = useAccount((s) => s.activeId)
+  const busy = useAccount((s) => s.busy)
   const n = gardens.length
 
   const startNew = async (kind: GardenStart, name: string) => {
+    // A second click while the first create is under way must not start another terrarium.
+    if (store.getState().busy) return
+    store.setState({ busy: true })
     try {
       await store.getState().createGarden(kind, name)
       toast('New terrarium started')
     } catch (e) {
       store.getState().handleCloudError(e)
+    } finally {
+      store.setState({ busy: false })
     }
   }
 
@@ -129,6 +135,7 @@ export function GardensTab() {
         <button
           type="button"
           className="g-btn"
+          disabled={busy}
           onClick={() => void startNew('falls', `Falls Lake ${n + 1}`)}
         >
           New Falls Lake build
@@ -136,6 +143,7 @@ export function GardensTab() {
         <button
           type="button"
           className="g-btn"
+          disabled={busy}
           onClick={() => void startNew('empty', `Terrarium ${n + 1}`)}
         >
           New empty tank

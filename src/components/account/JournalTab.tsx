@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useAccount, useAuthEnv } from '@/components/account/auth/authEnv'
 import type { JournalEntry } from '@/auth/backend'
 import { qualityTier } from '@/engine/room'
@@ -75,15 +75,22 @@ export function JournalTab() {
   const journal = useAccount((s) => s.journal)
   const active = useAccount((s) => s.gardens.find((g) => g.id === s.activeId))
   const [note, setNote] = useState(readDraft)
+  // The latest typed text, so a slow save does not clear words typed while it ran.
+  const latest = useRef(note)
 
   const logToday = () => {
     const value = note
-    setNote('')
-    clearDraft()
-    // The store toasts on success and routes backend errors through handleCloudError itself.
+    // The store toasts on success and routes backend errors through handleCloudError itself. The
+    // draft is cleared only once the entry is stored, and only if nothing new was typed meanwhile.
     store
       .getState()
       .addJournalEntry(value, false)
+      .then((ok) => {
+        if (!ok || latest.current !== value) return
+        latest.current = ''
+        setNote('')
+        clearDraft()
+      })
       .catch((e: unknown) => store.getState().handleCloudError(e))
   }
 
@@ -103,6 +110,7 @@ export function JournalTab() {
           aria-label="Journal note"
           value={note}
           onChange={(e) => {
+            latest.current = e.target.value
             setNote(e.target.value)
             writeDraft(e.target.value)
           }}

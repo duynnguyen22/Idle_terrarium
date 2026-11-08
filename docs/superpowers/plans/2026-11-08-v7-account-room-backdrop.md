@@ -27,7 +27,7 @@
 
 ## Review Focus
 
-1. **Sign-in while the local save is unsaved work**: opening a garden must not lose the on-screen build. "What’s on screen now" in onboarding keeps it, and `openGarden` flushes the current garden before loading another. Pinned in Task 8 (`flushes the active garden before opening another`).
+1. **Sign-in while the local save is unsaved work**: opening a garden must not lose the on-screen build. "What’s on screen now" in onboarding keeps it, and `openGarden` flushes the current garden before loading another. Pinned in Task 8 (`flushes the active garden before opening another`). Not covered: signing in to an account that already has terrariums replaces the local build with the account’s last garden (`beginSession`, as in the spec); keeping or importing that build is a tracked follow-up.
 2. **Session that expired while the tab was open**: `watchSession` must end the session, show the sign-in view with "Your session ended. Sign in again to keep saving." and stop the autosave timer; no save may be attempted with a dead session. Pinned in Task 8 (`watchSession ends an expired session`).
 3. **Storage quota exceeded during save**: the chip must show "Storage is full" and the toast "Your storage is full. Delete an old terrarium or journal entries.", and the app must keep running. Pinned in Task 8 (`quota_exceeded sets lastError`).
 4. **Corrupt or foreign JSON in `botanica_store_*` / `botanica_auth_users_v1`**: both readers fall back to empty records rather than throwing at startup. Pinned in Task 6 and Task 7.
