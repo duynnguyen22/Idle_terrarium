@@ -44,7 +44,7 @@ const finiteOr = (v: unknown, fallback: number): number =>
  * the defaults and re-converge within seconds; cycle progress resumes from the persisted store value.
  */
 function seedEnv(world: EngineWorld): void {
-  const { envSeed, cycleProgress } = useStudioStore.getState()
+  const { envSeed, cycleProgress, mineralSpots } = useStudioStore.getState()
   const seed: Partial<Record<keyof typeof envSeed, unknown>> = envSeed ?? {}
   const d = DEFAULT_TELEMETRY
   Object.assign(world.env, {
@@ -56,6 +56,7 @@ function seedEnv(world: EngineWorld): void {
     condensation: d.condensation,
     cycleProgress,
   })
+  world.mineralSpots = finiteOr(mineralSpots, 0)
 }
 
 /**

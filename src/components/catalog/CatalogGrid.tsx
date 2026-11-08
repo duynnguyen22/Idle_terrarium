@@ -25,7 +25,12 @@ export function CatalogGrid({ category }: { category: CatalogCategory }) {
           terrain: { substrates, waterSplit, terrainContour: w.terrainContour },
         })?.uid ?? null
       if (!uid) return
-      const issues = computeCareReport({ ...store, ...w.env, items: w.items })
+      const issues = computeCareReport({
+        ...store,
+        ...w.env,
+        items: w.items,
+        mineralSpots: w.mineralSpots,
+      })
       issueText = issues.find((i) => i.species?.includes(defId))?.text ?? null
     })
     if (uid) {

@@ -1,12 +1,15 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
 import type { PlacedItem } from '@/data/types'
 import { isLampOn } from '@/engine/simulation/clock'
-import { simSpeedMult } from '@/engine/simulation/constants'
+import { frameScale, simSpeedMult } from '@/engine/simulation/constants'
 import { computeEnvTargets, updateEnvironment } from '@/engine/simulation/environment'
+import { flushEnvSeed } from '@/engine/simulation/telemetry'
 import { createWorld } from '@/engine/world'
 
 const base = {
+  airEff: 100,
+  tds: 180,
   hasLid: true,
   hasGrowLamp: true,
   hasFogger: true,
@@ -117,5 +120,56 @@ describe('environment model', () => {
   it('simSpeedMult is 3.5 at 5x, else 1', () => {
     expect(simSpeedMult(5)).toBe(3.5)
     expect(simSpeedMult(1)).toBe(1)
+  })
+})
+
+describe('room effects on the environment', () => {
+  it('createWorld starts with clean glass', () => {
+    expect(createWorld().mineralSpots).toBe(0)
+  })
+  it('O2 target scales with airEff (0.55 + 0.45 * airEff/100)', () => {
+    const env = createWorld().env
+    const flora = Array.from({ length: 12 }, (_, i) => ({
+      uid: String(i),
+      id: 'peacock_fern',
+      category: 'flora',
+    })) as PlacedItem[]
+    const clean = computeEnvTargets(base, flora, env).o2
+    const foul = computeEnvTargets({ ...base, airEff: 25 }, flora, env).o2
+    expect(clean).toBeCloseTo(97, 5)
+    expect(foul).toBeCloseTo(72 + 25 * (0.55 + 0.45 * 0.25), 5)
+    expect(foul).toBeLessThan(clean)
+  })
+  it('hard water with the fogger on accrues mineral spots; soft water does not', () => {
+    const speed = simSpeedMult(base.timeSpeed) * frameScale(16)
+    const hard = createWorld()
+    updateEnvironment(hard, { ...base, tds: 500 }, 16)
+    expect(hard.mineralSpots).toBeCloseTo(200 * 0.0000004 * speed, 10)
+    const soft = createWorld()
+    updateEnvironment(soft, { ...base, tds: 180 }, 16)
+    expect(soft.mineralSpots).toBe(0)
+    const noFog = createWorld()
+    updateEnvironment(noFog, { ...base, hasFogger: false, tds: 500 }, 16)
+    expect(noFog.mineralSpots).toBe(0)
+  })
+  it('misting multiplies accrual by 25 and spots cap at 1', () => {
+    const speed = simSpeedMult(base.timeSpeed) * frameScale(16)
+    const w = createWorld()
+    w.isMisting = true
+    updateEnvironment(w, { ...base, hasFogger: false, tds: 500 }, 16)
+    expect(w.mineralSpots).toBeCloseTo(200 * 0.0000004 * speed * 25, 10)
+    w.mineralSpots = 0.99999
+    updateEnvironment(w, { ...base, tds: 600 }, 16)
+    expect(w.mineralSpots).toBe(1)
+  })
+  it('flushEnvSeed writes rounded mineral spots only when they changed', () => {
+    const w = createWorld()
+    w.mineralSpots = 0.123456
+    const setEnvSeed = vi.fn()
+    const setMineralSpots = vi.fn()
+    flushEnvSeed(w, { setEnvSeed, setMineralSpots, mineralSpots: 0 })
+    expect(setMineralSpots).toHaveBeenCalledWith(0.123)
+    flushEnvSeed(w, { setEnvSeed, setMineralSpots, mineralSpots: 0.123 })
+    expect(setMineralSpots).toHaveBeenCalledTimes(1)
   })
 })

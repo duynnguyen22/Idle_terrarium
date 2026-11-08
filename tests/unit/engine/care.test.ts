@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { findCatalogDef } from '@/data/catalog'
+import { DEFAULT_ROOM, envModel } from '@/engine/room'
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
 import type { PlacedItem } from '@/data/types'
 import {
   computeCareReport,
   cycleChemistry,
+  envCareIssues,
   cycleDay,
   CYCLE_DAYS,
   idealRange,
@@ -44,6 +46,8 @@ const inputs = (over: Partial<CareInputs>): CareInputs => ({
   waterSplit: 0.32,
   substrates: DEFAULT_SUBSTRATES,
   cycleProgress: 1,
+  room: DEFAULT_ROOM,
+  mineralSpots: 0,
   ...over,
 })
 
@@ -230,5 +234,148 @@ describe('care report', () => {
       cycleProgress: 0,
     })
     expect(w.env.cycleProgress).toBe(0)
+  })
+})
+
+describe('room care issues', () => {
+  const room = (over: Partial<typeof DEFAULT_ROOM>) => ({ ...DEFAULT_ROOM, ...over })
+  const nameOf = (id: string) => findCatalogDef(id)!.name
+
+  it('untreated tap water warns and names the sensitive animals', () => {
+    const issues = computeCareReport(
+      inputs({
+        room: room({ water: 'tap' }),
+        items: [item('cherry_shrimp'), item('tree_frog')],
+      }),
+    )
+    expect(issues).toContainEqual({
+      level: 'warn',
+      text: `Untreated tap water carries chlorine, which harms ${nameOf('cherry_shrimp')}, ${nameOf('tree_frog')}.`,
+      action: { id: 'waterTreat', label: 'Add dechlorinator' },
+    })
+  })
+
+  it('without animals the chlorine warning says it burns moss tips', () => {
+    const issues = computeCareReport(inputs({ room: room({ water: 'tap' }) }))
+    expect(issues).toContainEqual({
+      level: 'warn',
+      text: 'Untreated tap water carries chlorine that burns moss tips.',
+      action: { id: 'waterTreat', label: 'Add dechlorinator' },
+    })
+  })
+
+  it('carbon-filtered water only nags shrimp keepers', () => {
+    const filtered = room({ water: 'filtered' })
+    expect(computeCareReport(inputs({ room: filtered }))).toEqual([])
+    expect(
+      computeCareReport(inputs({ room: filtered, items: [item('cherry_shrimp')] })),
+    ).toContainEqual({
+      level: 'info',
+      text: 'Carbon filters leave some chloramine. Shrimp are sensitive; a dechlorinator removes the rest.',
+      action: { id: 'waterTreat', label: 'Use dechlorinator' },
+    })
+  })
+
+  it('hard water above 350 ppm warns with the ppm value', () => {
+    expect(computeCareReport(inputs({ room: room({ tds: 400 }) }))).toContainEqual({
+      level: 'warn',
+      text: 'Hard water (400 ppm) leaves white mineral crust on leaves and glass. Mist with RO or rainwater.',
+      action: { id: 'waterRO', label: 'Switch to RO water' },
+    })
+  })
+
+  it('soft water, far-from-neutral pH and polluted rain are flagged', () => {
+    expect(
+      computeCareReport(inputs({ room: room({ tds: 50 }), items: [item('garden_snail')] })),
+    ).toContainEqual({
+      level: 'info',
+      text: 'Water this soft (50 ppm) lacks the calcium shrimp and snails need for shells. Remineralise to 150–250 ppm.',
+    })
+    expect(computeCareReport(inputs({ room: room({ ph: 8.4 }) }))).toContainEqual({
+      level: 'warn',
+      text: 'pH 8.4 is far from neutral. Most of these species do best between 6.5 and 7.5.',
+    })
+    expect(
+      computeCareReport(inputs({ room: room({ water: 'rain', air: 'smoke' }) })),
+    ).toContainEqual({
+      level: 'info',
+      text: 'Rain collected in polluted air picks up soot and acids. Use RO water until the air clears.',
+    })
+  })
+
+  it('aerosol air warns and offers to move the tank', () => {
+    expect(
+      computeCareReport(
+        inputs({ room: room({ air: 'aerosol' }), items: [item('isopod'), item('springtails')] }),
+      ),
+    ).toContainEqual({
+      level: 'warn',
+      text: `Insecticide and fragrance sprays kill invertebrates like ${nameOf('isopod')}, ${nameOf('springtails')}. Keep sprays out of this room.`,
+      action: { id: 'airClean', label: 'Move the tank' },
+    })
+  })
+
+  it('fumes offer the lid only when it is open', () => {
+    const open = computeCareReport(inputs({ room: room({ air: 'voc' }), hasLid: false }))
+    expect(open).toContainEqual({
+      level: 'warn',
+      text: 'Paint and new-furniture fumes stress plants and animals. Ventilate the room and keep the lid sealed.',
+      action: { id: 'closeLid', label: 'Seal the lid' },
+    })
+    const sealed = computeCareReport(
+      inputs({ room: room({ air: 'voc' }), items: [item('tree_frog')], humidity: 70 }),
+    ).find((i) => i.text.startsWith('Paint'))
+    expect(sealed?.text).toContain('pass through frog skin')
+    expect(sealed?.action).toBeUndefined()
+  })
+
+  it('particles with lid open offer the purifier, then the lid', () => {
+    const text = 'Dust and soot settle on leaves and slow photosynthesis.'
+    const find = (over: Partial<CareInputs>) =>
+      computeCareReport(inputs(over)).find((i) => i.text === text)
+    expect(find({ room: room({ air: 'traffic' }), hasLid: false })?.action).toEqual({
+      id: 'purifierOn',
+      label: 'Run the air purifier',
+    })
+    // A purifier lifts smoke to exactly 70 with the lid open, so the model never flags it; probe the
+    // purifier-on branches with a hand-built reading.
+    const purified = room({ air: 'smoke', purifier: true })
+    const m = { ...envModel(purified, false), airEff: 65 }
+    const run = (hasLid: boolean) =>
+      envCareIssues(m, purified, hasLid, 0, () => false).find((i) => i.text === text)
+    expect(run(false)?.action).toEqual({ id: 'closeLid', label: 'Seal the lid' })
+    expect(run(true)).toBeDefined()
+    expect(run(true)?.action).toBeUndefined()
+  })
+
+  it('mineral spots above 0.35 offer a wipe', () => {
+    expect(computeCareReport(inputs({ mineralSpots: 0.35 }))).toEqual([])
+    expect(computeCareReport(inputs({ mineralSpots: 0.4 }))).toContainEqual({
+      level: 'info',
+      text: 'Mineral spots are clouding the glass.',
+      action: { id: 'wipeGlass', label: 'Wipe the glass' },
+    })
+  })
+
+  it('runCareAction room branches write through the store and return the toasts', () => {
+    const store = createStudioStore(memoryStorage)
+    const w = createWorld()
+    store.getState().setRoom({ water: 'tap' })
+    expect(runCareAction(w, store.getState(), 'waterTreat')).toBe('Water is now dechlorinated')
+    expect(store.getState().room.water).toBe('tap_treated')
+    expect(runCareAction(w, store.getState(), 'waterRO')).toBe('Misting with RO water now')
+    expect(store.getState().room.water).toBe('ro')
+    store.getState().setRoom({ air: 'aerosol' })
+    expect(runCareAction(w, store.getState(), 'airClean')).toBe(
+      'Tank moved to a room with clean air',
+    )
+    expect(store.getState().room.air).toBe('clean')
+    expect(runCareAction(w, store.getState(), 'purifierOn')).toBe('Air purifier on')
+    expect(store.getState().room.purifier).toBe(true)
+    store.getState().setMineralSpots(0.6)
+    w.mineralSpots = 0.6
+    expect(runCareAction(w, store.getState(), 'wipeGlass')).toBe('Glass wiped clean')
+    expect(store.getState().mineralSpots).toBe(0)
+    expect(w.mineralSpots).toBe(0)
   })
 })

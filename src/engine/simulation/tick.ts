@@ -1,5 +1,6 @@
 import { useStudioStore, type StudioStore } from '@/store/useStudioStore'
 import { computeCareReport } from '../care'
+import { envModel } from '../room'
 import type { AsmrCue } from '../interaction'
 import type { EngineWorld } from '../world'
 import { advanceClock } from './clock'
@@ -68,7 +69,8 @@ export function tick(
       }
     }
     advanceClock(store, deps.now)
-    updateEnvironment(world, store, dtMs, deps.onToast)
+    const em = envModel(store.room, store.hasLid)
+    updateEnvironment(world, { ...store, airEff: em.airEff, tds: em.tds }, dtMs, deps.onToast)
     updateFauna(world, store, dtMs, timestamp, rng)
     if (!store.reducedMotion) updateAmbientMotes(world, dtMs)
     updateGrowth(world, store, dtMs)
@@ -94,6 +96,11 @@ export function tick(
   // Care report every 30 frames (prototype 3138, 3307); every frame while paused so edits show at once.
   // Assign a fresh array; the throttled flush copies it into the telemetry store (compared by content).
   if (world.frame % 30 === 0 || store.timeSpeed === 0)
-    world.careIssues = computeCareReport({ ...store, ...world.env, items: world.items })
+    world.careIssues = computeCareReport({
+      ...store,
+      ...world.env,
+      items: world.items,
+      mineralSpots: world.mineralSpots,
+    })
   pushTelemetry(world, store, timestamp)
 }

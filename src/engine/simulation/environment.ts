@@ -18,7 +18,12 @@ export type EnvInputs = Pick<
   | 'waterSplit'
   | 'substrates'
   | 'timeSpeed'
->
+> & {
+  /** In-tank air quality (0-100) from `envModel`; scales photosynthesis. */
+  airEff: number
+  /** Water hardness (ppm) from `envModel`; drives mineral spots. */
+  tds: number
+}
 
 export interface EnvTargets {
   humidity: number
@@ -84,7 +89,11 @@ export function computeEnvTargets(
   }
   const photo = lampOn ? (s.lighting === 'sunlight' ? 1 : 0.6) : 0
   const o2 = clamp(
-    72 + Math.min(25, flora * 2.5) * photo - (photo ? 0 : 6) - fauna * 0.6 + (s.hasLid ? 0 : 4),
+    72 +
+      Math.min(25, flora * 2.5) * photo * (0.55 + (0.45 * s.airEff) / 100) -
+      (photo ? 0 : 6) -
+      fauna * 0.6 +
+      (s.hasLid ? 0 : 4),
     40,
     100,
   )
@@ -121,6 +130,14 @@ export function updateEnvironment(
   // The prototype computes the condensation target after the humidity update.
   env.condensation += (condensationTarget(s, env.humidity) - env.condensation) * k * 0.7
   env.o2 += (t.o2 - env.o2) * k
+
+  // Hard water leaves mineral spots on the glass when misted or fogged (prototype 5525-5527).
+  if (s.tds > 300 && (s.hasFogger || world.isMisting)) {
+    world.mineralSpots = Math.min(
+      1,
+      world.mineralSpots + (s.tds - 300) * 0.0000004 * speedMult * fs * (world.isMisting ? 25 : 1),
+    )
+  }
 
   const flora = world.items.filter((i) => i.category === 'flora').length
   const crew = countCleanupCrew(world)

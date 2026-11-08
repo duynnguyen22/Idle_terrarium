@@ -27,7 +27,12 @@ function runAction(action: NonNullable<CareIssue['action']>) {
     msg = runCareAction(w, useStudioStore.getState(), action.id)
     // Recompute now so the fixed issue doesn't linger until the next throttled telemetry push.
     const store = useStudioStore.getState()
-    w.careIssues = computeCareReport({ ...store, ...w.env, items: w.items })
+    w.careIssues = computeCareReport({
+      ...store,
+      ...w.env,
+      items: w.items,
+      mineralSpots: w.mineralSpots,
+    })
     useTelemetryStore.getState().setTelemetry({ careIssues: w.careIssues })
   })
   if (action.id === 'feed') play('chime')

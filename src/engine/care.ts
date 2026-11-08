@@ -1,12 +1,24 @@
 /** The v6 care report, ideal ranges and one-click care actions (prototype 2907-3020). */
 import { findCatalogDef } from '@/data/catalog'
-import type { CatalogDef, PlacedItem } from '@/data/types'
+import type { CatalogDef, PlacedItem, RoomEnv } from '@/data/types'
 import type { StudioState, StudioStore } from '@/store/useStudioStore'
 import { poolHasWater } from './geometry'
+import { envModel, type EnvModel } from './room'
 import type { EngineWorld } from './world'
 
 export type CareActionId =
-  'mist' | 'openLid' | 'closeLid' | 'fogOff' | 'pumpGentle' | 'feed' | 'widenPool'
+  | 'mist'
+  | 'openLid'
+  | 'closeLid'
+  | 'fogOff'
+  | 'pumpGentle'
+  | 'feed'
+  | 'widenPool'
+  | 'waterTreat'
+  | 'waterRO'
+  | 'airClean'
+  | 'purifierOn'
+  | 'wipeGlass'
 
 export interface CareIssue {
   level: 'warn' | 'info'
@@ -72,7 +84,7 @@ export function idealRange(items: readonly PlacedItem[], key: 'hum' | 'temp'): I
 
 export type CareInputs = Pick<
   StudioState,
-  'hasLid' | 'hasFogger' | 'pumpFlow' | 'vessel' | 'waterSplit' | 'substrates'
+  'hasLid' | 'hasFogger' | 'pumpFlow' | 'vessel' | 'waterSplit' | 'substrates' | 'room'
 > & {
   items: readonly PlacedItem[]
   humidity: number
@@ -81,9 +93,102 @@ export type CareInputs = Pick<
   nutrients: number
   condensation: number
   cycleProgress: number
+  /** Hard-water residue on the glass, 0 to 1 (lives on the engine world). */
+  mineralSpots: number
 }
 
 const SMALL_VESSELS: readonly string[] = ['globe', 'teardrop', 'apothecary', 'wardian']
+
+/** Water chemistry, air quality and glass residue issues from the room (prototype 3898-3921). */
+export function envCareIssues(
+  m: EnvModel,
+  room: RoomEnv,
+  hasLid: boolean,
+  mineralSpots: number,
+  has: (id: string) => boolean,
+): CareIssue[] {
+  const out: CareIssue[] = []
+  const names = (ids: string[]) => ids.filter(has).map((i) => findCatalogDef(i)?.name ?? i)
+  if (m.chlorine >= 0.9) {
+    const hit = names(['cherry_shrimp', 'medaka_fish', 'tree_frog', 'vampire_crab'])
+    out.push({
+      level: 'warn',
+      text: `Untreated tap water carries chlorine${hit.length ? `, which harms ${hit.join(', ')}` : ' that burns moss tips'}.`,
+      action: { id: 'waterTreat', label: 'Add dechlorinator' },
+    })
+  } else if (m.chlorine > 0 && has('cherry_shrimp')) {
+    out.push({
+      level: 'info',
+      text: 'Carbon filters leave some chloramine. Shrimp are sensitive; a dechlorinator removes the rest.',
+      action: { id: 'waterTreat', label: 'Use dechlorinator' },
+    })
+  }
+  if (m.tds > 350) {
+    out.push({
+      level: 'warn',
+      text: `Hard water (${m.tds} ppm) leaves white mineral crust on leaves and glass. Mist with RO or rainwater.`,
+      action: { id: 'waterRO', label: 'Switch to RO water' },
+    })
+  }
+  if (m.tds < 80 && (has('cherry_shrimp') || has('garden_snail'))) {
+    out.push({
+      level: 'info',
+      text: `Water this soft (${m.tds} ppm) lacks the calcium shrimp and snails need for shells. Remineralise to 150–250 ppm.`,
+    })
+  }
+  if (Math.abs(m.ph - 7) > 1) {
+    out.push({
+      level: 'warn',
+      text: `pH ${m.ph.toFixed(1)} is far from neutral. Most of these species do best between 6.5 and 7.5.`,
+    })
+  }
+  if (room.water === 'rain' && m.airRaw < 60) {
+    out.push({
+      level: 'info',
+      text: 'Rain collected in polluted air picks up soot and acids. Use RO water until the air clears.',
+    })
+  }
+  if (m.kind === 'toxic') {
+    const inv = names([
+      'isopod',
+      'ducky_isopod',
+      'springtails',
+      'cherry_shrimp',
+      'garden_snail',
+      'vampire_crab',
+    ])
+    out.push({
+      level: 'warn',
+      text: `Insecticide and fragrance sprays kill invertebrates${inv.length ? ` like ${inv.join(', ')}` : ''}. Keep sprays out of this room.`,
+      action: { id: 'airClean', label: 'Move the tank' },
+    })
+  } else if (m.kind === 'fumes') {
+    out.push({
+      level: 'warn',
+      text: `Paint and new-furniture fumes${has('tree_frog') ? ' pass through frog skin' : ' stress plants and animals'}. Ventilate the room and keep the lid sealed.`,
+      ...(hasLid ? {} : { action: { id: 'closeLid', label: 'Seal the lid' } }),
+    })
+  } else if (m.kind === 'particles' && m.airEff < 70) {
+    const action: CareIssue['action'] = room.purifier
+      ? hasLid
+        ? undefined
+        : { id: 'closeLid', label: 'Seal the lid' }
+      : { id: 'purifierOn', label: 'Run the air purifier' }
+    out.push({
+      level: 'info',
+      text: 'Dust and soot settle on leaves and slow photosynthesis.',
+      ...(action ? { action } : {}),
+    })
+  }
+  if (mineralSpots > 0.35) {
+    out.push({
+      level: 'info',
+      text: 'Mineral spots are clouding the glass.',
+      action: { id: 'wipeGlass', label: 'Wipe the glass' },
+    })
+  }
+  return out
+}
 
 /** Builds a fresh issue list each call (callers assign it; the telemetry store compares it by content). */
 export function computeCareReport(s: CareInputs): CareIssue[] {
@@ -229,6 +334,7 @@ export function computeCareReport(s: CareInputs): CareIssue[] {
       action: { id: 'feed', label: 'Add bio-feed' },
     })
   }
+  issues.push(...envCareIssues(envModel(s.room, s.hasLid), s.room, s.hasLid, s.mineralSpots, has))
   return issues
 }
 
@@ -264,5 +370,22 @@ export function runCareAction(world: EngineWorld, store: StudioStore, id: CareAc
       store.setCycleProgress(0)
       env.cycleProgress = 0
       return 'Added a pool. New water cycles for about 3 weeks.'
+    case 'waterTreat':
+      store.setRoom({ water: 'tap_treated' })
+      return 'Water is now dechlorinated'
+    case 'waterRO':
+      store.setRoom({ water: 'ro' })
+      return 'Misting with RO water now'
+    case 'airClean':
+      store.setRoom({ air: 'clean' })
+      return 'Tank moved to a room with clean air'
+    case 'purifierOn':
+      store.setRoom({ purifier: true })
+      return 'Air purifier on'
+    case 'wipeGlass':
+      // The engine owns the live value; zero both so the next flush does not restore the old spots.
+      world.mineralSpots = 0
+      store.setMineralSpots(0)
+      return 'Glass wiped clean'
   }
 }

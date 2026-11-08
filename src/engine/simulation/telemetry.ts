@@ -97,7 +97,10 @@ export function pushTelemetry(
  * hidden or the engine unmounts, so a care change made just before a reload is not lost).
  * setEnvSeed rounds to 1 decimal and skips set() when nothing changed.
  */
-export function flushEnvSeed(world: EngineWorld, store: Pick<StudioStore, 'setEnvSeed'>): void {
+export function flushEnvSeed(
+  world: EngineWorld,
+  store: Pick<StudioStore, 'setEnvSeed' | 'setMineralSpots' | 'mineralSpots'>,
+): void {
   const env = world.env
   store.setEnvSeed({
     humidity: env.humidity,
@@ -105,4 +108,6 @@ export function flushEnvSeed(world: EngineWorld, store: Pick<StudioStore, 'setEn
     soilMoisture: env.soilMoisture,
     nutrients: env.nutrients,
   })
+  const spots = +world.mineralSpots.toFixed(3)
+  if (spots !== store.mineralSpots) store.setMineralSpots(spots)
 }
