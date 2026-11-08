@@ -644,9 +644,13 @@ describe('local AuthService', () => {
       svc.signUp({ name: 'One', email: 'a@b.cc', password: 'abcdefg1' }),
       svc.signUp({ name: 'Two', email: 'A@B.cc', password: 'abcdefg1' }),
     ])
-    expect(results.map((r) => r.status)).toEqual(['fulfilled', 'rejected'])
-    expect((results[1] as PromiseRejectedResult).reason).toMatchObject({ code: 'email_taken' })
-    expect(users()['a@b.cc']).toMatchObject({ name: 'One' })
+    // Which digest resolves first is not deterministic; exactly one sign-up must win.
+    const fulfilled = results.filter((r) => r.status === 'fulfilled')
+    const rejected = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+    expect(fulfilled).toHaveLength(1)
+    expect(rejected).toHaveLength(1)
+    expect(rejected[0]!.reason).toMatchObject({ code: 'email_taken' })
+    expect(['One', 'Two']).toContain(users()['a@b.cc']!.name)
   })
 
   it('changePassword does not undo a profile update made while it was hashing', async () => {

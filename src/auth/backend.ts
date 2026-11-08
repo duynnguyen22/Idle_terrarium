@@ -101,10 +101,22 @@ export function createLocalBackend(
     try {
       const parsed: unknown = JSON.parse(raw)
       if (!isObject(parsed)) return emptyStore()
+      const gardens: StoreData['gardens'] = {}
+      if (isObject(parsed.gardens)) {
+        for (const [id, g] of Object.entries(parsed.gardens)) {
+          if (isObject(g)) gardens[id] = g as unknown as Omit<GardenRecord, 'id'>
+        }
+      }
+      const journal: StoreData['journal'] = {}
+      if (isObject(parsed.journal)) {
+        for (const [id, j] of Object.entries(parsed.journal)) {
+          journal[id] = Array.isArray(j) ? (j.filter(isObject) as unknown as JournalEntry[]) : []
+        }
+      }
       return {
         profile: isObject(parsed.profile) ? (parsed.profile as GardenProfile) : {},
-        gardens: isObject(parsed.gardens) ? (parsed.gardens as StoreData['gardens']) : {},
-        journal: isObject(parsed.journal) ? (parsed.journal as StoreData['journal']) : {},
+        gardens,
+        journal,
       }
     } catch {
       return emptyStore()
@@ -145,7 +157,8 @@ export function createLocalBackend(
     async renameGarden(id, name) {
       const d = read()
       const g = d.gardens[id]
-      if (g) g.name = name
+      if (!g) return
+      g.name = name
       write(d)
     },
     async deleteGarden(id) {

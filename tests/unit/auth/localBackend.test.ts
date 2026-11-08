@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MAX_JOURNAL, createLocalBackend } from '@/auth/backend'
 import type { GardenBackend, GardenRecord, GardenSummary, JournalEntry } from '@/auth/backend'
 
@@ -113,5 +113,60 @@ describe('local garden backend', () => {
     expect(storage.length).toBe(1)
     await backend.deleteAll()
     expect(storage.getItem('botanica_store_acct1')).toBeNull()
+  })
+
+  it('a getItem failure rejects with BackendError unavailable', async () => {
+    class UnreadableStorage extends MemoryStorage {
+      getItem(): string | null {
+        throw new DOMException('denied', 'SecurityError')
+      }
+    }
+    const b = createLocalBackend('acct1', new UnreadableStorage())
+    await expect(b.listGardens()).rejects.toMatchObject({
+      name: 'BackendError',
+      code: 'unavailable',
+    })
+  })
+
+  it.each([['[]'], ['"x"'], ['null'], ['42']])('a stored blob %s reads as empty', async (blob) => {
+    storage.setItem('botanica_store_acct1', blob)
+    expect(await backend.getProfile()).toEqual({})
+    expect(await backend.listGardens()).toEqual([])
+    expect(await backend.listJournal('a')).toEqual([])
+  })
+
+  it('a failed write leaves the stored data intact', async () => {
+    await backend.saveGarden('a', garden('keep', 1))
+    const before = storage.getItem('botanica_store_acct1')
+    const setItem = vi.spyOn(storage, 'setItem').mockImplementation(() => {
+      throw new DOMException('full', 'QuotaExceededError')
+    })
+    await expect(backend.saveGarden('b', garden('lost', 2))).rejects.toMatchObject({
+      code: 'quota_exceeded',
+    })
+    setItem.mockRestore()
+    expect(storage.getItem('botanica_store_acct1')).toBe(before)
+    expect((await backend.listGardens()).map((g) => g.id)).toEqual(['a'])
+  })
+
+  it('skips malformed entries instead of throwing', async () => {
+    storage.setItem(
+      'botanica_store_acct1',
+      JSON.stringify({
+        profile: {},
+        gardens: { bad: null, str: 'x', ok: garden('ok', 5) },
+        journal: { a: 'nope', b: [null, entry(1)] },
+      }),
+    )
+    expect((await backend.listGardens()).map((g) => g.id)).toEqual(['ok'])
+    expect(await backend.listJournal('a')).toEqual([])
+    expect(await backend.listJournal('b')).toHaveLength(1)
+    await expect(backend.addJournal('a', entry(2))).resolves.toBeUndefined()
+  })
+
+  it('renaming an unknown garden does not write', async () => {
+    const setItem = vi.spyOn(storage, 'setItem')
+    await backend.renameGarden('missing', 'x')
+    expect(setItem).not.toHaveBeenCalled()
   })
 })
