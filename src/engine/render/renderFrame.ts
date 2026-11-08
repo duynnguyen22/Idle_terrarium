@@ -2,7 +2,7 @@ import type { Rect } from '@/data/types'
 import type { StudioState } from '@/store/useStudioStore'
 import type { EngineWorld } from '../world'
 import { drawBackground } from './background'
-import { drawCondensation } from './condensation'
+import { drawCondensation, drawMineralSpots } from './condensation'
 import { drawLid, drawPaludariumFrontFrame } from './frame'
 import { drawLamp } from './lamp'
 import { drawMist } from './mist'
@@ -61,6 +61,8 @@ export function renderFrame(
   drawParticles(ctx, world, state, R, timestamp)
   // 7B. Condensation fog & droplets on the inside of the glass
   drawCondensation(ctx, world, state, R, timestamp)
+  // 7C. White mineral spots left by hard-water misting
+  drawMineralSpots(ctx, world, state, R, timestamp)
   ctx.restore()
 
   // 8. Glass rim, paludarium front frame, cork lid

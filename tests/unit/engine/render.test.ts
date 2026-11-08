@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { VESSELS, VESSELS_BY_ID, type VesselId } from '@/data/vessels'
 import { hasPool } from '@/engine/geometry'
-import { drawCondensation } from '@/engine/render/condensation'
+import { drawCondensation, drawMineralSpots } from '@/engine/render/condensation'
 import { drawLid } from '@/engine/render/frame'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
 import { drawSubstrates } from '@/engine/render/substrates'
@@ -208,6 +208,23 @@ describe('v6 pool, hardware and glass', () => {
       record((ctx) => drawCondensation(ctx, w, state, R, 0)).calls.filter((c) => c.name === 'arc')
         .length,
     ).toBeGreaterThan(0)
+  })
+
+  it('draws mineral spots only above 0.03 and never on the globe', () => {
+    const ellipses = (world: EngineWorld, vessel: VesselId = 'paludarium_tank') =>
+      record((ctx) => drawMineralSpots(ctx, world, { ...state, vessel }, R, 0)).calls.filter(
+        (c) => c.name === 'ellipse',
+      ).length
+    const w = createWorld()
+    w.mineralSpots = 0.03
+    expect(ellipses(w)).toBe(0)
+    w.mineralSpots = 0.5
+    expect(ellipses(w)).toBeGreaterThan(0)
+    expect(ellipses(w, 'globe')).toBe(0)
+    const more = createWorld()
+    more.mineralSpots = 1
+    expect(ellipses(more)).toBeGreaterThan(ellipses(w))
+    expect(ellipses(w)).toBe(ellipses(w))
   })
 
   it('lid is a cork on jars and absent on the tank', () => {

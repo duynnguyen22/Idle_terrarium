@@ -59,3 +59,30 @@ export const drawCondensation: RenderFn = (ctx, world, state, R) => {
   }
   ctx.restore()
 }
+
+/** Mineral spots below this level are not drawn. */
+const SPOT_THRESHOLD = 0.03
+
+/**
+ * White mineral spots left on the glass by hard-water misting (prototype animateLoop): a
+ * deterministic subset of the condensation droplet positions, so the spots hold still. Opacity
+ * grows with `world.mineralSpots` and so does how many of the 110 drop sites carry a spot.
+ * The hanging globe never spots. Must be called inside the vessel clip.
+ */
+export const drawMineralSpots: RenderFn = (ctx, world, state, R) => {
+  const ms = world.mineralSpots
+  if (!(ms > SPOT_THRESHOLD) || state.vessel === 'globe') return
+  const { cx, cy, r } = vesselMetrics(R)
+  const n = Math.floor(GLASS_DROPS.length * Math.min(1, ms * 1.4))
+  ctx.save()
+  ctx.fillStyle = `rgba(245, 245, 240, ${(0.18 + ms * 0.4).toFixed(3)})`
+  for (let i = 0; i < n; i++) {
+    const g = GLASS_DROPS[(i * 7) % GLASS_DROPS.length]
+    const gx = cx + (g.x - 0.5) * 2 * r + (i % 5) * 3
+    const gy = cy - r + g.y * 2 * r + 14
+    ctx.beginPath()
+    ctx.ellipse(gx, gy, (g.r + 1) * (r / 260), (g.r + 0.6) * (r / 300), 0.4, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.restore()
+}

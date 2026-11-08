@@ -5,6 +5,7 @@ import { RightTelemetry } from '@/components/layout/RightTelemetry'
 import { TopNav } from '@/components/layout/TopNav'
 import { LightingControls } from '@/components/nav/LightingControls'
 import { GaugeBar } from '@/components/telemetry/GaugeBar'
+import { DEFAULT_ROOM } from '@/engine/room'
 import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { showToast, useToastStore } from '@/store/toastStore'
@@ -192,6 +193,23 @@ const withTelemetry = (partial: Partial<Telemetry>) =>
 const warn = (text: string): CareIssue => ({ level: 'warn', text })
 
 describe('RightTelemetry', () => {
+  it('renders water and air gauges from the room model', () => {
+    useStudioStore.setState({ room: { ...DEFAULT_ROOM, water: 'tap' } })
+    render(<RightTelemetry />)
+    expect(screen.getByTestId('gauge-water')).toHaveAttribute('data-in-band', 'false')
+    expect(screen.getByText('55 · Poor')).toBeInTheDocument()
+    expect(screen.getByText('Tap water · 180 ppm · pH 7.2')).toBeInTheDocument()
+    expect(screen.getByTestId('gauge-air')).toHaveAttribute('data-in-band', 'true')
+    expect(screen.getByText('100 · Good')).toBeInTheDocument()
+    expect(screen.getByText('Clean indoor air')).toBeInTheDocument()
+  })
+
+  it('notes an active purifier on the air gauge', () => {
+    useStudioStore.setState({ room: { ...DEFAULT_ROOM, air: 'traffic', purifier: true } })
+    render(<RightTelemetry />)
+    expect(screen.getByText('Near a busy road · purifier on')).toBeInTheDocument()
+  })
+
   it('+Spore adds a mold patch to the world', async () => {
     render(<RightTelemetry />)
     await user().click(screen.getByRole('button', { name: /Spore/ }))
