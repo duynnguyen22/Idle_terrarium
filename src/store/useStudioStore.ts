@@ -15,7 +15,15 @@ import type { WorldSnapshot } from '@/engine/persistence'
 import { DEFAULT_ROOM } from '@/engine/room'
 import { clamp } from '@/lib/clamp'
 import { importPrototypeSave } from './importPrototypeSave'
-import { MAX_WATER_SPLIT, migrate, sanitizeRoom } from './migrations'
+import {
+  DEFAULT_BACKDROP,
+  DEFAULT_BACKDROP_HAZE,
+  MAX_BACKDROP_HAZE,
+  MAX_WATER_SPLIT,
+  migrate,
+  sanitizeBackdropHaze,
+  sanitizeRoom,
+} from './migrations'
 import { DEFAULT_TELEMETRY } from './useTelemetryStore'
 
 // The live gauges live in the unpersisted telemetry store; re-exported so existing imports keep working.
@@ -113,8 +121,6 @@ export interface StudioActions {
 
 export type StudioStore = StudioState & StudioActions
 
-const MAX_BACKDROP_HAZE = 80
-
 const ENV_SEED_KEYS = ['humidity', 'temperature', 'soilMoisture', 'nutrients'] as const
 
 export function defaultEnvSeed(): EnvSeed {
@@ -153,8 +159,8 @@ export function createDefaultState(): StudioState {
     worldSnapshot: null,
     room: { ...DEFAULT_ROOM },
     mineralSpots: 0,
-    backdrop: 'none',
-    backdropHaze: 35,
+    backdrop: DEFAULT_BACKDROP,
+    backdropHaze: DEFAULT_BACKDROP_HAZE,
   }
 }
 
@@ -251,9 +257,13 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
         },
         setWorldSnapshot: (worldSnapshot) => set({ worldSnapshot }),
         setRoom: (patch) => set((s) => ({ room: sanitizeRoom({ ...s.room, ...patch }) })),
-        setMineralSpots: (mineralSpots) => set({ mineralSpots }),
+        setMineralSpots: (v) => {
+          if (Number.isFinite(v)) set({ mineralSpots: clamp(v, 0, 1) })
+        },
         setBackdrop: (backdrop) => set({ backdrop }),
-        setBackdropHaze: (v) => set({ backdropHaze: clamp(v, 0, MAX_BACKDROP_HAZE) }),
+        setBackdropHaze: (v) => {
+          if (Number.isFinite(v)) set({ backdropHaze: clamp(v, 0, MAX_BACKDROP_HAZE) })
+        },
         resetStudio: () =>
           set((s) => ({ ...createDefaultState(), reducedMotion: s.reducedMotion })),
       }),
@@ -263,6 +273,17 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
         storage: createJSONStorage(() => storage),
         partialize,
         migrate: (persisted, version) => migrate(persisted, version) as unknown as StudioStore,
+        // `migrate` only runs on a version change, so a current-version save is sanitized here.
+        merge: (persisted, current) => {
+          const saved = (
+            typeof persisted === 'object' && persisted !== null ? persisted : {}
+          ) as Partial<StudioStore>
+          const merged = { ...current, ...saved }
+          if (Object.hasOwn(saved, 'room')) merged.room = sanitizeRoom(saved.room)
+          if (Object.hasOwn(saved, 'backdropHaze'))
+            merged.backdropHaze = sanitizeBackdropHaze(saved.backdropHaze)
+          return merged
+        },
       },
     ),
   )

@@ -1,5 +1,5 @@
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
-import type { PumpFlow, RoomEnv, SubstrateDepths } from '@/data/types'
+import type { BackdropId, PumpFlow, RoomEnv, SubstrateDepths } from '@/data/types'
 import { AIR_SOURCES, DEFAULT_ROOM, PH_RANGE, TDS_RANGE, WATER_SOURCES } from '@/engine/room'
 import { clamp } from '@/lib/clamp'
 
@@ -53,6 +53,10 @@ export function legacyPoolFields(water: number): {
   }
 }
 
+export const DEFAULT_BACKDROP: BackdropId = 'none'
+export const DEFAULT_BACKDROP_HAZE = 35
+export const MAX_BACKDROP_HAZE = 80
+
 function finiteOr(v: unknown, fallback: number): number {
   return typeof v === 'number' && Number.isFinite(v) ? v : fallback
 }
@@ -78,6 +82,11 @@ export function sanitizeRoom(raw: unknown): RoomEnv {
   }
 }
 
+/** A finite haze clamped to 0..MAX_BACKDROP_HAZE; anything else becomes the default. */
+export function sanitizeBackdropHaze(raw: unknown): number {
+  return clamp(finiteOr(raw, DEFAULT_BACKDROP_HAZE), 0, MAX_BACKDROP_HAZE)
+}
+
 function migrateV1toV2(persisted: Record<string, unknown>): Record<string, unknown> {
   const { substrates: rawSubstrates, ...rest } = persisted
   if (!isRecord(rawSubstrates)) {
@@ -92,8 +101,8 @@ function migrateV2toV3(persisted: Record<string, unknown>): Record<string, unkno
   return {
     ...persisted,
     room: { ...DEFAULT_ROOM },
-    backdrop: 'none',
-    backdropHaze: 35,
+    backdrop: DEFAULT_BACKDROP,
+    backdropHaze: DEFAULT_BACKDROP_HAZE,
     mineralSpots: 0,
   }
 }
@@ -102,12 +111,13 @@ function migrateV2toV3(persisted: Record<string, unknown>): Record<string, unkno
  * Persisted-state migration. Version 0 (unversioned) shares the v1 shape.
  * v1 -> v2: legacy substrate keys map onto the v6 set and pool/pump/cycle fields are added.
  * v2 -> v3: the room, backdrop, backdrop haze and mineral-spot fields are added.
- * A saved room is always sanitized, so a hand-edited save cannot carry an out-of-range value.
+ * A saved room is also sanitized here, but persist only calls `migrate` when the stored version
+ * differs from the current one; the store's `merge` sanitizes every hydration, current saves included.
  */
 export function migrate(persisted: unknown, version: number): Record<string, unknown> {
   if (!isRecord(persisted)) return {}
   let out = persisted
   if (version < 2) out = migrateV1toV2(out)
   if (version < 3) out = migrateV2toV3(out)
-  return 'room' in out ? { ...out, room: sanitizeRoom(out.room) } : out
+  return Object.hasOwn(out, 'room') ? { ...out, room: sanitizeRoom(out.room) } : out
 }
