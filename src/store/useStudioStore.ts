@@ -2,17 +2,20 @@ import { create, type StoreApi, type UseBoundStore } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
 import type {
+  BackdropId,
   LightingId,
   PumpFlow,
+  RoomEnv,
   SoundPresetId,
   GrowthStage,
   SubstrateDepths,
 } from '@/data/types'
 import type { VesselId } from '@/data/vessels'
 import type { WorldSnapshot } from '@/engine/persistence'
+import { DEFAULT_ROOM } from '@/engine/room'
 import { clamp } from '@/lib/clamp'
 import { importPrototypeSave } from './importPrototypeSave'
-import { MAX_WATER_SPLIT, migrate } from './migrations'
+import { MAX_WATER_SPLIT, migrate, sanitizeRoom } from './migrations'
 import { DEFAULT_TELEMETRY } from './useTelemetryStore'
 
 // The live gauges live in the unpersisted telemetry store; re-exported so existing imports keep working.
@@ -63,6 +66,13 @@ export interface StudioState {
   /** Persisted environment seed; the engine writes it every few seconds and seeds `world.env` from it. */
   envSeed: EnvSeed
   worldSnapshot: WorldSnapshot | null
+  /** The room the tank sits in: water source, minerals, pH, outdoor air and purifier. */
+  room: RoomEnv
+  /** Count of mineral spots on the glass. */
+  mineralSpots: number
+  backdrop: BackdropId
+  /** Backdrop haze percentage, 0 to 80. */
+  backdropHaze: number
 }
 
 export interface StudioActions {
@@ -92,10 +102,18 @@ export interface StudioActions {
   /** Rounds to 1 decimal; a no-op when all four rounded values are unchanged. */
   setEnvSeed: (seed: EnvSeed) => void
   setWorldSnapshot: (snapshot: WorldSnapshot | null) => void
+  /** Merges the patch, then clamps tds and pH and drops unknown source ids. */
+  setRoom: (patch: Partial<RoomEnv>) => void
+  setMineralSpots: (v: number) => void
+  setBackdrop: (id: BackdropId) => void
+  /** Clamped to 0 to 80. */
+  setBackdropHaze: (v: number) => void
   resetStudio: () => void
 }
 
 export type StudioStore = StudioState & StudioActions
+
+const MAX_BACKDROP_HAZE = 80
 
 const ENV_SEED_KEYS = ['humidity', 'temperature', 'soilMoisture', 'nutrients'] as const
 
@@ -133,6 +151,10 @@ export function createDefaultState(): StudioState {
     activePourMaterial: null,
     envSeed: defaultEnvSeed(),
     worldSnapshot: null,
+    room: { ...DEFAULT_ROOM },
+    mineralSpots: 0,
+    backdrop: 'none',
+    backdropHaze: 35,
   }
 }
 
@@ -159,6 +181,10 @@ export function partialize(s: StudioStore) {
     substrates: s.substrates,
     envSeed: s.envSeed,
     worldSnapshot: s.worldSnapshot,
+    room: s.room,
+    mineralSpots: s.mineralSpots,
+    backdrop: s.backdrop,
+    backdropHaze: s.backdropHaze,
   }
 }
 
@@ -224,12 +250,16 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
           set({ envSeed: next })
         },
         setWorldSnapshot: (worldSnapshot) => set({ worldSnapshot }),
+        setRoom: (patch) => set((s) => ({ room: sanitizeRoom({ ...s.room, ...patch }) })),
+        setMineralSpots: (mineralSpots) => set({ mineralSpots }),
+        setBackdrop: (backdrop) => set({ backdrop }),
+        setBackdropHaze: (v) => set({ backdropHaze: clamp(v, 0, MAX_BACKDROP_HAZE) }),
         resetStudio: () =>
           set((s) => ({ ...createDefaultState(), reducedMotion: s.reducedMotion })),
       }),
       {
         name: STUDIO_STORAGE_KEY,
-        version: 2,
+        version: 3,
         storage: createJSONStorage(() => storage),
         partialize,
         migrate: (persisted, version) => migrate(persisted, version) as unknown as StudioStore,
