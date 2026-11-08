@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { BotanistNotes, CareList } from '@/components/telemetry/BotanistNotes'
 import { EcoStats } from '@/components/telemetry/EcoStats'
 import { GaugeBar } from '@/components/telemetry/GaugeBar'
@@ -27,7 +28,7 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
   const lampOn = useStudioStore(selectLampOn)
   const room = useStudioStore((s) => s.room)
   const hasLid = useStudioStore((s) => s.hasLid)
-  const m = envModel(room, hasLid)
+  const m = useMemo(() => envModel(room, hasLid), [room, hasLid])
   const hum = idealRange(items, 'hum')
   const tmp = idealRange(items, 'temp')
   // A corrupt or missing reading must not render as "NaN °C".
@@ -102,18 +103,6 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
           hint="Leaf litter and isopods recycle nutrients slowly"
         />
         <GaugeBar
-          gaugeKey="o2"
-          label="O₂ / CO₂ balance"
-          value={t.o2Balance}
-          min={40}
-          max={100}
-          text={`${Math.round(t.o2Balance)}%`}
-          band={{ lo: lampOn ? 80 : 55, hi: 100, tol: 2 }}
-          hint={
-            lampOn ? 'Lamp on: plants are photosynthesising' : 'Lamp off: plants respire overnight'
-          }
-        />
-        <GaugeBar
           gaugeKey="water"
           label="Water quality"
           value={m.water}
@@ -132,6 +121,18 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
           text={`${m.airEff} · ${qualityWord(m.airEff)}`}
           band={{ lo: 70, hi: 100, tol: 0 }}
           hint={`${m.as.name}${room.purifier ? ' · purifier on' : ''}`}
+        />
+        <GaugeBar
+          gaugeKey="o2"
+          label="O₂ / CO₂ balance"
+          value={t.o2Balance}
+          min={40}
+          max={100}
+          text={`${Math.round(t.o2Balance)}%`}
+          band={{ lo: lampOn ? 80 : 55, hi: 100, tol: 2 }}
+          hint={
+            lampOn ? 'Lamp on: plants are photosynthesising' : 'Lamp off: plants respire overnight'
+          }
         />
       </div>
       <CareList />

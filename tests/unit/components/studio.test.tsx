@@ -204,6 +204,16 @@ describe('RightTelemetry', () => {
     expect(screen.getByText('Clean indoor air')).toBeInTheDocument()
   })
 
+  it('orders the gauges nutrients, water, air, O2 as in the prototype', () => {
+    render(<RightTelemetry />)
+    const ids = [...document.querySelectorAll('[data-testid^="gauge-"]')]
+      .map((el) => el.getAttribute('data-testid'))
+      .filter((id) =>
+        ['gauge-nutrients', 'gauge-water', 'gauge-air', 'gauge-o2'].includes(id ?? ''),
+      )
+    expect(ids).toEqual(['gauge-nutrients', 'gauge-water', 'gauge-air', 'gauge-o2'])
+  })
+
   it('notes an active purifier on the air gauge', () => {
     useStudioStore.setState({ room: { ...DEFAULT_ROOM, air: 'traffic', purifier: true } })
     render(<RightTelemetry />)

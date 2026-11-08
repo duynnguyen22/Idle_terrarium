@@ -224,7 +224,19 @@ describe('v6 pool, hardware and glass', () => {
     const more = createWorld()
     more.mineralSpots = 1
     expect(ellipses(more)).toBeGreaterThan(ellipses(w))
-    expect(ellipses(w)).toBe(ellipses(w))
+    const ellipseArgs = () => {
+      const args: unknown[][] = []
+      const { ctx } = makeRecordingContext()
+      const spy = new Proxy(ctx, {
+        get: (target, prop) =>
+          prop === 'ellipse' ? (...a: unknown[]) => void args.push(a) : Reflect.get(target, prop),
+      })
+      drawMineralSpots(spy, w, { ...state, vessel: 'paludarium_tank' }, R, 0)
+      return args
+    }
+    const first = ellipseArgs()
+    expect(first.length).toBeGreaterThan(0)
+    expect(ellipseArgs()).toEqual(first)
   })
 
   it('lid is a cork on jars and absent on the tank', () => {
