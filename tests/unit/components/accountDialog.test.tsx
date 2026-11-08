@@ -5,6 +5,7 @@ import { AccountDialog } from '@/components/account/AccountDialog'
 import { TopNav } from '@/components/layout/TopNav'
 import type { PublicUser } from '@/auth'
 import { useAccountStore } from '@/store/useAccountStore'
+import { makeEnv, renderIn } from './auth/authHarness'
 
 const user: PublicUser = {
   id: 'u1',
@@ -113,5 +114,21 @@ describe('AccountDialog', () => {
 
     act(() => useAccountStore.getState().goView('signup'))
     expect(screen.getByLabelText('Your name')).toHaveFocus()
+  })
+
+  it('reads an injected AuthEnv store, not the module store', async () => {
+    const env = makeEnv('signin')
+    const u = userEvent.setup()
+    renderIn(env, <AccountDialog />)
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Welcome back')
+    expect(useAccountStore.getState().panelOpen).toBe(false)
+
+    act(() => env.store.getState().goView('signup'))
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Create your account')
+    expect(screen.getByLabelText('Your name')).toHaveFocus()
+
+    await u.keyboard('{Escape}')
+    expect(env.store.getState().panelOpen).toBe(false)
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })

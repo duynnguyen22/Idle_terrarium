@@ -27,6 +27,8 @@ export function SignInScreen() {
         password: v.password ?? '',
         remember: v.remember ?? true,
       })
+      // The form is done: the button should not read "Please wait…" while the session loads.
+      store.setState({ busy: false })
       await store.getState().beginSession(r.user, r.session, { isNew: false })
       if (store.getState().phase === 'cloud') {
         store.getState().closePanel()

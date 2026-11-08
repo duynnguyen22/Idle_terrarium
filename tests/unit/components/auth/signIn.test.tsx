@@ -20,6 +20,13 @@ describe('SignInScreen', () => {
       summary: { vessel: 'globe', day: 1, plants: 0, animals: 0 },
       snapshot: null,
     })
+    // The button stops reading "Please wait…" before the session starts loading.
+    const busyAtLoad: boolean[] = []
+    const getProfile = env.backend.getProfile.bind(env.backend)
+    vi.spyOn(env.backend, 'getProfile').mockImplementation(() => {
+      busyAtLoad.push(env.store.getState().busy)
+      return getProfile()
+    })
     const u = userEvent.setup()
     expect(screen.getByRole('heading', { name: 'Welcome back' })).toHaveAttribute(
       'id',
@@ -38,6 +45,7 @@ describe('SignInScreen', () => {
     })
     expect(env.store.getState().phase).toBe('cloud')
     expect(env.toast).toHaveBeenCalledWith('Welcome back, Demo')
+    expect(busyAtLoad).toEqual([false])
   })
 
   it('sign in error on the email field shows under the input and marks it invalid', async () => {

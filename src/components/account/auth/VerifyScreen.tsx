@@ -21,6 +21,8 @@ export function VerifyScreen() {
     void store.getState().run(async () => {
       const typed = code ?? store.getState().viewData.code ?? ''
       const r = await auth.verifyEmail({ email, code: typed.replace(/\s/g, '') })
+      // The form is done: the button should not read "Please wait…" while the session loads.
+      store.setState({ busy: false })
       await store.getState().beginSession(r.user, r.session, { isNew: true })
     })
 

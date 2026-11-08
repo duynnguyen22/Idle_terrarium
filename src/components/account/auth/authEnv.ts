@@ -11,7 +11,12 @@ import {
 /** How long before another code or link can be requested. */
 export const RESEND_WINDOW_MS = 30_000
 
-/** What the auth screens talk to. Production uses the app singletons; tests inject fakes. */
+/**
+ * What the account dialog, chip and auth screens talk to. Production uses the app singletons;
+ * tests inject fakes. `auth` and `toast` must be the same objects `store` was created with
+ * (its `deps.auth` / `deps.toast`): the screens call them directly while the store's own actions
+ * use the deps, and two different services would split the session and the messages.
+ */
 export interface AuthEnv {
   store: AccountStoreHook
   auth: AuthService

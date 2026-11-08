@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react'
+import { useAccount, useAuthEnv } from '@/components/account/auth/authEnv'
 import { AuthScreen } from '@/components/account/auth/AuthScreen'
-import { useAccountStore, type AuthView } from '@/store/useAccountStore'
+import type { AuthView } from '@/store/useAccountStore'
 
 /** Which screen shows for the current phase and requested view (spec renderAuth, 5121-5122). */
 function useResolvedView(): AuthView {
-  return useAccountStore((s): AuthView => {
+  return useAccount((s): AuthView => {
     if (s.phase === 'checking') return 'checking'
     if (s.phase === 'onboarding') return 'onboarding'
     if (s.phase === 'cloud') return 'account'
@@ -14,9 +15,10 @@ function useResolvedView(): AuthView {
 
 /** Modal shell for every account screen: scrim, panel, close button, Escape and focus handling. */
 export function AccountDialog() {
-  const panelOpen = useAccountStore((s) => s.panelOpen)
-  const onboarding = useAccountStore((s) => s.phase === 'onboarding')
-  const closePanel = useAccountStore((s) => s.closePanel)
+  const { store } = useAuthEnv()
+  const panelOpen = useAccount((s) => s.panelOpen)
+  const onboarding = useAccount((s) => s.phase === 'onboarding')
+  const closePanel = useAccount((s) => s.closePanel)
   const view = useResolvedView()
   const panelRef = useRef<HTMLDivElement>(null)
   const wasOpen = useRef(false)
@@ -27,11 +29,11 @@ export function AccountDialog() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       e.stopPropagation()
-      useAccountStore.getState().closePanel()
+      store.getState().closePanel()
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [panelOpen])
+  }, [panelOpen, store])
 
   // Focus moves only on open and when a different screen replaces the body (its old elements are gone);
   // re-renders within the same view leave focus where the person put it. Back to the chip on close.

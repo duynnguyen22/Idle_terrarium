@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { avatarColor, chipStatus, initialsOf, useAccountStore } from '@/store/useAccountStore'
+import { useAccount } from '@/components/account/auth/authEnv'
+import { avatarColor, chipStatus, initialsOf } from '@/store/useAccountStore'
 
 const TICK_MS = 30_000
 
@@ -18,10 +19,10 @@ function useNow(intervalMs: number): number {
 export function AccountChip() {
   const now = useNow(TICK_MS)
   // The derived status is a flat object of primitives, so a shallow compare skips unrelated store changes.
-  const status = useAccountStore(useShallow((s) => chipStatus(s, now)))
-  const userId = useAccountStore((s) => s.user?.id ?? '')
-  const panelOpen = useAccountStore((s) => s.panelOpen)
-  const openPanel = useAccountStore((s) => s.openPanel)
+  const status = useAccount(useShallow((s) => chipStatus(s, now)))
+  const userId = useAccount((s) => s.user?.id ?? '')
+  const panelOpen = useAccount((s) => s.panelOpen)
+  const openPanel = useAccount((s) => s.openPanel)
 
   return (
     <button
