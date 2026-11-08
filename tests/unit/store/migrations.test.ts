@@ -183,6 +183,10 @@ describe('migrate', () => {
 
 describe('sanitizeRoom', () => {
   it('falls back to defaults for unknown ids and junk values', () => {
+    expect(sanitizeRoom({ water: 'toString', air: 'constructor' })).toMatchObject({
+      water: 'tap_treated',
+      air: 'clean',
+    })
     expect(sanitizeRoom({ water: 'lava', tds: 'x', ph: NaN, air: 7, purifier: 'yes' })).toEqual({
       water: 'tap_treated',
       tds: 180,

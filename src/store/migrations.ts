@@ -64,8 +64,11 @@ function finiteOr(v: unknown, fallback: number): number {
 export function sanitizeRoom(raw: unknown): RoomEnv {
   const r = isRecord(raw) ? raw : {}
   const water =
-    typeof r.water === 'string' && r.water in WATER_SOURCES ? r.water : DEFAULT_ROOM.water
-  const air = typeof r.air === 'string' && r.air in AIR_SOURCES ? r.air : DEFAULT_ROOM.air
+    typeof r.water === 'string' && Object.hasOwn(WATER_SOURCES, r.water)
+      ? r.water
+      : DEFAULT_ROOM.water
+  const air =
+    typeof r.air === 'string' && Object.hasOwn(AIR_SOURCES, r.air) ? r.air : DEFAULT_ROOM.air
   return {
     water: water as RoomEnv['water'],
     tds: clamp(finiteOr(r.tds, DEFAULT_ROOM.tds), TDS_RANGE[0], TDS_RANGE[1]),
