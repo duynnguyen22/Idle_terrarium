@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BackdropSection } from '@/components/catalog/BackdropSection'
 import { VesselTab } from '@/components/catalog/VesselTab'
+import { clearCustomBackdrop, setCustomBackdropFromFile } from '@/lib/backdropPhoto'
 import { useToastStore } from '@/store/toastStore'
 import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
 
@@ -11,7 +12,32 @@ beforeEach(() => {
   // jsdom has no canvas: thumbnails must cope with a missing 2D context
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
 })
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => {
+  clearCustomBackdrop()
+  vi.restoreAllMocks()
+})
+
+/** Publishes a photo through the real module; the decode is faked since jsdom never loads images. */
+async function uploadPhoto() {
+  class FakeImage {
+    width = 800
+    height = 600
+    onload: (() => void) | null = null
+    onerror: (() => void) | null = null
+    set src(_v: string) {
+      setTimeout(() => this.onload?.(), 0)
+    }
+  }
+  vi.stubGlobal('Image', FakeImage)
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+    drawImage: () => undefined,
+  } as unknown as CanvasRenderingContext2D)
+  vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/jpeg;base64,AAAA')
+  await setCustomBackdropFromFile(new File(['png'], 'tank.png', { type: 'image/png' }))
+  vi.unstubAllGlobals()
+  // Back to the no-canvas jsdom the component tests run under
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+}
 
 describe('BackdropSection', () => {
   it('lists eight backdrops as radios with Clear glass checked', () => {
@@ -65,6 +91,32 @@ describe('BackdropSection', () => {
     await user.click(screen.getByRole('radio', { name: 'Your photo' }))
     expect(click).toHaveBeenCalledTimes(1)
     expect(useStudioStore.getState().backdrop).toBe('none')
+  })
+
+  it('Remove photo forgets the photo, falls back to Clear glass and says so', async () => {
+    await uploadPhoto()
+    useStudioStore.setState({ backdrop: 'custom' })
+    const user = userEvent.setup()
+    render(<BackdropSection />)
+    expect(screen.getByRole('button', { name: 'Change photo' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Remove photo' }))
+    expect(useStudioStore.getState().backdrop).toBe('none')
+    expect(useToastStore.getState().message).toBe('Photo removed')
+    expect(localStorage.getItem('botanica_backdrop_photo_v1')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Remove photo' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Change photo' })).toBeNull()
+    expect(
+      within(screen.getByRole('radio', { name: 'Your photo' })).getByText('Upload'),
+    ).toBeInTheDocument()
+  })
+
+  it('Remove photo keeps a painted scene that is already selected', async () => {
+    await uploadPhoto()
+    useStudioStore.setState({ backdrop: 'karst' })
+    const user = userEvent.setup()
+    render(<BackdropSection />)
+    await user.click(screen.getByRole('button', { name: 'Remove photo' }))
+    expect(useStudioStore.getState().backdrop).toBe('karst')
   })
 
   it('a non-image upload shows the rejection toast and keeps the backdrop', async () => {

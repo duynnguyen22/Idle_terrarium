@@ -56,6 +56,26 @@ describe('backdropPhoto', () => {
     expect(photo.getCustomBackdrop()).toBeNull()
   })
 
+  it('clearCustomBackdrop forgets the stored photo and tells subscribers', () => {
+    localStorage.setItem(KEY, JPEG)
+    const cb = vi.fn()
+    photo.subscribeCustomBackdrop(cb)
+    const before = photo.getCustomBackdropRevision()
+    photo.clearCustomBackdrop()
+    expect(localStorage.getItem(KEY)).toBeNull()
+    expect(photo.getCustomBackdrop()).toBeNull()
+    expect(photo.getCustomBackdropRevision()).toBe(before + 1)
+    expect(cb).toHaveBeenCalledTimes(1)
+  })
+
+  it('clearCustomBackdrop still clears the photo when storage is blocked', () => {
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new Error('blocked')
+    })
+    expect(() => photo.clearCustomBackdrop()).not.toThrow()
+    expect(photo.getCustomBackdrop()).toBeNull()
+  })
+
   describe('with image decoding stubbed', () => {
     let sizes: { width: number; height: number }[]
     beforeEach(() => {

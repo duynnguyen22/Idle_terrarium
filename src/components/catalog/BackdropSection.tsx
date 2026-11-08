@@ -3,6 +3,7 @@ import { BACKDROPS } from '@/data/backdrops'
 import type { BackdropId } from '@/data/types'
 import { paintBackdrop } from '@/engine/render/backdrop'
 import {
+  clearCustomBackdrop,
   getCustomBackdrop,
   setCustomBackdropFromFile,
   subscribeCustomBackdrop,
@@ -53,7 +54,7 @@ function sceneThumb(id: BackdropId): string {
   return url
 }
 
-/** "Miniature landscape backdrop" section of the Vessel tab: scene grid, photo upload, depth haze. */
+/** "Miniature landscape backdrop" section of the Vessel tab: scene grid, photo upload and removal, depth haze. */
 export function BackdropSection() {
   const backdrop = useStudioStore((s) => s.backdrop)
   const haze = useStudioStore((s) => s.backdropHaze)
@@ -77,6 +78,12 @@ export function BackdropSection() {
     setBackdrop(id)
   }
 
+  const removePhoto = () => {
+    clearCustomBackdrop()
+    if (backdrop === 'custom') setBackdrop('none')
+    showToast('Photo removed')
+  }
+
   const onFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
@@ -95,13 +102,22 @@ export function BackdropSection() {
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-xs font-semibold text-forest-deep">Miniature landscape backdrop</h2>
         {photo && (
-          <button
-            type="button"
-            onClick={openFilePicker}
-            className="text-[11px] font-semibold text-forest-mid hover:underline"
-          >
-            Change photo
-          </button>
+          <span className="flex shrink-0 items-center gap-2.5 whitespace-nowrap">
+            <button
+              type="button"
+              onClick={openFilePicker}
+              className="text-[11px] font-semibold text-forest-mid hover:underline"
+            >
+              Change photo
+            </button>
+            <button
+              type="button"
+              onClick={removePhoto}
+              className="text-[11px] font-semibold text-stone hover:text-ink-soft hover:underline"
+            >
+              Remove photo
+            </button>
+          </span>
         )}
       </div>
       <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="Backdrop">

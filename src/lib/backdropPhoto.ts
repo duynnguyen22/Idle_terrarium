@@ -35,10 +35,23 @@ export function subscribeCustomBackdrop(cb: () => void): () => void {
   }
 }
 
-function publish(img: HTMLImageElement): void {
+function publish(img: HTMLImageElement | null): void {
   customImg = img
   revision++
   listeners.forEach((cb) => cb())
+}
+
+/**
+ * Forgets the photo: drops it from localStorage (silently when storage is blocked) and tells
+ * subscribers. The caller decides what the backdrop falls back to.
+ */
+export function clearCustomBackdrop(): void {
+  try {
+    localStorage.removeItem(BACKDROP_IMG_KEY)
+  } catch {
+    // storage unavailable; the in-memory photo still goes
+  }
+  publish(null)
 }
 
 function decodeImage(src: string): Promise<HTMLImageElement> {
