@@ -99,6 +99,8 @@ export interface AccountActions {
   openAuth(view: AuthView, data?: ViewData): void
   goView(view: AuthView, data?: ViewData): void
   setViewData(patch: ViewData): void
+  /** Replaces the signed-in user's public profile (after a profile edit). */
+  setUser(user: PublicUser): void
   setTab(tab: AccountTab): void
   setRenaming(id: string | null): void
   setConfirmDelete(id: string | null): void
@@ -520,6 +522,7 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
         set((s) => ({ viewData: { ...s.viewData, ...patch } }))
       },
 
+      setUser: (user) => set({ user }),
       setTab: (tab) => set({ tab }),
       setRenaming: (renaming) => set({ renaming }),
       setConfirmDelete: (confirmDelete) => set({ confirmDelete }),

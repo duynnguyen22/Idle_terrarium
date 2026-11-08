@@ -669,6 +669,12 @@ describe('account store: panel and run', () => {
     store.getState().setTab('journal')
     expect(store.getState().tab).toBe('journal')
   })
+
+  it('setUser replaces the signed-in user', () => {
+    store.setState({ user: { ...demoUser, name: 'Old' } })
+    store.getState().setUser({ ...demoUser, name: 'New Name' })
+    expect(store.getState().user?.name).toBe('New Name')
+  })
 })
 
 describe('account helpers', () => {
