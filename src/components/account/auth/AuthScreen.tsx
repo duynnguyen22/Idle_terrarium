@@ -1,4 +1,7 @@
 import type { AuthView } from '@/store/useAccountStore'
+import { SignInScreen } from './SignInScreen'
+import { SignUpScreen } from './SignUpScreen'
+import { VerifyScreen } from './VerifyScreen'
 
 /** The first card shown while the stored session is being read (spec Screens.checking). */
 function Checking() {
@@ -15,13 +18,19 @@ function Checking() {
 }
 
 /**
- * The dialog body's view switch. Tasks 10-14 add the sign-in, sign-up, verify, reset, provider,
- * onboarding and account views; until then those render nothing.
+ * The dialog body's view switch. Tasks 11-14 add the recovery, provider, onboarding and account
+ * views; until then those render nothing.
  */
 export function AuthScreen({ view }: { view: AuthView }) {
   switch (view) {
     case 'checking':
       return <Checking />
+    case 'signin':
+      return <SignInScreen />
+    case 'signup':
+      return <SignUpScreen />
+    case 'verify':
+      return <VerifyScreen />
     default:
       return null
   }

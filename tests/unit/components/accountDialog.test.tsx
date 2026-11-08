@@ -98,20 +98,20 @@ describe('AccountDialog', () => {
     expect(screen.getByRole('dialog')).not.toHaveClass('wide')
   })
 
-  it('same-view updates leave focus alone; a different screen moves it into the panel', async () => {
+  it('same-view updates leave focus alone; a different screen moves it to its first field', async () => {
     useAccountStore.setState({ phase: 'signedout' })
     const u = userEvent.setup()
     render(<Harness />)
     const chip = screen.getByRole('button', { name: /Sign in/ })
     await u.click(chip)
-    const panel = screen.getByRole('dialog')
-    expect(panel).toHaveFocus()
+    // Each screen's first field carries data-autofocus.
+    expect(screen.getByLabelText('Email')).toHaveFocus()
 
     chip.focus()
     act(() => useAccountStore.getState().setViewData({ email: 'a@b.co' }))
     expect(chip).toHaveFocus()
 
     act(() => useAccountStore.getState().goView('signup'))
-    expect(panel).toHaveFocus()
+    expect(screen.getByLabelText('Your name')).toHaveFocus()
   })
 })
