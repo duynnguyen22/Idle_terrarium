@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { dismissWelcomePrompt } from './helpers'
 
 /** Live item count via the dev-only `window.__botanica` handle (see useTerrariumEngine). */
 const liveItemCount = (page: Page) =>
@@ -11,6 +12,8 @@ const liveItemCount = (page: Page) =>
 
 /** Items in the v6 Falls Lake scene: moss wall, falls, boulders, 9 flora, 5 fauna. */
 const FALLS_ITEM_COUNT = 17
+
+test.beforeEach(({ page }) => dismissWelcomePrompt(page))
 
 test('first run seeds the Falls Lake scene without clicking Biome', async ({ page }) => {
   await page.goto('/')
@@ -81,7 +84,8 @@ test('studio journey: biome, 5x, relax, persistence', async ({ page }) => {
       waterSplit: state.waterSplit,
     }
   })
-  expect(persisted).toEqual({ version: 2, items: count, pumpFlow: 'strong', waterSplit: 0.32 })
+  // STUDIO_VERSION in src/store/useStudioStore.ts; importing it here would run the store, which needs localStorage.
+  expect(persisted).toEqual({ version: 3, items: count, pumpFlow: 'strong', waterSplit: 0.32 })
   await expect.poll(() => liveItemCount(page)).toBe(count)
   await expect(
     page.getByRole('radiogroup', { name: 'Waterfall pump' }).getByRole('radio', { name: 'Strong' }),

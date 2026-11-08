@@ -1,4 +1,7 @@
 import { expect, test } from '@playwright/test'
+import { dismissWelcomePrompt } from './helpers'
+
+test.beforeEach(({ page }) => dismissWelcomePrompt(page))
 
 test('pool width, cycling and the next-step action', async ({ page }) => {
   await page.goto('/')

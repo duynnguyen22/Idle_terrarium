@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { dismissWelcomePrompt } from './helpers'
 
 /** The water-quality score the telemetry gauge shows, e.g. 96 from "96 · Excellent". */
 const waterGauge = async (page: Page) =>
@@ -7,8 +8,7 @@ const waterGauge = async (page: Page) =>
 test('Room tab: switching to tap water lowers the water gauge and offers a dechlorinator fix', async ({
   page,
 }) => {
-  // Mark the first-visit sign-up prompt as seen so its dialog does not cover the studio.
-  await page.addInitScript(() => localStorage.setItem('botanica_signin_prompt_seen_v1', '1'))
+  await dismissWelcomePrompt(page)
   await page.goto('/')
   await expect(page.getByRole('dialog')).toHaveCount(0)
 

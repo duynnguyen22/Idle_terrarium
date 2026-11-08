@@ -1059,6 +1059,18 @@ input[type='range']:disabled {
 .acct-chip:not(.is-signedout) .acct-person {
   display: none;
 }
+/* Below lg the top nav has no room for the chip's text: avatar or person icon only (the label stays as aria-label). */
+@media (width < 64rem) {
+  .acct-chip,
+  .acct-chip.is-signedout {
+    width: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+  .acct-text {
+    display: none;
+  }
+}
 .acct-avatar {
   display: inline-flex;
   align-items: center;

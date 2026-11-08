@@ -29,6 +29,7 @@ export function AccountChip() {
       id="btn-account"
       type="button"
       className={`acct-chip${status.signedIn ? '' : ' is-signedout'}`}
+      aria-label={`${status.name} ${status.text}`.trim()}
       aria-haspopup="dialog"
       aria-expanded={panelOpen}
       aria-controls="acct-panel"

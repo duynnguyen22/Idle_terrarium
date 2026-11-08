@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { dismissWelcomePrompt } from './helpers'
 
 interface Item {
   uid: string
@@ -13,6 +14,8 @@ interface Handle {
   world: () => { items: Item[] }
 }
 declare const window: Window & { __botanica?: Handle }
+
+test.beforeEach(({ page }) => dismissWelcomePrompt(page))
 
 // Runs against the dev server (playwright.config.ts), where `import.meta.env.DEV` exposes window.__botanica.
 test('dragging a peacock fern onto a mount point parents it to the hardscape', async ({ page }) => {
