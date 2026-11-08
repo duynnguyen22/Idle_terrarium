@@ -108,15 +108,9 @@ describe('TopNav speed controls', () => {
   it('+Day writes an automatic journal entry when signed in, and nothing when signed out', async () => {
     const backend = createLocalBackend('u_demo', new MemoryStorage())
     const addJournal = vi.spyOn(backend, 'addJournal')
-    useTelemetryStore.setState({
-      telemetry: {
-        ...createDefaultTelemetry(),
-        careIssues: [
-          { level: 'warn', text: 'The soil is drying out.' } as CareIssue,
-          { level: 'info', text: 'All good otherwise.' } as CareIssue,
-        ],
-      },
-    })
+    // The fresh report after the advance has a warn (dry substrate) and an info (low nutrients).
+    world.env.soilMoisture = 30
+    world.env.nutrients = 30
     render(<TopNav />)
     const plusDay = screen.getByRole('button', { name: '+1 day' })
 
@@ -134,7 +128,7 @@ describe('TopNav speed controls', () => {
     const saved = await backend.listJournal('g_a')
     expect(saved).toHaveLength(1)
     expect(saved[0]).toMatchObject({ day: 3, auto: true, note: '' })
-    expect(saved[0].issues).toEqual(['The soil is drying out.'])
+    expect(saved[0].issues).toEqual(['The substrate is drying out and the moss looks pale.'])
     expect(useToastStore.getState().message).toMatch(/^Day 3: plants grew/)
 
     // Signed in but no terrarium open yet: nothing either.
@@ -142,6 +136,30 @@ describe('TopNav speed controls', () => {
     await user().click(plusDay)
     await act(async () => {})
     expect(addJournal).toHaveBeenCalledTimes(1)
+  })
+
+  it('+Day refreshes the care report so the automatic entry records the new day', async () => {
+    const backend = createLocalBackend('u_demo', new MemoryStorage())
+    // The telemetry store still holds the previous day's flush.
+    useTelemetryStore.setState({
+      telemetry: {
+        ...createDefaultTelemetry(),
+        nutrients: 88,
+        careIssues: [{ level: 'warn', text: 'Yesterday’s stale warning.' }],
+      },
+    })
+    world.env.nutrients = 50
+    world.env.soilMoisture = 30
+    // Inside the throttle window: a throttled push would skip the flush.
+    world.lastTelemetryPush = performance.now()
+    useAccountStore.setState({ phase: 'cloud', activeId: 'g_a', backend })
+    render(<TopNav />)
+    await user().click(screen.getByRole('button', { name: '+1 day' }))
+    await vi.waitFor(() => expect(useAccountStore.getState().journal).toHaveLength(1))
+    const [saved] = await backend.listJournal('g_a')
+    expect(saved.metrics.nutrients).toBe(48)
+    expect(saved.issues).toEqual(['The substrate is drying out and the moss looks pale.'])
+    expect(useTelemetryStore.getState().telemetry.nutrients).toBe(48)
   })
 })
 

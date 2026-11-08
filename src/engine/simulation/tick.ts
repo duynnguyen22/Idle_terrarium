@@ -38,6 +38,16 @@ export function syncChildren(world: EngineWorld): void {
   }
 }
 
+/** Recomputes the care report from the store and the live world into `world.careIssues` (a fresh array). */
+export function refreshCareReport(world: EngineWorld, store: StudioStore): void {
+  world.careIssues = computeCareReport({
+    ...store,
+    ...world.env,
+    items: world.items,
+    mineralSpots: world.mineralSpots,
+  })
+}
+
 /**
  * Per-frame simulation step, in the prototype's order: frame counter, pour spawn / siphon, clock, environment,
  * fauna AI, ambient motes,
@@ -95,12 +105,6 @@ export function tick(
   stepPourParticles(world, store, dtMs, rng, deps.onToast)
   // Care report every 30 frames (prototype 3138, 3307); every frame while paused so edits show at once.
   // Assign a fresh array; the throttled flush copies it into the telemetry store (compared by content).
-  if (world.frame % 30 === 0 || store.timeSpeed === 0)
-    world.careIssues = computeCareReport({
-      ...store,
-      ...world.env,
-      items: world.items,
-      mineralSpots: world.mineralSpots,
-    })
+  if (world.frame % 30 === 0 || store.timeSpeed === 0) refreshCareReport(world, store)
   pushTelemetry(world, store, timestamp)
 }
