@@ -46,8 +46,8 @@ const clampTo = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi,
  * mount point within SNAP_RADIUS when the item can mount (flora with canMountOnRock, or any fauna). The item is
  * unmounted first on every move, so dragging away beyond the radius detaches it. Returns the item, or null.
  * Children of the dragged item follow via syncChildren in the tick. Mount-point x offsets are divided by the
- * tank's KX so they keep their on-screen distance from the host on a wide tank; offsetX stores the resulting
- * normalized offset, which syncChildren applies unchanged.
+ * tank's KX so they keep their on-screen distance from the host on a wide tank; offsetX stores the kx-independent
+ * pixel-proportional offset (normalized offset times kx), which syncChildren divides by the current kx.
  */
 export function updateDrag(world: EngineWorld, nx: number, ny: number, kx = 1): PlacedItem | null {
   if (!world.draggingId) return null
@@ -73,7 +73,7 @@ export function updateDrag(world: EngineWorld, nx: number, ny: number, kx = 1): 
           targetX = mpx
           targetY = mpy
           item.parentUid = host.uid
-          item.offsetX = targetX - host.x
+          item.offsetX = (targetX - host.x) * kx
           item.offsetY = targetY - host.y
           world.hoveredSnapTarget = host.uid
           break snap

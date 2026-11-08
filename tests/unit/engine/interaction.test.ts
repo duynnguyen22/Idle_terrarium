@@ -118,9 +118,35 @@ describe('drag', () => {
     expect(plant.parentUid).toBe(host.uid)
     expect(plant.x).toBeCloseTo(0.545)
     expect(plant.y).toBeCloseTo(0.6)
-    expect(plant.offsetX).toBeCloseTo(0.045)
+    expect(plant.offsetX).toBeCloseTo(0.09)
     expect(plant.offsetY).toBeCloseTo(0)
     endDrag(world)
+  })
+
+  it('syncChildren divides offsetX by kx', async () => {
+    const { syncChildren } = await import('@/engine/simulation/tick')
+    const parent = place('river_stones', 0.5, 0.6)
+    const child = place('peacock_fern', 0.7, 0.5)
+    Object.assign(child, { parentUid: parent.uid, offsetX: 0.09, offsetY: -0.05 })
+    syncChildren(world, 2)
+    expect(child.x).toBeCloseTo(0.545)
+    expect(child.y).toBeCloseTo(parent.y - 0.05)
+  })
+
+  it('a mounted child keeps its pixel offset when the vessel changes', async () => {
+    const { syncChildren } = await import('@/engine/simulation/tick')
+    const host = place('river_stones', 0.5, 0.6)
+    Object.assign(host, { id: LEDGE.id, x: 0.5, y: 0.6, scale: 1 })
+    const plant = place('peacock_fern', 0.3, 0.3)
+    beginDrag(world, plant, plant.x, plant.y)
+    updateDrag(world, 0.55, 0.6, 1)
+    endDrag(world)
+    expect(plant.parentUid).toBe(host.uid)
+    expect(plant.offsetX).toBeCloseTo(0.09)
+    expect(plant.x).toBeCloseTo(0.59)
+
+    syncChildren(world, 2.6)
+    expect((plant.x - host.x) * 2.6).toBeCloseTo(0.09)
   })
 
   it('does not snap a non-mountable item', () => {

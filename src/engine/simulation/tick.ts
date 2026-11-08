@@ -1,3 +1,4 @@
+import { vesselKX } from '@/data/vessels'
 import { useStudioStore, type StudioStore } from '@/store/useStudioStore'
 import { computeCareReport } from '../care'
 import { envModel } from '../room'
@@ -24,13 +25,16 @@ export interface TickDeps {
   onToast?: (msg: string) => void
 }
 
-/** Child items follow their parent via offsetX/offsetY; orphans are detached (prototype 2361-2370). */
-export function syncChildren(world: EngineWorld): void {
+/**
+ * Child items follow their parent via offsetX/offsetY; orphans are detached (prototype 2361-2370). offsetX is
+ * kx-independent and divided by the current tank's kx, so a child keeps its pixel offset across vessel switches.
+ */
+export function syncChildren(world: EngineWorld, kx = 1): void {
   for (const item of world.items) {
     if (!item.parentUid || item.uid === world.draggingId) continue
     const parent = world.items.find((p) => p.uid === item.parentUid)
     if (parent) {
-      item.x = parent.x + (item.offsetX || 0)
+      item.x = parent.x + (item.offsetX || 0) / kx
       item.y = parent.y + (item.offsetY || 0)
     } else {
       item.parentUid = null
@@ -99,7 +103,7 @@ export function tick(
   }
   stepMistParticles(world, store, dtMs, rng)
 
-  syncChildren(world)
+  syncChildren(world, vesselKX(store.vessel))
   if (!store.reducedMotion && (store.lighting === 'night' || store.lighting === 'twilight'))
     updateFireflies(world, dtMs)
   stepPourParticles(world, store, dtMs, rng, deps.onToast)
