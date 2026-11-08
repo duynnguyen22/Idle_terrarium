@@ -1,6 +1,6 @@
 import type { FormEvent } from 'react'
 import { EnvOptionList, type EnvOption } from '@/components/catalog/EnvOptionList'
-import type { GardenStart } from '@/store/useAccountStore'
+import { CLEARED_ACCOUNT_FORM, type GardenStart } from '@/store/useAccountStore'
 import { useAccount, useAuthEnv } from './authEnv'
 import { AuthField } from './AuthField'
 import { AuthHeader, FormError, LinkButton, SubmitButton } from './AuthPieces'
@@ -14,6 +14,8 @@ const START_OPTIONS: EnvOption<GardenStart>[] = [
   },
   { id: 'empty', name: 'An empty tank', sub: 'Start from bare substrate' },
 ]
+
+const SIGNED_OUT_TEXT = 'You’re signed out. Your build stays in this browser.'
 
 /** The first terrarium after sign-up; it must finish before the dialog can close (spec Screens.onboarding). */
 export function OnboardingScreen() {
@@ -41,7 +43,16 @@ export function OnboardingScreen() {
     void store.getState().run(async () => {
       const email = store.getState().user?.email
       await auth.signOut()
-      store.getState().goView('signin', { email, password: '' })
+      // Same order as Sign out: clear busy and move to sign in before ending the session.
+      store.setState({ busy: false })
+      store.getState().goView('signin', {
+        ...CLEARED_ACCOUNT_FORM,
+        gname: '',
+        start: undefined,
+        email,
+        password: '',
+        banner: { kind: 'success', text: SIGNED_OUT_TEXT },
+      })
       await store.getState().endSession('Signed out')
     })
 

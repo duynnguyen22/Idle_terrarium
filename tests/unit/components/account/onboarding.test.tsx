@@ -119,7 +119,13 @@ describe('OnboardingScreen', () => {
     await vi.waitFor(() => expect(env.store.getState().phase).toBe('signedout'))
     expect(signOut).toHaveBeenCalledTimes(1)
     expect(env.store.getState().view).toBe('signin')
-    expect(env.store.getState().viewData).toMatchObject({ email: demoUser.email, error: null })
+    expect(env.store.getState().viewData).toMatchObject({
+      email: demoUser.email,
+      password: '',
+      gname: '',
+      error: null,
+      banner: { kind: 'success', text: 'You’re signed out. Your build stays in this browser.' },
+    })
     expect(env.store.getState().busy).toBe(false)
     expect(env.toast).toHaveBeenCalledWith('Signed out')
   })

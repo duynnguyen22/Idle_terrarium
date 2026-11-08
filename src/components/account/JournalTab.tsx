@@ -91,7 +91,7 @@ export function JournalTab() {
         setNote('')
         clearDraft()
       })
-      .catch((e: unknown) => store.getState().handleCloudError(e))
+      .catch((e: unknown) => store.getState().handleCloudError(e, { user: true }))
   }
 
   return (

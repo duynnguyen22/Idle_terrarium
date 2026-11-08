@@ -114,7 +114,7 @@ export function GardensTab() {
       await store.getState().createGarden(kind, name)
       toast('New terrarium started')
     } catch (e) {
-      store.getState().handleCloudError(e)
+      store.getState().handleCloudError(e, { user: true })
     } finally {
       store.setState({ busy: false })
     }

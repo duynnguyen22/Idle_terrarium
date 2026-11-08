@@ -1,7 +1,7 @@
 import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { JournalEntry } from '@/auth/backend'
+import { BackendError, type JournalEntry } from '@/auth/backend'
 import { useAccount } from '@/components/account/auth/authEnv'
 import { AuthScreen } from '@/components/account/auth/AuthScreen'
 import { demoSession, demoUser, makeEnv, renderIn, type Harness } from '../auth/authHarness'
@@ -104,6 +104,23 @@ describe('JournalTab', () => {
     expect(ta).toHaveValue('Keep me')
     expect(sessionStorage.getItem(DRAFT)).toBe('Keep me')
     expect(env.toast).not.toHaveBeenCalledWith('Logged in your growth journal')
+  })
+
+  it('a failed Log today shows the storage-full message even when storage was already full', async () => {
+    const env = await signedIn()
+    act(() => env.store.setState({ lastError: 'Storage is full' }))
+    vi.spyOn(env.backend, 'addJournal').mockRejectedValue(new BackendError('quota_exceeded'))
+    const u = userEvent.setup()
+    await u.type(screen.getByRole('textbox', { name: 'Journal note' }), 'No room')
+    await u.click(screen.getByRole('button', { name: 'Log today' }))
+    await vi.waitFor(() =>
+      expect(env.toast).toHaveBeenCalledWith(
+        'Your storage is full. Delete an old terrarium or journal entries.',
+      ),
+    )
+    await u.click(screen.getByRole('button', { name: 'Log today' }))
+    await vi.waitFor(() => expect(env.toast).toHaveBeenCalledTimes(2))
+    expect(screen.getByRole('textbox', { name: 'Journal note' })).toHaveValue('No room')
   })
 
   it('entries show day, chips with quality tiers and warn issues', async () => {

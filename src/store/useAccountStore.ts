@@ -129,7 +129,11 @@ export interface AccountActions {
   setRenaming(id: string | null): void
   setConfirmDelete(id: string | null): void
   run(fn: () => Promise<void>): Promise<void>
-  handleCloudError(e: unknown): void
+  /**
+   * Books a backend failure on the chip. The storage-full toast fires once when a background save
+   * enters that state; with `user` (a failed action the person just asked for) it fires every time.
+   */
+  handleCloudError(e: unknown, o?: { user?: boolean }): void
 }
 
 export type AccountStore = AccountState & AccountActions
@@ -470,7 +474,7 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
         try {
           await backend.setProfile({ activeGardenId: id })
         } catch (e) {
-          get().handleCloudError(e)
+          get().handleCloudError(e, { user: true })
         }
         await get().refreshJournal()
         deps.toast(`Opened ${g.name}`)
@@ -486,7 +490,7 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
         try {
           await backend.renameGarden(id, next)
         } catch (e) {
-          get().handleCloudError(e)
+          get().handleCloudError(e, { user: true })
         }
       },
 
@@ -500,7 +504,7 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
           await get().refreshGardens()
           deps.toast('Terrarium deleted')
         } catch (e) {
-          get().handleCloudError(e)
+          get().handleCloudError(e, { user: true })
         }
       },
 
@@ -536,7 +540,7 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
           if (!auto) deps.toast('Logged in your growth journal')
           return true
         } catch (e) {
-          get().handleCloudError(e)
+          get().handleCloudError(e, { user: !auto })
           return false
         }
       },
@@ -635,12 +639,13 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
         set({ busy: false })
       },
 
-      handleCloudError(e) {
+      handleCloudError(e, o) {
         if (errorCode(e) === 'quota_exceeded') {
-          // Toast once on entering the storage-full state, not on every failed attempt.
+          // Background saves toast once on entering the storage-full state, not on every retry;
+          // an action the person just took always says why it failed.
           const already = get().lastError === QUOTA_STATUS
           set({ lastError: QUOTA_STATUS })
-          if (!already) deps.toast(QUOTA_TOAST)
+          if (o?.user || !already) deps.toast(QUOTA_TOAST)
         } else {
           set({ lastError: 'Not saved yet, retrying' })
         }

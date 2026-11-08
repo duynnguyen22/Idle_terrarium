@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { BackendError } from '@/auth/backend'
 import type { VesselId } from '@/data/vessels'
 import { AccountDialog } from '@/components/account/AccountDialog'
 import { useAccount } from '@/components/account/auth/authEnv'
@@ -329,6 +330,25 @@ describe('GardensTab', () => {
     expect(create).toHaveBeenCalledTimes(1)
     expect((await env.backend.listGardens()).length).toBe(3)
     expect(button).toBeEnabled()
+  })
+
+  it('a failed create still shows the storage-full message when storage was already full', async () => {
+    const env = await signedIn()
+    act(() => env.store.setState({ lastError: 'Storage is full' }))
+    // Every write fails: the flush of the open garden (deduped) and the new record (not).
+    vi.spyOn(env.backend, 'saveGarden').mockRejectedValue(new BackendError('quota_exceeded'))
+    const u = userEvent.setup()
+    await u.click(screen.getByRole('button', { name: 'New empty tank' }))
+    await vi.waitFor(() =>
+      expect(env.toast).toHaveBeenCalledWith(
+        'Your storage is full. Delete an old terrarium or journal entries.',
+      ),
+    )
+    await u.click(screen.getByRole('button', { name: 'New Falls Lake build' }))
+    await vi.waitFor(() => expect(env.toast).toHaveBeenCalledTimes(2))
+    expect(env.toast).not.toHaveBeenCalledWith('New terrarium started')
+    expect(screen.getByText('2 saved')).toBeInTheDocument()
+    expect(env.store.getState().activeId).toBe('g_a')
   })
 })
 
