@@ -102,13 +102,16 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
     // Live animated waterfall cascade & ultrasonic mist for waterfall hardscapes
     if (item.isWaterfall || item.id === 'root_slate_waterfall' || item.id === 'cliff_waterfall') {
       ctx.save()
-      for (let s = 0; s < 7; s++) {
-        const prog = (timestamp * 0.0014 + s * 0.14) % 1
+      // The pump drives the cascade: no streams when off, more and faster on strong flow.
+      const flowCount = state.pumpFlow === 'strong' ? 13 : state.pumpFlow === 'off' ? 0 : 7
+      const flowSpeed = state.pumpFlow === 'strong' ? 0.0028 : 0.0014
+      for (let s = 0; s < flowCount; s++) {
+        const prog = (timestamp * flowSpeed + s * (1 / Math.max(1, flowCount))) % 1
         const sx =
           -drawSize * 0.06 + Math.sin(s * 2.1) * (drawSize * 0.04) - prog * (drawSize * 0.08)
         const sy = -drawSize * 0.3 + prog * (drawSize * 0.62)
         ctx.strokeStyle = `rgba(224, 242, 254, ${(1 - prog * 0.5) * 0.78})`
-        ctx.lineWidth = 2.2
+        ctx.lineWidth = state.pumpFlow === 'strong' ? 3.2 : 2.2
         ctx.beginPath()
         ctx.moveTo(sx, sy)
         ctx.lineTo(sx - 2, sy + drawSize * 0.09)
