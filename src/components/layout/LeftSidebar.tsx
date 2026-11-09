@@ -8,7 +8,7 @@ import { useStudioStore } from '@/store/useStudioStore'
 
 /** Tab bar entries; each uses the artifact's two-tone tab icon of the same name. */
 const TABS = [
-  { id: 'vessel', label: 'Vessel & Soil' },
+  { id: 'vessel', label: 'Vessel' },
   { id: 'flora', label: 'Flora' },
   { id: 'hardscape', label: 'Hardscape' },
   { id: 'fauna', label: 'Fauna' },
