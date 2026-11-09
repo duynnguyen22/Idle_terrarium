@@ -123,6 +123,39 @@ describe('reduced motion', () => {
     expect(rotations(true, 0)).toEqual(rotations(true, 1500))
   })
 
+  it('scales the waterfall cascade with the pump: 0, 7 or 13 streams', () => {
+    const strokes = (pumpFlow: StudioState['pumpFlow']) => {
+      const { ctx, calls } = makeRecordingContext()
+      const world = createWorld()
+      world.items = structuredClone(ITEMS.filter((i) => i.id === 'root_slate_waterfall'))
+      const state: StudioState = { ...createDefaultState(), pumpFlow, hasFogger: false }
+      drawSpecimens(ctx, world, state, computeVesselRect(800, 600), 500)
+      return calls.filter((c) => c === 'stroke').length
+    }
+    const off = strokes('off')
+    expect(strokes('gentle') - off).toBe(7)
+    expect(strokes('strong') - off).toBe(13)
+  })
+
+  it('draws thicker, faster cascade streams on strong flow', () => {
+    const widths = (pumpFlow: StudioState['pumpFlow']) => {
+      const log: number[] = []
+      const { ctx } = makeRecordingContext()
+      Object.defineProperty(ctx, 'lineWidth', {
+        set: (v: number) => void log.push(v),
+        get: () => 1,
+      })
+      const world = createWorld()
+      world.items = structuredClone(ITEMS.filter((i) => i.id === 'root_slate_waterfall'))
+      const state: StudioState = { ...createDefaultState(), pumpFlow, hasFogger: false }
+      drawSpecimens(ctx, world, state, computeVesselRect(800, 600), 500)
+      return log
+    }
+    expect(widths('gentle')).toContain(2.2)
+    expect(widths('gentle')).not.toContain(3.2)
+    expect(widths('strong')).toContain(3.2)
+  })
+
   it('keeps the pool surface flat when reducedMotion is set', () => {
     const surfaceYs = (reducedMotion: boolean, timestamp: number) => {
       const { ctx } = makeRecordingContext()
