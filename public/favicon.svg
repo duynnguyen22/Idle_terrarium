@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Botanica</title>
+  <defs>
+    <clipPath id="jar"><rect x="11" y="26" width="42" height="32" rx="10"/></clipPath>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#1b3b2b"/>
+  <circle cx="32" cy="8.5" r="4.5" fill="#f3e6c4"/>
+  <path d="M16.5 21 Q16.5 11.5 32 11.5 Q47.5 11.5 47.5 21 Z" fill="#f3e6c4"/>
+  <rect x="13.5" y="19" width="37" height="5.5" rx="2.75" fill="#f3e6c4"/>
+  <g clip-path="url(#jar)">
+    <rect x="11" y="26" width="42" height="32" fill="#e8f0eb"/>
+    <rect x="11" y="47" width="42" height="11" fill="#5c3d0c"/>
+    <rect x="11" y="45" width="42" height="3" fill="#528c67"/>
+  </g>
+  <path d="M32 46 V34" stroke="#2d5a43" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <path d="M32 38 C26 38 21 34.5 20.5 29 C26.5 29 31 32 32 38 Z" fill="#528c67"/>
+  <path d="M32 35 C33 29 37.5 26 43.5 26.5 C43 32 38.5 35 32 35 Z" fill="#2d5a43"/>
+</svg>
