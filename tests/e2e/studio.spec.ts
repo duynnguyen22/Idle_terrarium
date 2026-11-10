@@ -97,7 +97,7 @@ test('a wide rectangular tank renders without page errors', async ({ page }) => 
   const errors: Error[] = []
   page.on('pageerror', (e) => errors.push(e))
   await page.goto('/')
-  await page.getByRole('tab', { name: 'Vessel & Soil' }).click()
+  await page.getByRole('tab', { name: 'Vessel' }).click()
   const riparium = page.getByRole('button', { name: /Long Riparium/ })
   await riparium.click()
   await expect(riparium).toHaveAttribute('aria-pressed', 'true')
