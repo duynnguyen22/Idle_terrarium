@@ -30,7 +30,15 @@ function ensureAmbient(preset: SoundPresetId): void {
   if (ambient?.preset === preset) return
   stopAmbient()
   const ctx = ensureAudioContext()
-  if (ctx) ambient = { handle: startAmbient(ctx, preset), preset }
+  if (ctx) {
+    const volume = useStudioStore.getState().musicVolume
+    ambient = { handle: startAmbient(ctx, preset, Math.random, volume), preset }
+  }
+}
+
+/** Applies a volume change to the running loop, if any; never creates an AudioContext. */
+function setAmbientVolume(volume: number): void {
+  ambient?.handle.setVolume(volume)
 }
 
 /**
@@ -50,7 +58,7 @@ export function stopAudio(): void {
 }
 
 /**
- * Mount once (StudioLayout). Keeps the ambient soundscape in step with `audioEnabled` / `soundPreset`
+ * Mount once (StudioLayout). Keeps the ambient soundscape in step with `audioEnabled` / `soundPreset` / `musicVolume`
  * (restarting on preset change). The gesture handlers above start it synchronously; this effect covers later
  * changes. Ambient never starts from here before the first user gesture (pointerdown/keydown), because a
  * persisted `audioEnabled: true` on reload must not create an AudioContext without one.
@@ -58,6 +66,7 @@ export function stopAudio(): void {
 export function useAudio(): { play: typeof play } {
   const audioEnabled = useStudioStore((s) => s.audioEnabled)
   const soundPreset = useStudioStore((s) => s.soundPreset)
+  const musicVolume = useStudioStore((s) => s.musicVolume)
   const [unlocked, setUnlocked] = useState(false)
 
   useEffect(() => {
@@ -75,6 +84,8 @@ export function useAudio(): { play: typeof play } {
     if (!audioEnabled) stopAmbient()
     else if (unlocked) ensureAmbient(soundPreset)
   }, [audioEnabled, soundPreset, unlocked])
+
+  useEffect(() => setAmbientVolume(musicVolume), [musicVolume])
 
   useEffect(() => stopAmbient, [])
 

@@ -4,7 +4,12 @@ import { commitWorld, tryGetWorld } from '@/engine/engineBridge'
 import { seedWorldEnv } from '@/engine/envSeed'
 import { restoreWorld, snapshotWorld } from '@/engine/persistence'
 import type { EngineWorld } from '@/engine/world'
-import { migrate, sanitizeBackdropHaze } from './migrations'
+import {
+  migrate,
+  sanitizeBackdropHaze,
+  sanitizeMusicVolume,
+  sanitizeSoundPreset,
+} from './migrations'
 import {
   partialize,
   STUDIO_VERSION,
@@ -39,6 +44,10 @@ export function applyGardenSnapshot(snapshot: GardenSnapshot, store: StudioStore
     if (Object.hasOwn(migrated, k)) patch[k] = migrated[k]
   if (Object.hasOwn(patch, 'backdropHaze'))
     patch.backdropHaze = sanitizeBackdropHaze(patch.backdropHaze)
+  if (Object.hasOwn(patch, 'musicVolume'))
+    patch.musicVolume = sanitizeMusicVolume(patch.musicVolume)
+  if (Object.hasOwn(patch, 'soundPreset'))
+    patch.soundPreset = sanitizeSoundPreset(patch.soundPreset)
   store.setState({ ...(patch as Partial<StudioState>), selectedId: null })
 
   const world = tryGetWorld()

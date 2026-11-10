@@ -23,3 +23,4 @@ export const selectHardware = (s: StudioStore) => ({
   hasGrowLamp: s.hasGrowLamp,
   hasFogger: s.hasFogger,
 })
+export const selectMusicVolume = (s: StudioStore) => s.musicVolume

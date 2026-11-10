@@ -92,7 +92,7 @@
     outline: 2px solid var(--color-moss);
     outline-offset: 2px;
   }
-  /* Relax dock sits on a dark glass pill; a lighter ring keeps contrast. */
+  /* Relax dock sits on a dark forest bar; a lighter ring keeps contrast. */
   #relax-dock :focus-visible {
     outline-color: var(--color-sage);
   }
@@ -195,6 +195,15 @@
     pointer-events: none !important;
     /* Tailwind v4's -translate-x-1/2 uses the `translate` property, so only add the vertical drop here. */
     transform: translateY(12px);
+  }
+  /* An open sound menu keeps the dock (and the cursor) visible while the user reads it. */
+  body.relax-idle #relax-dock[data-menu-open] {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: none;
+  }
+  body.relax-idle:has(#relax-dock[data-menu-open]) {
+    cursor: auto !important;
   }
   body.relax-idle {
     cursor: none !important;

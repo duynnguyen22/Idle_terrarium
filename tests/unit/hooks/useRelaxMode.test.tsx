@@ -32,12 +32,12 @@ describe('useRelaxMode', () => {
   it('toggles relax-active, turns audio on, idles after 2600 ms and clears on pointer move', () => {
     render(<Harness />)
     expect(document.body.classList.contains('relax-active')).toBe(false)
-    expect(screen.queryByText('Exit (Esc)')).toBeNull()
+    expect(screen.queryByLabelText('Exit relax mode')).toBeNull()
 
     act(() => useStudioStore.getState().setRelaxMode(true))
     expect(document.body.classList.contains('relax-active')).toBe(true)
     expect(useStudioStore.getState().audioEnabled).toBe(true)
-    expect(screen.getByText('Exit (Esc)')).toBeTruthy()
+    expect(screen.getByLabelText('Exit relax mode')).toBeTruthy()
 
     act(() => void fireEvent.pointerMove(window))
     act(() => void vi.advanceTimersByTime(RELAX_IDLE_MS - 1))
@@ -57,13 +57,65 @@ describe('useRelaxMode', () => {
   it('dock buttons set sound preset, lighting (auto-sync off) and exit', () => {
     render(<Harness />)
     act(() => useStudioStore.getState().setRelaxMode(true))
-    fireEvent.click(screen.getByText('🌧️ Rain on Leaves'))
+    fireEvent.click(screen.getByRole('button', { name: /Sound/ }))
+    fireEvent.click(screen.getByText('Rain on Leaves'))
     expect(useStudioStore.getState().soundPreset).toBe('rain')
-    fireEvent.click(screen.getByText('🌙 Moonlight'))
+    fireEvent.click(screen.getByLabelText('Moonlight'))
     expect(useStudioStore.getState().lighting).toBe('night')
     expect(useStudioStore.getState().autoLightSync).toBe(false)
-    fireEvent.click(screen.getByText('Exit (Esc)'))
+    fireEvent.click(screen.getByLabelText('Follow my clock'))
+    expect(useStudioStore.getState().autoLightSync).toBe(true)
+    fireEvent.click(screen.getByLabelText('Exit relax mode'))
     expect(useStudioStore.getState().relaxMode).toBe(false)
+  })
+
+  it('offers music presets and a volume slider', () => {
+    render(<Harness />)
+    act(() => useStudioStore.getState().setRelaxMode(true))
+    fireEvent.click(screen.getByRole('button', { name: /Sound/ }))
+    fireEvent.click(screen.getByText('Soft Piano'))
+    expect(useStudioStore.getState().soundPreset).toBe('piano')
+    const [slider] = screen.getAllByLabelText('Music volume')
+    fireEvent.change(slider, { target: { value: '80' } })
+    expect(useStudioStore.getState().musicVolume).toBe(0.8)
+    fireEvent.click(screen.getByLabelText('Mute music'))
+    expect(useStudioStore.getState().musicVolume).toBe(0)
+    fireEvent.click(screen.getByLabelText('Unmute music'))
+    expect(useStudioStore.getState().musicVolume).toBe(0.8)
+  })
+
+  it('Escape closes the open sound menu without leaving relax mode', () => {
+    function Keys() {
+      useKeyboardShortcuts()
+      return null
+    }
+    render(
+      <>
+        <Harness />
+        <Keys />
+      </>,
+    )
+    act(() => useStudioStore.getState().setRelaxMode(true))
+    const trigger = screen.getByRole('button', { name: /Sound/ })
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    expect(useStudioStore.getState().relaxMode).toBe(true)
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(useStudioStore.getState().relaxMode).toBe(false)
+  })
+
+  it('a volume change reaches the running ambient loop', () => {
+    const { ctx, gains } = createFakeAudio()
+    setAudioContextFactory(() => ctx)
+    useStudioStore.setState({ audioEnabled: true })
+    render(<Harness />)
+    fireEvent.pointerDown(window)
+    const values: number[] = []
+    gains[0].gain.setValueAtTime = (v: number) => void values.push(v)
+    act(() => useStudioStore.getState().setMusicVolume(0.25))
+    expect(values).toEqual([0.5])
   })
 })
 

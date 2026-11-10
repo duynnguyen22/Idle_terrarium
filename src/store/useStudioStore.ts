@@ -12,6 +12,7 @@ import type {
 } from '@/data/types'
 import type { VesselId } from '@/data/vessels'
 import type { WorldSnapshot } from '@/engine/persistence'
+import { DEFAULT_MUSIC_VOLUME } from '@/engine/audio/ambient'
 import { DEFAULT_ROOM } from '@/engine/room'
 import { clamp } from '@/lib/clamp'
 import { importPrototypeSave } from './importPrototypeSave'
@@ -22,6 +23,8 @@ import {
   MAX_WATER_SPLIT,
   migrate,
   sanitizeBackdropHaze,
+  sanitizeMusicVolume,
+  sanitizeSoundPreset,
   sanitizeRoom,
 } from './migrations'
 import { DEFAULT_TELEMETRY } from './useTelemetryStore'
@@ -70,6 +73,8 @@ export interface StudioState {
   reducedMotion: boolean
   audioEnabled: boolean
   soundPreset: SoundPresetId
+  /** Ambient music volume, 0 to 1. */
+  musicVolume: number
   substrates: SubstrateDepths
   selectedId: string | null
   activePourMaterial: string | null
@@ -104,6 +109,8 @@ export interface StudioActions {
   setReducedMotion: (v: boolean) => void
   setAudioEnabled: (v: boolean) => void
   setSoundPreset: (id: SoundPresetId) => void
+  /** Clamped to 0 to 1; non-finite values are ignored. */
+  setMusicVolume: (v: number) => void
   setSubstrate: (id: keyof SubstrateDepths, mm: number) => void
   setSubstrates: (obj: SubstrateDepths) => void
   selectItem: (id: string | null) => void
@@ -154,6 +161,7 @@ export function createDefaultState(): StudioState {
     reducedMotion: false,
     audioEnabled: false,
     soundPreset: 'stream',
+    musicVolume: DEFAULT_MUSIC_VOLUME,
     substrates: { ...DEFAULT_SUBSTRATES },
     selectedId: null,
     activePourMaterial: null,
@@ -186,6 +194,7 @@ export function partialize(s: StudioStore) {
     plantingStage: s.plantingStage,
     audioEnabled: s.audioEnabled,
     soundPreset: s.soundPreset,
+    musicVolume: s.musicVolume,
     substrates: s.substrates,
     envSeed: s.envSeed,
     worldSnapshot: s.worldSnapshot,
@@ -235,6 +244,9 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
         setReducedMotion: (reducedMotion) => set({ reducedMotion }),
         setAudioEnabled: (audioEnabled) => set({ audioEnabled }),
         setSoundPreset: (soundPreset) => set({ soundPreset }),
+        setMusicVolume: (v) => {
+          if (Number.isFinite(v)) set({ musicVolume: clamp(v, 0, 1) })
+        },
         setSubstrate: (id, mm) => set((s) => ({ substrates: { ...s.substrates, [id]: mm } })),
         setSubstrates: (substrates) => {
           // Skip set() when unchanged: persist writes storage on every set(), even for an identical state.
@@ -286,6 +298,10 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
           if (Object.hasOwn(saved, 'room')) merged.room = sanitizeRoom(saved.room)
           if (Object.hasOwn(saved, 'backdropHaze'))
             merged.backdropHaze = sanitizeBackdropHaze(saved.backdropHaze)
+          if (Object.hasOwn(saved, 'musicVolume'))
+            merged.musicVolume = sanitizeMusicVolume(saved.musicVolume)
+          if (Object.hasOwn(saved, 'soundPreset'))
+            merged.soundPreset = sanitizeSoundPreset(saved.soundPreset)
           return merged
         },
       },

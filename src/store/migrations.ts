@@ -1,5 +1,7 @@
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
-import type { BackdropId, PumpFlow, RoomEnv, SubstrateDepths } from '@/data/types'
+import { SOUND_PRESET_IDS } from '@/data/soundPresets'
+import type { BackdropId, PumpFlow, RoomEnv, SoundPresetId, SubstrateDepths } from '@/data/types'
+import { DEFAULT_MUSIC_VOLUME } from '@/engine/audio/ambient'
 import { AIR_SOURCES, DEFAULT_ROOM, PH_RANGE, TDS_RANGE, WATER_SOURCES } from '@/engine/room'
 import { clamp } from '@/lib/clamp'
 import { finiteOr } from '@/lib/finite'
@@ -78,6 +80,16 @@ export function sanitizeRoom(raw: unknown): RoomEnv {
 /** A finite haze clamped to 0..MAX_BACKDROP_HAZE; anything else becomes the default. */
 export function sanitizeBackdropHaze(raw: unknown): number {
   return clamp(finiteOr(raw, DEFAULT_BACKDROP_HAZE), 0, MAX_BACKDROP_HAZE)
+}
+
+/** A finite volume clamped to 0..1; anything else becomes the default. */
+export function sanitizeMusicVolume(raw: unknown): number {
+  return clamp(finiteOr(raw, DEFAULT_MUSIC_VOLUME), 0, 1)
+}
+
+/** A known preset id; anything else (a hand-edited save, a removed preset) falls back to the stream. */
+export function sanitizeSoundPreset(raw: unknown): SoundPresetId {
+  return SOUND_PRESET_IDS.includes(raw as SoundPresetId) ? (raw as SoundPresetId) : 'stream'
 }
 
 function migrateV1toV2(persisted: Record<string, unknown>): Record<string, unknown> {

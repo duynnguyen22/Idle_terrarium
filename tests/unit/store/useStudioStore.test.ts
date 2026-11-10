@@ -45,6 +45,28 @@ describe('studio store', () => {
     expect(p).toHaveProperty('envSeed')
   })
 
+  it('setMusicVolume clamps, ignores non-finite values, and persists', () => {
+    const store = createStudioStore(localStorage)
+    expect(store.getState().musicVolume).toBe(0.5)
+    store.getState().setMusicVolume(2)
+    expect(store.getState().musicVolume).toBe(1)
+    store.getState().setMusicVolume(Number.NaN)
+    expect(store.getState().musicVolume).toBe(1)
+    store.getState().setMusicVolume(0.3)
+    const stored = JSON.parse(localStorage.getItem(STUDIO_STORAGE_KEY) ?? '{}')
+    expect(stored.state.musicVolume).toBe(0.3)
+  })
+
+  it('hydration sanitizes a bad musicVolume and an unknown soundPreset', () => {
+    localStorage.setItem(
+      STUDIO_STORAGE_KEY,
+      JSON.stringify({ state: { musicVolume: 'loud', soundPreset: 'polka' }, version: 3 }),
+    )
+    const s = createStudioStore(localStorage).getState()
+    expect(s.musicVolume).toBe(0.5)
+    expect(s.soundPreset).toBe('stream')
+  })
+
   it('actions update state and persist non-transient fields', () => {
     const store = createStudioStore(localStorage)
     const a = store.getState()

@@ -1,7 +1,7 @@
 /** Field names mirror the prototype (docs/reference/prototype.html) so the save importer maps 1:1. */
 
 export type LightingId = 'dawn' | 'sunlight' | 'twilight' | 'night'
-export type SoundPresetId = 'stream' | 'rain' | 'forest' | 'night'
+export type SoundPresetId = 'stream' | 'rain' | 'forest' | 'night' | 'piano' | 'musicbox' | 'bowls'
 export type GrowthStage = 'sprout' | 'mature' | 'lush'
 export type PumpFlow = 'off' | 'gentle' | 'strong'
 export type FaunaHabitat = 'water' | 'shore' | 'land'

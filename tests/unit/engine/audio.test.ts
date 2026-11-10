@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { startAmbient, AMBIENT_INTERVAL_MS } from '@/engine/audio/ambient'
+import { AMBIENT_MAX_GAIN, startAmbient, AMBIENT_INTERVAL_MS } from '@/engine/audio/ambient'
 import { ASMR_CUES, playCue } from '@/engine/audio/asmr'
 import { ensureAudioContext, setAudioContextFactory } from '@/engine/audio/audioContext'
 import type { SoundPresetId } from '@/data/types'
@@ -48,6 +48,32 @@ describe('startAmbient', () => {
       h.stop()
     },
   )
+  it.each([
+    ['piano', 4],
+    ['musicbox', 2],
+    ['bowls', 12],
+  ] as [SoundPresetId, number][])('%s plays a note every %i ticks', (preset, every) => {
+    const { ctx, oscs } = createFakeAudio()
+    const h = startAmbient(ctx, preset)
+    vi.advanceTimersByTime(AMBIENT_INTERVAL_MS * every * 3)
+    expect(oscs).toHaveLength(3)
+    expect(oscs.every((o) => o.started && o.stopped)).toBe(true)
+    h.stop()
+  })
+  it('routes grains through a master gain set from the volume, and setVolume clamps', () => {
+    const { ctx, gains } = createFakeAudio()
+    const values: number[] = []
+    const h = startAmbient(ctx, 'stream', Math.random, 0.25)
+    const master = gains[0]
+    master.gain.setValueAtTime = (v: number) => void values.push(v)
+    h.setVolume(1)
+    h.setVolume(7)
+    h.setVolume(-1)
+    h.setVolume(Number.NaN)
+    expect(values).toEqual([AMBIENT_MAX_GAIN, AMBIENT_MAX_GAIN, 0, AMBIENT_MAX_GAIN / 2])
+    h.stop()
+    expect(master.disconnected).toBe(true)
+  })
   it('stop() clears every timer and disconnects live nodes', () => {
     const { ctx, oscs, gains } = createFakeAudio()
     const h = startAmbient(ctx, 'stream')

@@ -60,7 +60,15 @@ describe('catalog data', () => {
     expect(VESSELS).toHaveLength(9)
     expect(POUR_CONTAINERS).toHaveLength(8)
     expect(BIOME_PRESETS).toHaveLength(4)
-    expect(SOUND_PRESETS.map((s) => s.id)).toEqual(['stream', 'rain', 'forest', 'night'])
+    expect(SOUND_PRESETS.map((s) => s.id)).toEqual([
+      'stream',
+      'rain',
+      'forest',
+      'night',
+      'piano',
+      'musicbox',
+      'bowls',
+    ])
   })
 
   it('has unique ids and category-matching defs', () => {
