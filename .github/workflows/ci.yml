@@ -21,7 +21,31 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
-      - run: pnpm exec playwright install --with-deps chromium
+      - name: Get Playwright version
+        id: pw
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - name: Install Playwright Chromium
+        run: |
+          for i in 1 2 3; do
+            pnpm exec playwright install chromium && exit 0
+            echo "Browser download failed (attempt $i), retrying..."; sleep 10
+          done
+          exit 1
+      # The runner image already ships Chromium's libraries; this only adds extra fonts.
+      # Ubuntu mirrors sometimes fail DNS on hosted runners, so retry and never fail the job here.
+      - name: Install Playwright system deps (best effort)
+        continue-on-error: true
+        run: |
+          for i in 1 2 3; do
+            pnpm exec playwright install-deps chromium && exit 0
+            echo "apt install failed (attempt $i), retrying..."; sleep 15
+          done
+          exit 1
       - run: pnpm e2e
       - name: Upload Playwright report
         if: always()

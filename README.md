@@ -1,55 +1,28 @@
-# Botanica — Living Biosphere
+# 🌿 Botanica — Living Biosphere
 
-A browser-based terrarium simulator: a living canvas biosphere of plants, soil, water and weather, ported from a single-file HTML prototype to React 19, Vite, TypeScript, Tailwind v4 and Zustand.
+**A tiny world in a glass jar that keeps growing while you're away.**
 
-| Script            | Purpose                            |
-| ----------------- | ---------------------------------- |
-| `pnpm dev`        | Start the Vite dev server          |
-| `pnpm build`      | Typecheck and build for production |
-| `pnpm preview`    | Preview the production build       |
-| `pnpm test`       | Run unit tests once (Vitest)       |
-| `pnpm test:watch` | Run unit tests in watch mode       |
-| `pnpm lint`       | Lint with ESLint                   |
-| `pnpm typecheck`  | Typecheck with `tsc`               |
-| `pnpm format`     | Format with Prettier               |
-| `pnpm e2e`        | Run Playwright end-to-end tests    |
+Build a terrarium from moss, stones, water and little creatures, then watch it live on its own. The sun rises, mist settles on the leaves, moss creeps over the rocks, and the lamp glows at night. Nothing can die and nothing can go wrong. It's a quiet place to unwind after a long day.
 
-## Accounts (prototype)
+## ✨ Why you'll love it
 
-Sign-in is a prototype: accounts, sessions and saved terrariums live in this browser and nothing is sent anywhere. Verification codes and sign-in links show up on screen instead of by email. Try the demo account **demo@botanica.app** / **terrarium1**.
+- 🫙 **Build your own world.** Pour gravel, fill a lake, stack rocks, plant ferns, and let a frog loose. Or press 🎲 to grow a full rainforest in one click.
+- 🌗 **It's alive.** Plants grow, humidity rises and falls, and day turns to night in step with your own clock.
+- 💤 **It never punishes you.** A garden you forget just rests. When you come back, it shows you everything that grew while you were gone.
+- 🎧 **Relax mode.** Press `R` to hide the interface and drift off to soft ambient sound.
+- 📸 **Keep and share it.** Save several gardens, keep a growth journal, and export a snapshot.
 
-| Key                              | Storage                         | Holds                                                                          |
-| -------------------------------- | ------------------------------- | ------------------------------------------------------------------------------ |
-| `botanica_auth_users_v1`         | localStorage                    | Accounts (salted password hashes; the demo account's password is stored as-is) |
-| `botanica_auth_session_v1`       | localStorage, or sessionStorage | The session; sessionStorage without "Keep me signed in"                        |
-| `botanica_store_<accountId>`     | localStorage                    | One account's terrariums and growth journal                                    |
-| `botanica_studio_v1`             | localStorage                    | The open scene and studio settings                                             |
-| `botanica_signin_prompt_seen_v1` | localStorage                    | The first-visit sign-up prompt was shown                                       |
-| `botanica_journal_draft`         | sessionStorage                  | An unsent journal note                                                         |
-
-To move to a real backend, replace the two swap points; every caller codes against their interfaces:
-
-- `authService` in `src/auth/index.ts` (type `AuthService` in `src/auth/types.ts`) for sign-in, sign-up, sessions and recovery.
-- `createBackend` in `src/auth/backend.ts` (type `GardenBackend`) for terrariums, the profile and the growth journal.
-
-## Deploying
-
-`pnpm build` writes a static site to `dist/`; any static host works. The app has no server and no client-side router, so no rewrite rules are needed.
-
-### Vercel
-
-Import the repository, framework preset **Vite**, build command `pnpm build`, output directory `dist`. No environment variables are needed (the base path defaults to `/`).
-
-### Netlify
-
-Build command `pnpm build`, publish directory `dist`. No environment variables are needed.
-
-### GitHub Pages
-
-Project pages are served from `https://<user>.github.io/<repo>/`, so build with the base path set:
+## 🚀 Try it
 
 ```sh
-VITE_BASE_PATH=/<repo>/ pnpm build
+pnpm install
+pnpm dev
 ```
 
-Then publish `dist/` (for example with `actions/upload-pages-artifact` and `actions/deploy-pages`, or by pushing it to a `gh-pages` branch). `VITE_BASE_PATH` is read in `vite.config.ts` as Vite's `base`; leave it unset for root-hosted sites.
+Want to save gardens? Sign in with the demo account **demo@botanica.app** / **terrarium1**. Everything stays in your browser.
+
+## 🛠 Built with
+
+React 19 · TypeScript · Vite · Tailwind CSS v4 · Zustand · Canvas · Web Audio
+
+Other commands: `pnpm build`, `pnpm test`, `pnpm e2e`, `pnpm lint`. To deploy, run `pnpm build` and host the `dist/` folder on any static host.
