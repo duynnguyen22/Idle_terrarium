@@ -101,11 +101,25 @@ export function sanitizePace(raw: unknown): PaceId {
   return typeof raw === 'string' && Object.hasOwn(PACES, raw) ? (raw as PaceId) : 'garden'
 }
 
-/** A non-array becomes []; otherwise the first AWAY_LOG_MAX records with finite `from` and `to` survive. */
+const isRecordList = (v: unknown): boolean => Array.isArray(v) && v.every(isRecord)
+
+/**
+ * A non-array becomes []; otherwise the first AWAY_LOG_MAX records survive that have finite `from` and `to`,
+ * `items` and `hints` lists of records and a `rest` list of names (the card reads all of them).
+ */
 export function sanitizeAwayLog(raw: unknown): AwayReport[] {
   if (!Array.isArray(raw)) return []
   return raw
-    .filter((r): r is AwayReport => isRecord(r) && Number.isFinite(r.from) && Number.isFinite(r.to))
+    .filter(
+      (r): r is AwayReport =>
+        isRecord(r) &&
+        Number.isFinite(r.from) &&
+        Number.isFinite(r.to) &&
+        isRecordList(r.items) &&
+        isRecordList(r.hints) &&
+        Array.isArray(r.rest) &&
+        r.rest.every((n) => typeof n === 'string'),
+    )
     .slice(0, AWAY_LOG_MAX)
 }
 

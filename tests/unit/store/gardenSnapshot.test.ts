@@ -150,6 +150,30 @@ describe('gardenSnapshot', () => {
     expect(world.ecoTime).toBe(2.5)
   })
 
+  it('applyGardenSnapshot sanitises the away log and pace of a malformed garden', () => {
+    const good = {
+      from: 1,
+      to: 2,
+      hours: 1,
+      tankHours: 12,
+      capped: false,
+      mode: 'away',
+      reason: 'return',
+      items: [],
+      more: 0,
+      rest: [],
+      hints: [],
+    }
+    const snap = {
+      ...getGardenSnapshot(studio.getState(), null),
+      awayLog: [good, { from: 3, to: 4 }],
+      pace: 'warp',
+    } as unknown as GardenSnapshot
+    applyGardenSnapshot(snap, studio)
+    expect(studio.getState().awayLog).toEqual([good])
+    expect(studio.getState().pace).toBe('garden')
+  })
+
   it('applyGardenSnapshot calls the restored handler once, after the world is committed', () => {
     const source = createWorld()
     source.items = [item('r1', 'flora')]

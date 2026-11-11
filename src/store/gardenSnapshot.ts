@@ -6,8 +6,10 @@ import { ecoTimeFromDayCount, restoreWorld, snapshotWorld } from '@/engine/persi
 import type { EngineWorld } from '@/engine/world'
 import {
   migrate,
+  sanitizeAwayLog,
   sanitizeBackdropHaze,
   sanitizeMusicVolume,
+  sanitizePace,
   sanitizeSoundPreset,
 } from './migrations'
 import {
@@ -49,6 +51,8 @@ export function applyGardenSnapshot(snapshot: GardenSnapshot, store: StudioStore
     patch.musicVolume = sanitizeMusicVolume(patch.musicVolume)
   if (Object.hasOwn(patch, 'soundPreset'))
     patch.soundPreset = sanitizeSoundPreset(patch.soundPreset)
+  if (Object.hasOwn(patch, 'pace')) patch.pace = sanitizePace(patch.pace)
+  if (Object.hasOwn(patch, 'awayLog')) patch.awayLog = sanitizeAwayLog(patch.awayLog)
   store.setState({ ...(patch as Partial<StudioState>), selectedId: null })
 
   const world = tryGetWorld()

@@ -237,15 +237,46 @@ describe('sanitizeAwayLog', () => {
     expect(sanitizeAwayLog({ length: 2 })).toEqual([])
   })
 
+  const lists = { items: [], hints: [], rest: [] }
+
   it('drops records without finite from/to and keeps at most 12', () => {
-    const good = { from: 1, to: 2 }
+    const good = { from: 1, to: 2, ...lists }
     expect(
-      sanitizeAwayLog([good, null, 7, { from: 1 }, { from: NaN, to: 2 }, { from: 1, to: '2' }]),
+      sanitizeAwayLog([
+        good,
+        null,
+        7,
+        { from: 1, ...lists },
+        { from: NaN, to: 2, ...lists },
+        { from: 1, to: '2', ...lists },
+      ]),
     ).toEqual([good])
-    const many = Array.from({ length: 20 }, (_, i) => ({ from: i, to: i + 1 }))
+    const many = Array.from({ length: 20 }, (_, i) => ({ from: i, to: i + 1, ...lists }))
     const out = sanitizeAwayLog(many)
     expect(out).toHaveLength(12)
     expect(out[0]).toEqual(many[0])
+  })
+
+  it('drops records whose items, hints or rest are not lists of records', () => {
+    const item = { kind: 'open', uid: 'a', id: 'fittonia', text: 'Opened.', count: 1 }
+    const good = {
+      from: 1,
+      to: 2,
+      items: [item],
+      hints: [{ uid: 'a', text: 'x', eta: 1 }],
+      rest: ['Fern'],
+    }
+    expect(
+      sanitizeAwayLog([
+        good,
+        { from: 1, to: 2 },
+        { from: 1, to: 2, ...lists, items: 'none' },
+        { from: 1, to: 2, ...lists, hints: null },
+        { from: 1, to: 2, ...lists, rest: {} },
+        { from: 1, to: 2, ...lists, items: [null] },
+        { from: 1, to: 2, ...lists, hints: [3] },
+      ]),
+    ).toEqual([good])
   })
 })
 
