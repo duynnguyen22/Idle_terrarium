@@ -3,7 +3,7 @@ import type { StoreApi, UseBoundStore } from 'zustand'
 import { BackendError, createLocalBackend, type GardenBackend } from '@/auth/backend'
 import { AuthError, type AuthService, type PublicUser, type Session } from '@/auth'
 import type { PlacedItem } from '@/data/types'
-import { registerWorld, tryGetWorld, unregisterWorld } from '@/engine/engineBridge'
+import { onWorldRestored, registerWorld, tryGetWorld, unregisterWorld } from '@/engine/engineBridge'
 import { poolScore } from '@/engine/simulation/ecology'
 import { envModel } from '@/engine/room'
 import { createWorld, type EngineWorld } from '@/engine/world'
@@ -230,6 +230,24 @@ describe('account store: session', () => {
     expect(store.getState().journal).toHaveLength(1)
     expect(studio.getState().vessel).toBe('globe')
     expect(world.items.map((i) => i.uid)).toEqual(['a1'])
+  })
+
+  it('beginSession is already in the cloud phase when the restored-world catch-up runs', async () => {
+    const s = createStudioStore(new MemoryStorage())
+    s.setState({ vessel: 'globe', dayCount: 5, lastSimulatedAt: NOW - 6 * 3_600_000 })
+    await backend.saveGarden('g_a', {
+      name: 'Alpha',
+      createdAt: 1,
+      updatedAt: NOW - 60_000,
+      summary: gardenSummary(s.getState(), []),
+      snapshot: getGardenSnapshot(s.getState(), createWorld()),
+    })
+    store.setState({ phase: 'signedout' })
+    const phases: string[] = []
+    const off = onWorldRestored(() => phases.push(store.getState().phase))
+    await store.getState().beginSession(demoUser, demoSession, { isNew: false })
+    off()
+    expect(phases).toEqual(['cloud'])
   })
 
   it('beginSession falls back to the newest garden when the profile has none', async () => {

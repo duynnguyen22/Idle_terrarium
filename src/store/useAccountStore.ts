@@ -333,9 +333,17 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
             get().openAuth('onboarding')
             return
           }
-          set({ activeId: target.id })
+          // Applying the snapshot runs the restored-world catch-up, which only records its report (and schedules
+          // the cloud save) once the phase is 'cloud', so a sign-in from the panel enters it first. The startup
+          // check ('checking') stays put: the engine defers its catch-up until the phase settles, after the apply.
+          const settling = get().phase === 'checking'
+          set({
+            activeId: target.id,
+            lastSaved: target.updatedAt || 0,
+            ...(settling ? {} : { phase: 'cloud' as const }),
+          })
           if (target.snapshot) applyGardenSnapshot(target.snapshot, studio)
-          set({ lastSaved: target.updatedAt || 0, phase: 'cloud' })
+          set({ phase: 'cloud' })
           await get().refreshJournal()
         } catch (e) {
           get().handleCloudError(e)
