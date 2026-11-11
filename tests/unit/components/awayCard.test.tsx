@@ -88,7 +88,6 @@ describe('AwayCard', () => {
     expect(screen.getByText('Coming up, if it stays healthy')).toBeInTheDocument()
     expect(screen.getByText(/^Rose: flowers fade in about/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Got it' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /evening visit/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /Earlier/ })).toBeNull()
   })
 
@@ -225,5 +224,47 @@ describe('AwayCard', () => {
     open([report({ tankHours: 6 })])
     render(<AwayCard />)
     expect(screen.getByText('While you were away · 2 h · 6 tank hours')).toBeInTheDocument()
+  })
+
+  it('offers the evening visit only when a reported item is still in the tank', () => {
+    open([report()])
+    const { unmount } = render(<AwayCard />)
+    expect(screen.queryByRole('button', { name: 'Start the evening visit' })).toBeNull()
+    unmount()
+    open([
+      report({
+        items: [{ kind: 'open', uid: 'gone', id: 'x', text: 'The rose opened.', count: 1 }],
+      }),
+    ])
+    const second = render(<AwayCard />)
+    expect(screen.queryByRole('button', { name: 'Start the evening visit' })).toBeNull()
+    second.unmount()
+    open([full()])
+    render(<AwayCard />)
+    expect(screen.getByRole('button', { name: 'Start the evening visit' })).toBeInTheDocument()
+  })
+
+  it('starts the visit: closes the card, enters relax and tours the live items', () => {
+    open([
+      report({
+        items: [
+          { kind: 'open', uid: 'a', id: 'x', text: 'The rose opened.', count: 1 },
+          { kind: 'open', uid: 'gone', id: 'x', text: 'Something removed.', count: 1 },
+          { kind: 'seedling', uid: 'b', id: 'x', text: 'A fern seedling came up.', count: 1 },
+        ],
+      }),
+    ])
+    render(<AwayCard />)
+    click(screen.getByRole('button', { name: 'Start the evening visit' }))
+    const o = useOverlayStore.getState()
+    expect(o.awayIndex).toBeNull()
+    expect(o.tour).toEqual({
+      steps: [
+        { uid: 'a', text: 'The rose opened.' },
+        { uid: 'b', text: 'A fern seedling came up.' },
+      ],
+      i: 0,
+    })
+    expect(useStudioStore.getState().relaxMode).toBe(true)
   })
 })

@@ -5,6 +5,7 @@ import { LightingControls } from '@/components/nav/LightingControls'
 import { AwayCard } from '@/components/stage/AwayCard'
 import { CareToolbar } from '@/components/stage/CareToolbar'
 import { ItemInspector } from '@/components/stage/ItemInspector'
+import { TourCaption } from '@/components/stage/TourCaption'
 import { RelaxDock } from '@/components/stage/RelaxDock'
 import { Toast } from '@/components/stage/Toast'
 import { useAccountLifecycle } from '@/hooks/useAccountLifecycle'
@@ -12,6 +13,7 @@ import { useAudio } from '@/hooks/useAudio'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { useRelaxMode } from '@/hooks/useRelaxMode'
+import { useTour } from '@/hooks/useTour'
 import { LeftSidebar } from './LeftSidebar'
 import { RightTelemetry } from './RightTelemetry'
 import { TopNav, type DrawerSide } from './TopNav'
@@ -21,6 +23,7 @@ const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabi
 export function StudioLayout({ children }: { children: ReactNode }) {
   useKeyboardShortcuts()
   useRelaxMode()
+  useTour()
   useAudio()
   useAccountLifecycle()
   useReducedMotion()
@@ -78,6 +81,7 @@ export function StudioLayout({ children }: { children: ReactNode }) {
           <Toast />
           <AwayCard />
           <GrowthBoard />
+          <TourCaption />
           <AccountDialog />
         </main>
         <RightTelemetry drawerOpen={drawer === 'right'} />

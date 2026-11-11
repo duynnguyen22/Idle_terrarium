@@ -11,6 +11,7 @@ import {
   sinceLabel,
   type AwayReport,
 } from '@/engine/simulation/report'
+import { startEveningVisit } from '@/store/awayFlow'
 import { useOverlayStore } from '@/store/useOverlayStore'
 import { useStudioStore } from '@/store/useStudioStore'
 
@@ -96,6 +97,8 @@ export function AwayCard() {
   const select = (uid: string) => useStudioStore.getState().selectItem(uid)
   const msPerDay = paceMs(pace)
   const empty = report.items.length === 0 && report.rest.length === 0
+  const here = new Set(tryGetWorld()?.items.map((i) => i.uid))
+  const canVisit = report.items.some((i) => here.has(i.uid))
 
   return (
     <section
@@ -194,13 +197,24 @@ export function AwayCard() {
         ) : (
           <span />
         )}
-        <button
-          type="button"
-          onClick={closeAway}
-          className="inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-lg bg-wheat px-3 text-xs font-semibold text-wheat-ink transition hover:bg-wheat-hover"
-        >
-          Got it
-        </button>
+        <div className="flex items-center gap-1.5">
+          {canVisit && (
+            <button
+              type="button"
+              onClick={() => startEveningVisit(report)}
+              className="inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-lg px-3 text-xs font-semibold text-forest-ink transition hover:bg-forest-ink/10"
+            >
+              Start the evening visit
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={closeAway}
+            className="inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-lg bg-wheat px-3 text-xs font-semibold text-wheat-ink transition hover:bg-wheat-hover"
+          >
+            Got it
+          </button>
+        </div>
       </div>
     </section>
   )

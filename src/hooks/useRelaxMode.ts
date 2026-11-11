@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { selectRelaxMode } from '@/store/selectors'
+import { useOverlayStore } from '@/store/useOverlayStore'
 import { useStudioStore } from '@/store/useStudioStore'
 
 export const RELAX_IDLE_MS = 2600
@@ -12,6 +13,13 @@ export const RELAX_IDLE_MS = 2600
  */
 export function useRelaxMode(): void {
   const relaxMode = useStudioStore(selectRelaxMode)
+
+  // Leaving relax mode (R, Escape, the dock's exit) ends any evening-visit tour.
+  const wasRelaxing = useRef(relaxMode)
+  useEffect(() => {
+    if (wasRelaxing.current && !relaxMode) useOverlayStore.getState().endTour()
+    wasRelaxing.current = relaxMode
+  }, [relaxMode])
 
   useEffect(() => {
     if (!relaxMode) return

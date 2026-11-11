@@ -1,4 +1,4 @@
-import { mutateWorld } from '@/engine/engineBridge'
+import { getWorld, mutateWorld } from '@/engine/engineBridge'
 import { hasPool, randomLandX } from '@/engine/geometry'
 import { catchUpSpan } from '@/engine/simulation/catchup'
 import type { EventKind } from '@/engine/simulation/life'
@@ -104,4 +104,17 @@ export function previewGap(hours: number): void {
     })
   })
   if (r) recordReport(r, { journal: false })
+}
+
+/**
+ * The card's "Start the evening visit": closes the card, enters relax mode and tours the report's items that
+ * are still in the tank. With none left the tour is empty and shows the quiet caption.
+ */
+export function startEveningVisit(r: AwayReport): void {
+  const here = new Set(getWorld().items.map((i) => i.uid))
+  const steps = r.items.filter((i) => here.has(i.uid)).map(({ uid, text }) => ({ uid, text }))
+  const overlay = useOverlayStore.getState()
+  overlay.closeAway()
+  useStudioStore.getState().setRelaxMode(true)
+  overlay.startTour(steps)
 }

@@ -51,10 +51,10 @@ describe('useOverlayStore', () => {
     expect(useOverlayStore.getState().tour).toBeNull()
   })
 
-  it('does not start an empty tour, and endTour clears one', () => {
+  it('starts an empty tour (it shows the quiet caption), and endTour clears one', () => {
     const s = useOverlayStore.getState()
     s.startTour([])
-    expect(useOverlayStore.getState().tour).toBeNull()
+    expect(useOverlayStore.getState().tour).toEqual({ steps: [], i: 0 })
     s.startTour([{ uid: 'a', text: 'one' }])
     s.endTour()
     expect(useOverlayStore.getState().tour).toBeNull()

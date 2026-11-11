@@ -29,7 +29,8 @@ export const useOverlayStore = create<OverlayState>((set) => ({
   openAway: (index = 0) => set({ awayIndex: index, growthBoardOpen: false }),
   closeAway: () => set({ awayIndex: null }),
   setAwayIndex: (i) => set({ awayIndex: i }),
-  startTour: (steps) => set({ tour: steps.length > 0 ? { steps, i: 0 } : null }),
+  // An empty tour is a valid one: it shows the quiet caption.
+  startTour: (steps) => set({ tour: { steps, i: 0 } }),
   nextTour: () =>
     set((s) => {
       if (!s.tour) return s
