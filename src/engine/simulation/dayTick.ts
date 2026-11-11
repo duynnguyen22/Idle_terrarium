@@ -48,6 +48,7 @@ export function slowStep(
   world: EngineWorld,
   dtDay: number,
   state: DayState,
+  /** `away` is unused until Task 8's offline catch-up passes it. */
   opts: { away: boolean; nutrientFloor?: number; emit?: Emit; onCycled?: () => void },
 ): void {
   world.ecoTime += dtDay

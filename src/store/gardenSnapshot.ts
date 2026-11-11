@@ -2,7 +2,7 @@ import type { GardenSummary } from '@/auth/backend'
 import type { PlacedItem } from '@/data/types'
 import { commitWorld, tryGetWorld } from '@/engine/engineBridge'
 import { seedWorldEnv } from '@/engine/envSeed'
-import { restoreWorld, snapshotWorld } from '@/engine/persistence'
+import { ecoTimeFromDayCount, restoreWorld, snapshotWorld } from '@/engine/persistence'
 import type { EngineWorld } from '@/engine/world'
 import {
   migrate,
@@ -53,7 +53,11 @@ export function applyGardenSnapshot(snapshot: GardenSnapshot, store: StudioStore
   const world = tryGetWorld()
   if (!world) return
   const s = store.getState()
-  if (s.worldSnapshot) restoreWorld(world, s.worldSnapshot)
+  if (s.worldSnapshot) restoreWorld(world, s.worldSnapshot, s.dayCount)
+  else {
+    world.ecoTime = ecoTimeFromDayCount(s.dayCount)
+    world.breed = {}
+  }
   world.moldPatches = []
   world.pendingSubstrates = {}
   world.pendingWaterSplit = undefined

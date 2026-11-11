@@ -34,6 +34,22 @@ describe('world persistence', () => {
     expect(w2.fireflies).toEqual([])
   })
 
+  it('restoreWorld seeds ecoTime from dayCount when the snapshot has none, and keeps a valid one', () => {
+    const w = createWorld()
+    restoreWorld(w, { items: [], terrainContour: [] }, 12)
+    expect(w.ecoTime).toBe(11)
+    restoreWorld(w, { items: [], terrainContour: [], ecoTime: 3.5 }, 12)
+    expect(w.ecoTime).toBe(3.5)
+    restoreWorld(w, { items: [], terrainContour: [], ecoTime: 0 }, 12)
+    expect(w.ecoTime).toBe(0)
+    restoreWorld(w, { items: [], terrainContour: [], ecoTime: -2 }, 12)
+    expect(w.ecoTime).toBe(11)
+    restoreWorld(w, { items: [], terrainContour: [], ecoTime: Number.NaN }, 4)
+    expect(w.ecoTime).toBe(3)
+    restoreWorld(w, { items: [], terrainContour: [] })
+    expect(w.ecoTime).toBe(0)
+  })
+
   it('restoreWorld clears stale surface grains when the snapshot has none', () => {
     const w = createWorld()
     w.surfaceGrains.push({ x: 0.5 })

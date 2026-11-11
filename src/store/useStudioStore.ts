@@ -314,6 +314,9 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
         setCatchupEnabled: (catchupEnabled) => set({ catchupEnabled }),
         pushAwayReport: (r) => set((s) => ({ awayLog: [r, ...s.awayLog].slice(0, AWAY_LOG_MAX) })),
         setDayCount: (dayCount) => set({ dayCount }),
+        // Resets the persisted state only. Nothing in src calls it; a caller with a mounted engine must also
+        // zero `world.ecoTime` and `world.breed` (the store never touches the engine), or flushTelemetry would
+        // write the old day count back.
         resetStudio: () =>
           set((s) => ({ ...createDefaultState(), reducedMotion: s.reducedMotion })),
       }),

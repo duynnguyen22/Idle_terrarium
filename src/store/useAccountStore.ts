@@ -283,7 +283,7 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
       }
       const scratch = createWorld()
       const saved = studio.getState().worldSnapshot
-      if (saved) restoreWorld(scratch, saved)
+      if (saved) restoreWorld(scratch, saved, studio.getState().dayCount)
       fn(scratch)
       studio.setState({ worldSnapshot: snapshotWorld(scratch) })
     }
@@ -434,12 +434,17 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
               world.items = []
               world.moldPatches = []
               world.surfaceGrains = []
+              // Tank time restarts with the day counter (flushTelemetry derives dayCount from ecoTime).
+              world.ecoTime = 0
+              world.breed = {}
               // The env flush is one-way (world -> store), so the live gauge is reset too.
               world.env.cycleProgress = cycleProgress
               studio.setState({ dayCount: 1, setupDay: 1, cycleProgress, selectedId: null })
             })
           } else if (kind === 'falls') {
             editScene((world) => {
+              world.ecoTime = 0
+              world.breed = {}
               studio.setState({ dayCount: 1, selectedId: null })
               applyPreset(world, 'falls', studio.getState())
             })

@@ -197,6 +197,34 @@ describe('useTerrariumEngine', () => {
     expect(useStudioStore.getState().lastSimulatedAt).toBe(1_800_000_000_000)
   })
 
+  it('seeds ecoTime from the stored day count so an old save keeps its day', () => {
+    useStudioStore.setState({ dayCount: 7, worldSnapshot: null })
+    const { unmount } = render(<Harness />)
+    expect(getWorld().ecoTime).toBe(6)
+    // A snapshot from before living time (no ecoTime) seeds the same way.
+    unmount()
+    useStudioStore.setState({ dayCount: 5, worldSnapshot: { items: [], terrainContour: [] } })
+    const second = render(<Harness />)
+    expect(getWorld().ecoTime).toBe(4)
+    for (let t = 16; t <= 600; t += 16) runFrame(t)
+    expect(useStudioStore.getState().dayCount).toBe(5)
+    second.unmount()
+    useStudioStore.setState({ dayCount: 1, worldSnapshot: null })
+  })
+
+  it('hiding the tab flushes the day count before committing', () => {
+    const { unmount } = render(<Harness />)
+    getWorld().ecoTime = 3.2
+    const hidden = vi.spyOn(document, 'hidden', 'get')
+    hidden.mockReturnValue(true)
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(useStudioStore.getState().dayCount).toBe(4)
+    hidden.mockReturnValue(false)
+    document.dispatchEvent(new Event('visibilitychange'))
+    unmount()
+    useStudioStore.setState({ dayCount: 1 })
+  })
+
   it('registers its world, skips its own snapshots, applies external ones, and unregisters', () => {
     const { unmount } = render(<Harness />)
     const world = getWorld()

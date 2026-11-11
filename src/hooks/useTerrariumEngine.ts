@@ -10,9 +10,9 @@ import {
 } from '@/engine/engineBridge'
 import { seedWorldEnv } from '@/engine/envSeed'
 import { seedInitialScene } from '@/engine/presets'
-import { restoreWorld } from '@/engine/persistence'
+import { ecoTimeFromDayCount, restoreWorld } from '@/engine/persistence'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
-import { flushEnvSeed } from '@/engine/simulation/telemetry'
+import { flushEnvSeed, flushTelemetry } from '@/engine/simulation/telemetry'
 import { tick } from '@/engine/simulation/tick'
 import { warmSpriteCache } from '@/engine/sprites/spriteCache'
 import { createWorld, type EngineWorld } from '@/engine/world'
@@ -50,7 +50,9 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
     const world = createWorld()
     seedWorldEnv(world, useStudioStore.getState())
     const initial = useStudioStore.getState().worldSnapshot
-    if (initial) restoreWorld(world, initial)
+    const dayCount = useStudioStore.getState().dayCount
+    world.ecoTime = ecoTimeFromDayCount(dayCount)
+    if (initial) restoreWorld(world, initial, dayCount)
     registerWorld(world)
     seedInitialScene(world)
     if (import.meta.env.DEV)
@@ -69,7 +71,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
         s.worldSnapshot !== prev.worldSnapshot &&
         !isOwnSnapshot(s.worldSnapshot)
       )
-        restoreWorld(world, s.worldSnapshot)
+        restoreWorld(world, s.worldSnapshot, s.dayCount)
     })
 
     let rafId = 0
@@ -116,6 +118,8 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
     }
     const saveNow = () => {
       const s = useStudioStore.getState()
+      // Push the latest day count and cycle progress now, not up to 250 ms late.
+      flushTelemetry(world, s)
       flushEnvSeed(world, s)
       commitWorld()
       s.setLastSimulatedAt(Date.now())

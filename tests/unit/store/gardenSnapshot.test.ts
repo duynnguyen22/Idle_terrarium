@@ -121,6 +121,25 @@ describe('gardenSnapshot', () => {
     expect(studio.getState()).not.toHaveProperty('version')
   })
 
+  it('applyGardenSnapshot seeds ecoTime from the garden dayCount when its world has none', () => {
+    const other = createStudioStore(new MemoryStorage())
+    other.setState({ dayCount: 9 })
+    const source = createWorld()
+    source.items = [item('p1', 'flora')]
+    const snap = getGardenSnapshot(other.getState(), source)
+    delete snap.worldSnapshot?.ecoTime
+    world.ecoTime = 99
+    world.breed = { springtails: 0.5 }
+    registerWorld(world)
+    applyGardenSnapshot(snap, studio)
+    expect(world.ecoTime).toBe(8)
+
+    const withTime = getGardenSnapshot(other.getState(), source)
+    if (withTime.worldSnapshot) withTime.worldSnapshot.ecoTime = 2.5
+    applyGardenSnapshot(withTime, studio)
+    expect(world.ecoTime).toBe(2.5)
+  })
+
   it('applyGardenSnapshot migrates a v2-shaped snapshot (no room) to defaults', () => {
     studio.setState({
       room: { water: 'ro', tds: 10, ph: 6.6, air: 'clean', purifier: true },
