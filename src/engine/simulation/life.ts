@@ -166,7 +166,8 @@ export interface LifeEnv {
   terrain: TerrainInput
 }
 
-function onCrossing(
+/** The side effects of a plant reaching `step`: a seedling, a bigger frond, a runner or a moss tuft. */
+export function onCrossing(
   world: EngineWorld,
   item: PlacedItem,
   step: EventKind,

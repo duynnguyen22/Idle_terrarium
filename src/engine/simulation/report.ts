@@ -176,11 +176,13 @@ export function upcomingHints(
     if (!def || !life || item.baby !== undefined) continue
     const pace = lifePace(item, dose)
     if (pace <= 0) continue
-    const phase = phaseAt(def.kind, life.cyc)
+    // A plant left at exactly the cycle end (a catch-up nudge) is at the start of its next cycle.
+    const cyc = life.cyc % 1
+    const phase = phaseAt(def.kind, cyc)
     const hint = {
       uid: item.uid,
       text: `${speciesName(item.id)}: ${phase.next}`,
-      eta: (Math.max(0, phase.to - life.cyc) * def.days) / pace,
+      eta: (Math.max(0, phase.to - cyc) * def.days) / pace,
       open: def.kind === 'bloom' && phase.name === 'In bud',
     }
     const held = best.get(item.id)

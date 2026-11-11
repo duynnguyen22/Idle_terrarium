@@ -72,6 +72,19 @@ describe('healthChip', () => {
 })
 
 describe('floraRow', () => {
+  it('a plant sitting at the very end of its cycle reads as the start of the next one', () => {
+    const ivy = item('trailing_ivy', {
+      stage: 'mature',
+      vitality: 100,
+      life: { cyc: 1, n: 0, tendrils: 1 },
+    })
+    const row = floraRow(ivy, 0.55, 'garden')
+    expect(row.eta).toBeGreaterThan(0)
+    expect(row.eta).toBeCloseTo(4, 6)
+    expect(row.bar).toBe(0)
+    expect(row.next).not.toMatch(/in a minute/)
+  })
+
   it('a sprout shows Seedling when born, bar (gp-0.2)/0.8 and "Fills out …"', () => {
     const born = floraRow(
       item('fittonia', { stage: 'sprout', growthProgress: 0.6, born: true }),

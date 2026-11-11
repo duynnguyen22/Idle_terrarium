@@ -12,7 +12,9 @@ import {
 import * as life from '@/engine/simulation/life'
 import type { LifeEvent } from '@/engine/simulation/life'
 import { paceMs } from '@/engine/simulation/pace'
+import { NOTABLE, upcomingHints } from '@/engine/simulation/report'
 import { createWorld, type EngineWorld } from '@/engine/world'
+import { mulberry32 } from '@/lib/rng'
 import { useStudioStore } from '@/store/useStudioStore'
 
 const state: CatchUpState = {
@@ -256,11 +258,17 @@ describe('advanceWorld', () => {
 })
 
 describe('nudgeOne', () => {
+  const env: life.LifeEnv = {
+    lightDose: life.lightDose(state),
+    terrain: { substrates: state.substrates, waterSplit: state.waterSplit },
+  }
+  const rng = () => mulberry32(7)
+
   it('moves the closest-below plant to its threshold and emits the event', () => {
     const w = createWorld()
     w.items.push(plant('far', 'fittonia', 0.2), plant('near', 'fittonia', 0.4))
     const events: LifeEvent[] = []
-    expect(nudgeOne(w, (e) => events.push(e))).toBe(true)
+    expect(nudgeOne(w, rng(), (e) => events.push(e), env)).toBe(true)
     expect(events).toEqual([{ kind: 'bud', uid: 'near', id: 'fittonia' }])
     expect(w.items[1].life?.cyc).toBe(0.5)
     expect(w.items[0].life?.cyc).toBe(0.2)
@@ -273,7 +281,43 @@ describe('nudgeOne', () => {
       plant('rest', 'fittonia', 0.4, { resting: true, vitality: 60 }),
       plant('far', 'fittonia', 0.1),
     )
-    expect(nudgeOne(w, () => {})).toBe(false)
+    expect(nudgeOne(w, rng(), () => {}, env)).toBe(false)
+  })
+
+  it('never nudges onto a step that is not notable', () => {
+    const w = createWorld()
+    // Next steps: seed (bloom at 0.95) and fiddle (fern at 0.4); neither is worth a line on the card.
+    w.items.push(plant('seeding', 'fittonia', 0.95), plant('fiddle', 'boston_fern', 0.4))
+    const events: LifeEvent[] = []
+    expect(nudgeOne(w, rng(), (e) => events.push(e), env)).toBe(false)
+    expect(events).toEqual([])
+    expect(w.items.map((i) => i.life?.cyc)).toEqual([0.95, 0.4])
+  })
+
+  it('makes the reported change happen: moss spreads, a shoot grows a runner', () => {
+    const moss = createWorld()
+    moss.items.push(plant('m', 'moss_mound', 0.8))
+    const kinds: string[] = []
+    expect(nudgeOne(moss, rng(), (e) => kinds.push(e.kind), env)).toBe(true)
+    expect(kinds).toEqual(['spread'])
+    expect(moss.mossTufts).toHaveLength(1)
+
+    const ivy = createWorld()
+    ivy.items.push(plant('i', 'trailing_ivy', 0.9))
+    expect(nudgeOne(ivy, rng(), () => {}, env)).toBe(true)
+    expect(ivy.items[0].life?.tendrils).toBe(1)
+  })
+
+  it('every emitted kind is notable, and a plant nudged to the cycle end hints at its next cycle', () => {
+    const w = createWorld()
+    w.items.push(plant('i', 'trailing_ivy', 0.9))
+    const events: LifeEvent[] = []
+    nudgeOne(w, rng(), (e) => events.push(e), env)
+    expect(events.every((e) => NOTABLE[e.kind] === 1)).toBe(true)
+    const [hint] = upcomingHints(w, state)
+    expect(hint?.eta).toBeGreaterThan(0)
+    // A whole new runner cycle: 4 tank days at full pace.
+    expect(hint?.eta).toBeCloseTo(4, 6)
   })
 })
 

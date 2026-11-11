@@ -99,19 +99,21 @@ export function floraRow(item: PlacedItem, dose: number, pace: PaceId): FloraRow
     return { ...row, phase: 'Mature', bar: 1, ticks: [], next: 'Settled in' }
   }
 
-  const phase = phaseAt(def.kind, life.cyc)
+  // A plant left at exactly the cycle end (a catch-up nudge) is at the start of its next cycle.
+  const cyc = life.cyc % 1
+  const phase = phaseAt(def.kind, cyc)
   const phaseName =
     def.kind === 'shoot' ? `${phase.name} · ${life.tendrils} of ${MAX_RUNNERS} runners` : phase.name
   const shared = {
     ...row,
     phase: phaseName,
-    bar: Math.min(1, Math.max(0, life.cyc)),
+    bar: Math.min(1, Math.max(0, cyc)),
     ticks: PHASES[def.kind].map((p) => p.to).filter((t) => t < 1),
   }
   if (item.resting) return { ...shared, next: 'Paused. Mist or water to wake it' }
   const speed = lifePace(item, dose)
   if (speed <= 0) return { ...shared, next: 'Paused until it recovers' }
-  const eta = (Math.max(0, phase.to - life.cyc) * def.days) / speed
+  const eta = (Math.max(0, phase.to - cyc) * def.days) / speed
   return {
     ...shared,
     next: `${capitalise(phase.next)} ${etaLabel(eta, msPerDay)}${speed < 1 ? ' (slowed)' : ''}`,

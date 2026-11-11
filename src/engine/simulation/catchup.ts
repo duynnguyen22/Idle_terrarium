@@ -12,6 +12,7 @@ import {
   lifeStep,
   lightDose,
   nextStep,
+  onCrossing,
   type Emit,
   type EventKind,
   type LifeEnv,
@@ -49,6 +50,13 @@ export interface CatchUpOpts {
   tankHours?: number
 }
 
+function lifeEnv(state: CatchUpState): LifeEnv {
+  return {
+    lightDose: lightDose(state),
+    terrain: { substrates: state.substrates, waterSplit: state.waterSplit },
+  }
+}
+
 /**
  * Runs `tankHours` of tank time in 1-hour steps: ecology, life, breeding, then the slow rules. While `away`,
  * plants may go to rest and nutrients stay above `min(start, 30)`.
@@ -65,10 +73,7 @@ export function advanceWorld(
   const steps = whole + (tankHours - whole > STEP_EPSILON ? 1 : 0)
   const dt = 1 / 24
   const nutrientFloor = Math.min(world.env.nutrients, AWAY_NUTRIENT_FLOOR)
-  const env: LifeEnv = {
-    lightDose: lightDose(state),
-    terrain: { substrates: state.substrates, waterSplit: state.waterSplit },
-  }
+  const env = lifeEnv(state)
   for (let i = 0; i < steps; i++) {
     ecologyStep(world, dt, { away }, emit)
     lifeStep(world, dt, rng, emit, env)
@@ -80,16 +85,16 @@ export function advanceWorld(
 }
 
 /**
- * Lifts the plant closest below its next non-fade milestone (within 0.35 of a cycle) onto it and emits that event.
- * Returns false when no plant qualifies.
+ * Lifts the plant closest below its next notable milestone (within 0.35 of a cycle) onto it, emits that event and
+ * applies its effect (a runner, a moss tuft, a bigger frond), as crossing it in `lifeStep` would. Returns false when
+ * no plant qualifies.
  */
-export function nudgeOne(world: EngineWorld, emit: Emit): boolean {
-  const dose = lightDose({ hasGrowLamp: true })
+export function nudgeOne(world: EngineWorld, rng: Rng, emit: Emit, env: LifeEnv): boolean {
   let best: { item: PlacedItem; step: { name: EventKind; at: number }; gap: number } | null = null
   for (const item of world.items) {
-    if (!item.life || item.baby !== undefined || lifePace(item, dose) <= 0) continue
+    if (!item.life || item.baby !== undefined || lifePace(item, env.lightDose) <= 0) continue
     const step = nextStep(item)
-    if (!step || step.name === 'fade') continue
+    if (!step || NOTABLE[step.name] !== 1) continue
     const gap = step.at - item.life.cyc
     if (gap > NUDGE_REACH) continue
     if (!best || gap < best.gap) best = { item, step, gap }
@@ -97,6 +102,7 @@ export function nudgeOne(world: EngineWorld, emit: Emit): boolean {
   if (!best || !best.item.life) return false
   best.item.life.cyc = best.step.at
   emit({ kind: best.step.name, uid: best.item.uid, id: best.item.id })
+  onCrossing(world, best.item, best.step.name, rng, emit, env)
   return true
 }
 
@@ -131,7 +137,7 @@ export function catchUpSpan(
   try {
     advanceWorld(world, tankHours, state, rng, emit, opts.away)
     if (tankHours >= NUDGE_MIN_TANK_HOURS && !events.some((e) => NOTABLE[e.kind] === 1)) {
-      nudgeOne(world, emit)
+      nudgeOne(world, rng, emit, lifeEnv(state))
     }
   } catch (err) {
     restoreWorld(world, snap, dayCount)
