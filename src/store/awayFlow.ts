@@ -89,3 +89,19 @@ export function plusOneDay(rng: () => number = Math.random, now: number = Date.n
   if (report) recordReport(report, { journal: true })
   return msg
 }
+
+/** The ⋯ menu's "Preview a gap": simulates `hours` ending now, logs and opens the card, never journals. */
+export function previewGap(hours: number): void {
+  const to = Date.now()
+  const from = to - hours * 36e5
+  let r: AwayReport | null = null
+  mutateWorld((w) => {
+    r = catchUpSpan(w, useStudioStore.getState(), from, to, {
+      mode: 'preview',
+      reason: 'preview',
+      away: true,
+      preview: true,
+    })
+  })
+  if (r) recordReport(r, { journal: false })
+}
