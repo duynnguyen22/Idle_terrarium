@@ -10,6 +10,10 @@ describe('mulberry32', () => {
     expect(first).not.toEqual(Array.from({ length: 5 }, mulberry32(43)))
   })
 
+  it('matches a pinned known-output vector so seeded outcomes stay stable', () => {
+    expect(mulberry32(42)()).toBe(0.6011037519201636)
+  })
+
   it('stays in [0, 1)', () => {
     const r = mulberry32(7)
     for (let i = 0; i < 1000; i++) {

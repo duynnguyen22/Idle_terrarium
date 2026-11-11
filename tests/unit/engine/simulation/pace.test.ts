@@ -32,4 +32,11 @@ describe('pace table', () => {
     expect(dtDayForFrame(100, 5, 'brisk')).toBeCloseTo(500 / (30 * 60e3))
     expect(dtDayForFrame(100, 0, 'garden')).toBe(0)
   })
+
+  it('dtDayForFrame treats any speed other than 0 or 5 as 1x', () => {
+    const base = dtDayForFrame(100, 1, 'garden')
+    expect(dtDayForFrame(100, 2, 'garden')).toBe(base)
+    expect(dtDayForFrame(100, -1, 'garden')).toBe(base)
+    expect(dtDayForFrame(100, Number.NaN, 'garden')).toBe(base)
+  })
 })
