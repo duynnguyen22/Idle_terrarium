@@ -202,10 +202,33 @@ function MoreMenu() {
 
 export function UtilityActions() {
   const audioEnabled = useStudioStore(selectAudioEnabled)
+  const growthOpen = useOverlayStore((s) => s.growthBoardOpen)
+  const toggleGrowth = () => {
+    const { growthBoardOpen, openGrowthBoard, closeGrowthBoard } = useOverlayStore.getState()
+    if (growthBoardOpen) closeGrowthBoard()
+    else openGrowthBoard()
+  }
 
   return (
-    <div className="flex shrink-0 items-center gap-1.5">
+    <div className="flex shrink-0 items-center gap-1 lg:gap-1.5">
       <AccountChip />
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={growthOpen}
+        aria-controls="growth-board"
+        aria-label="Growth"
+        title="See how every plant and animal is growing"
+        onClick={toggleGrowth}
+        className={`inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-xs lg:px-3 font-semibold transition ${
+          growthOpen
+            ? 'bg-forest-deep text-white'
+            : 'bg-sand-pale text-forest-ink hover:bg-sand-track'
+        }`}
+      >
+        <LineIcon name="sprout" />
+        <span className="hidden lg:inline">Growth</span>
+      </button>
       <button
         type="button"
         onClick={enterRelax}
