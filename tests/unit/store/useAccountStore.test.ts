@@ -673,6 +673,15 @@ describe('account store: gardens and journal', () => {
     expect(typeof plain?.metrics.pool).toBe('number')
   })
 
+  it('addJournalEntry leaves pool out for a tank without a pool', async () => {
+    await signInWithGardens()
+    studio.setState({ waterSplit: 0, cycleProgress: 1 })
+    await store.getState().addJournalEntry('Dry tank', false)
+    const [e] = store.getState().journal
+    expect(e?.note).toBe('Dry tank')
+    expect(e?.metrics).not.toHaveProperty('pool')
+  })
+
   it('skips an auto entry whose key matches the newest entry', async () => {
     await signInWithGardens()
     const add = vi.spyOn(backend, 'addJournal')

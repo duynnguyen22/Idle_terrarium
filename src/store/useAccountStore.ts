@@ -540,7 +540,8 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
             nutrients: Math.round(t.nutrients),
             water: m.water,
             air: m.airEff,
-            pool: Math.round(poolScore(s.cycleProgress)),
+            // A tank without a pool has no pool score (its cycle progress sits at 1, which would read "Pool 100").
+            ...(hasPool(s.waterSplit) ? { pool: Math.round(poolScore(s.cycleProgress)) } : {}),
           },
           summary: gardenSummary(s, world ? world.items : (s.worldSnapshot?.items ?? [])),
           issues: t.careIssues
