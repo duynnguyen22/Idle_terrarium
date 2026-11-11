@@ -3,6 +3,7 @@ import { findCatalogDef } from '@/data/catalog'
 import type { CatalogDef, PlacedItem, RoomEnv } from '@/data/types'
 import type { StudioState, StudioStore } from '@/store/useStudioStore'
 import { poolHasWater } from './geometry'
+import { wakeResting, wokeToast } from './simulation/ecology'
 import { envModel, type EnvModel } from './room'
 import type { EngineWorld } from './world'
 
@@ -345,10 +346,12 @@ export function computeCareReport(s: CareInputs): CareIssue[] {
 export function runCareAction(world: EngineWorld, store: StudioStore, id: CareActionId): string {
   const env = world.env
   switch (id) {
-    case 'mist':
+    case 'mist': {
       env.mistBoost = Math.min(25, env.mistBoost + 10)
       env.soilMoisture = Math.min(98, env.soilMoisture + 4)
-      return 'Misted the plants'
+      const woke = wakeResting(world)
+      return woke.length ? `Misted the plants. ${wokeToast(woke)}` : 'Misted the plants'
+    }
     case 'openLid':
       store.setHardware('hasLid', false)
       return 'Lid cracked open to vent moisture'

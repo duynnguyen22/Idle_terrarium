@@ -42,6 +42,8 @@ export type EventKind =
   | 'hatch'
   | 'rest'
 
+export type Emit = (e: { kind: EventKind; uid: string; id: string }) => void
+
 /** Milestones of one cycle, as fractions of `cyc` in ascending order. */
 export const LIFE_STEPS: Record<LifeKind, { name: EventKind; at: number }[]> = {
   bloom: [

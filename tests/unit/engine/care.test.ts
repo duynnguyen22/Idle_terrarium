@@ -204,6 +204,31 @@ describe('care report', () => {
     expect(computeCareReport(inputs({}))).toEqual([])
   })
 
+  it("runCareAction('mist') wakes resting plants and appends the woke toast", () => {
+    const store = createStudioStore(memoryStorage)
+    const w = createWorld()
+    w.items = [
+      {
+        uid: 'f1',
+        id: 'fittonia',
+        category: 'flora',
+        x: 0.5,
+        y: 0.5,
+        scale: 1,
+        rotation: 0,
+        flipX: false,
+        zIndex: 1,
+        vitality: 60,
+        resting: true,
+      },
+    ]
+    expect(runCareAction(w, store.getState(), 'mist')).toBe(
+      'Misted the plants. The Pink Fittonia woke up and perked up.',
+    )
+    expect(w.items[0].resting).toBe(false)
+    expect(w.items[0].vitality).toBe(68)
+  })
+
   it('runCareAction mutates world env and store and returns the toast', () => {
     const store = createStudioStore(memoryStorage)
     const w = createWorld()

@@ -6,6 +6,7 @@ import type { AsmrCue } from '../interaction'
 import type { EngineWorld } from '../world'
 import { advanceClock } from './clock'
 import type { Rng } from './constants'
+import { wakeResting, wokeToast } from './ecology'
 import { updateEnvironment } from './environment'
 import { updateFauna } from './fauna'
 import { updateGrowth } from './growth'
@@ -90,6 +91,14 @@ export function tick(
     updateGrowth(world, store, dtMs)
     updateMold(world, store, dtMs, rng, deps.onToast)
   }
+
+  // Care wakes resting plants on the frame misting or pouring begins, at any time speed.
+  if ((world.isMisting && !world.wasMisting) || (world.isPouring && !world.wasPouring)) {
+    const woke = wakeResting(world)
+    if (woke.length) deps.onToast?.(wokeToast(woke))
+  }
+  world.wasMisting = world.isMisting
+  world.wasPouring = world.isPouring
 
   // Hold-to-mist runs at any time speed, like the artifact's draw-phase spray.
   if (
