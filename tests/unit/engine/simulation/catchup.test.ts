@@ -146,9 +146,25 @@ describe('catchUpSpan', () => {
 
   it('restores the world when advanceWorld throws', () => {
     const w = gardenWorld()
-    const before = structuredClone(w.items)
-    const spy = vi.spyOn(life, 'lifeStep').mockImplementation(() => {
-      throw new Error('boom')
+    w.items.push({ ...plant('crew', 'springtails', 0), category: 'fauna', life: undefined })
+    w.moldPatches.push({ x: 0.3, size: 10 }, { x: 0.6, size: 12 })
+    w.env.nutrients = 60
+    w.env.cycleProgress = 0.2
+    w.ecoTime = 3.25
+    w.breed = { hare: 0.4 }
+    const before = {
+      items: structuredClone(w.items),
+      env: structuredClone(w.env),
+      molds: structuredClone(w.moldPatches),
+      acc: w.moldClearAcc,
+      breed: { ...w.breed },
+    }
+    // First step runs fully (so slowStep mutates env, mold and ecoTime); the second throws.
+    const real = life.lifeStep
+    let calls = 0
+    const spy = vi.spyOn(life, 'lifeStep').mockImplementation((...args) => {
+      if (++calls > 1) throw new Error('boom')
+      real(...args)
     })
     try {
       expect(() =>
@@ -162,8 +178,13 @@ describe('catchUpSpan', () => {
     } finally {
       spy.mockRestore()
     }
-    expect(w.items).toEqual(before)
-    expect(w.ecoTime).toBe(0)
+    expect(calls).toBe(2)
+    expect(w.items).toEqual(before.items)
+    expect(w.ecoTime).toBe(3.25)
+    expect(w.breed).toEqual(before.breed)
+    expect(w.env).toEqual(before.env)
+    expect(w.moldPatches).toEqual(before.molds)
+    expect(w.moldClearAcc).toBe(before.acc)
   })
 
   it('names plants that started resting during the span, once per species', () => {

@@ -120,14 +120,22 @@ export function catchUpSpan(
   const events: LifeEvent[] = []
   const emit: Emit = (e) => events.push(e)
   const wasResting = new Set(world.items.filter((i) => i.resting).map((i) => i.uid))
+  // `snapshotWorld` covers items, ecoTime and breed; `slowStep` also moves env and mold, so keep those too.
   const snap = snapshotWorld(world)
+  const dayCount = Math.floor(world.ecoTime) + 1
+  const env = structuredClone(world.env)
+  const moldPatches = structuredClone(world.moldPatches)
+  const moldClearAcc = world.moldClearAcc
   try {
     advanceWorld(world, tankHours, state, rng, emit, opts.away)
     if (tankHours >= NUDGE_MIN_TANK_HOURS && !events.some((e) => NOTABLE[e.kind] === 1)) {
       nudgeOne(world, emit)
     }
   } catch (err) {
-    restoreWorld(world, snap, Math.floor(world.ecoTime) + 1)
+    restoreWorld(world, snap, dayCount)
+    world.env = env
+    world.moldPatches = moldPatches
+    world.moldClearAcc = moldClearAcc
     throw err
   }
   const restNames: string[] = []
