@@ -1,15 +1,9 @@
 import { LineIcon, type IconName } from '@/components/ui/LineIcon'
 import type { LightingId } from '@/data/types'
-import { stepDays } from '@/engine/simulation/dayTick'
-import { flushTelemetry } from '@/engine/simulation/telemetry'
-import { refreshCareReport } from '@/engine/simulation/tick'
-import { mutateWorld } from '@/engine/engineBridge'
-import { hasPool } from '@/engine/geometry'
-import { play } from '@/hooks/useAudio'
 import { useLocalClock } from '@/hooks/useLocalClock'
+import { plusOneDay } from '@/store/awayFlow'
 import { selectDayCount, selectLighting } from '@/store/selectors'
 import { showToast } from '@/store/toastStore'
-import { useAccountStore } from '@/store/useAccountStore'
 import { useStudioStore } from '@/store/useStudioStore'
 
 const PHASE_ICONS: Record<LightingId, IconName> = {
@@ -52,33 +46,7 @@ export function ClockSpeedPill() {
     showToast(toast)
   }
 
-  const plusDay = () => {
-    play('chime')
-    let msg = ''
-    mutateWorld((w) => {
-      const before = w.env.cycleProgress
-      // Temporary until the day card lands: one whole tank day in a single step (a 250 ms frame cap and a
-      // paused clock would make `dayTick` a no-op here).
-      stepDays(w, useStudioStore.getState(), 1, Math.random, () => {})
-      // Like the spec's computeCareReport + renderTelemetry: the new day's issues, gauges and day count reach the
-      // stores now, not at the next throttled push, so the toast and journal entry below record them.
-      refreshCareReport(w, useStudioStore.getState())
-      flushTelemetry(w, useStudioStore.getState())
-      const s = useStudioStore.getState()
-      const after = w.env.cycleProgress
-      if (before < 1 && after >= 1) msg = `Day ${s.dayCount}: plants grew. The pool has cycled.`
-      else {
-        const cycling = hasPool(s.waterSplit) && after < 1
-        msg = `Day ${s.dayCount}: plants grew${cycling ? ', pool still cycling' : ''}`
-      }
-    })
-    showToast(msg)
-    // Signed in with a terrarium open: log the new day in its growth journal (spec 6082).
-    const account = useAccountStore.getState()
-    if (account.phase === 'cloud' && account.activeId) {
-      account.addJournalEntry('', true).catch((e: unknown) => account.handleCloudError(e))
-    }
-  }
+  const plusDay = () => showToast(plusOneDay())
 
   return (
     <div className="flex shrink-0 items-center gap-1.5 rounded-xl bg-sand-pale p-1">

@@ -1,4 +1,5 @@
 import type { VesselId } from '@/data/vessels'
+import type { EventKind } from '@/engine/simulation/life'
 import type { GardenSnapshot } from '@/store/gardenSnapshot'
 
 export interface GardenSummary {
@@ -30,9 +31,15 @@ export interface JournalEntry {
     nutrients: number
     water: number
     air: number
+    /** Pool health 0..100; absent on older entries. */
+    pool?: number
   }
   summary: GardenSummary
   issues: string[]
+  /** What changed since the last entry (automatic entries only). */
+  events?: { kind: EventKind; text: string }[]
+  /** `mode:from:to` of the report this entry came from; stops a duplicate automatic entry. */
+  key?: string
 }
 
 export interface GardenProfile {

@@ -45,12 +45,48 @@ beforeEach(() => sessionStorage.clear())
 afterEach(() => vi.restoreAllMocks())
 
 describe('JournalTab', () => {
+  it('shows the helper copy', async () => {
+    await signedIn()
+    expect(
+      screen.getByText(
+        'An entry is added after each time away and each "+1 day", listing what changed. Add notes about what you see.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('renders event bullets and the Pool chip', async () => {
+    const env = await signedIn()
+    await env.backend.addJournal(
+      'g_a',
+      entry({
+        note: 'One day later: A fern unfurled a frond.',
+        events: [
+          { kind: 'frond', text: 'A fern unfurled a frond.' },
+          { kind: 'bud', text: 'A bud formed.' },
+        ],
+        metrics: {
+          humidity: 84,
+          temp: 22.5,
+          moisture: 60,
+          nutrients: 70,
+          water: 85,
+          air: 55,
+          pool: 72,
+        },
+      }),
+    )
+    await act(() => env.store.getState().refreshJournal())
+    const bullets = screen.getAllByRole('listitem')
+    expect(bullets.map((b) => b.textContent)).toEqual(['A fern unfurled a frond.', 'A bud formed.'])
+    expect(screen.getByText('Pool 72')).toHaveClass('j-chip')
+  })
+
   it('shows the heading with the open terrarium, the note and the empty state', async () => {
     await signedIn()
     expect(screen.getByRole('heading', { name: 'Growth journal · Alpha' })).toHaveClass('acct-h')
     expect(
       screen.getByText(
-        'An entry is added each time you press “+1 day”. Add notes about what you see.',
+        'An entry is added after each time away and each "+1 day", listing what changed. Add notes about what you see.',
       ),
     ).toBeInTheDocument()
     const ta = screen.getByRole('textbox', { name: 'Journal note' })

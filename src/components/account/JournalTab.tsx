@@ -39,6 +39,7 @@ function JournalItem({ entry }: { entry: JournalEntry }) {
     [`Air ${m.air}`, m.air],
     [`${entry.summary.plants || 0} plants`, null],
   ]
+  if (typeof m.pool === 'number') chips.splice(4, 0, [`Pool ${m.pool}`, m.pool])
   const when = new Date(entry.at).toLocaleString(undefined, {
     month: 'short',
     day: 'numeric',
@@ -53,6 +54,13 @@ function JournalItem({ entry }: { entry: JournalEntry }) {
         <span className="acct-muted">{when}</span>
       </div>
       {entry.note && <p className="journal-note">{entry.note}</p>}
+      {entry.events && entry.events.length > 0 && (
+        <ul className="journal-events">
+          {entry.events.map((ev, i) => (
+            <li key={`${i}:${ev.text}`}>{ev.text}</li>
+          ))}
+        </ul>
+      )}
       <div className="journal-chips">
         {chips.map(([text, q]) => (
           <span key={text} className="j-chip" data-q={q == null ? undefined : qualityTier(q)}>
@@ -98,7 +106,8 @@ export function JournalTab() {
     <div className="acct-card">
       <h3 className="acct-h">{`Growth journal${active ? ` · ${active.name}` : ''}`}</h3>
       <p className="acct-note acct-muted">
-        An entry is added each time you press “+1 day”. Add notes about what you see.
+        An entry is added after each time away and each &quot;+1 day&quot;, listing what changed.
+        Add notes about what you see.
       </p>
       <div className="journal-compose">
         <textarea

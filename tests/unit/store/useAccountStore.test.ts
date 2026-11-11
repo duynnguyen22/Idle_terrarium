@@ -4,6 +4,7 @@ import { BackendError, createLocalBackend, type GardenBackend } from '@/auth/bac
 import { AuthError, type AuthService, type PublicUser, type Session } from '@/auth'
 import type { PlacedItem } from '@/data/types'
 import { registerWorld, tryGetWorld, unregisterWorld } from '@/engine/engineBridge'
+import { poolScore } from '@/engine/simulation/ecology'
 import { envModel } from '@/engine/room'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { getGardenSnapshot, gardenSummary } from '@/store/gardenSnapshot'
@@ -644,6 +645,38 @@ describe('account store: gardens and journal', () => {
     await store.getState().addJournalEntry('', true)
     expect(store.getState().journal).toHaveLength(2)
     expect(toast).not.toHaveBeenCalled()
+  })
+
+  it('addJournalEntry stores events, key and pool', async () => {
+    await signInWithGardens()
+    studio.setState({ cycleProgress: 0.5 })
+    const events = [{ kind: 'frond' as const, text: 'A fern unfurled a frond.' }]
+    await store.getState().addJournalEntry('Note', true, { events, key: 'day:1:2' })
+    const [e] = store.getState().journal
+    expect(e).toMatchObject({
+      key: 'day:1:2',
+      events,
+      metrics: { pool: Math.round(poolScore(0.5)) },
+    })
+    expect(Number.isInteger(e?.metrics.pool)).toBe(true)
+
+    await vi.advanceTimersByTimeAsync(10)
+    await store.getState().addJournalEntry('', false)
+    const [plain] = store.getState().journal
+    expect(plain?.key).toBeUndefined()
+    expect(plain?.events).toBeUndefined()
+    expect(typeof plain?.metrics.pool).toBe('number')
+  })
+
+  it('skips an auto entry whose key matches the newest entry', async () => {
+    await signInWithGardens()
+    const add = vi.spyOn(backend, 'addJournal')
+    expect(await store.getState().addJournalEntry('a', true, { key: 'k1' })).toBe(true)
+    await vi.advanceTimersByTimeAsync(10)
+    expect(await store.getState().addJournalEntry('a', true, { key: 'k1' })).toBe(false)
+    expect(add).toHaveBeenCalledTimes(1)
+    expect(await store.getState().addJournalEntry('b', true, { key: 'k2' })).toBe(true)
+    expect(add).toHaveBeenCalledTimes(2)
   })
 
   it('addJournalEntry does nothing outside the cloud phase', async () => {

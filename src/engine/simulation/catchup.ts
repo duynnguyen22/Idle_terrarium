@@ -75,6 +75,8 @@ export function advanceWorld(
     breedStep(world, dt, rng, emit, breedConditions(world, state))
     slowStep(world, dt, state, away ? { away, nutrientFloor, emit } : { away, emit })
   }
+  // Whole days must land on whole `ecoTime` (24 additions of 1/24 fall just short of 1 and would hold the day back).
+  world.ecoTime = Math.round(world.ecoTime * 1e9) / 1e9
 }
 
 /**

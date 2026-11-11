@@ -9,6 +9,7 @@ import { DEFAULT_ROOM } from '@/engine/room'
 import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { showToast, useToastStore } from '@/store/toastStore'
+import { useOverlayStore } from '@/store/useOverlayStore'
 import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
 import { useAccountStore } from '@/store/useAccountStore'
 import { createLocalBackend } from '@/auth/backend'
@@ -42,6 +43,7 @@ beforeEach(() => {
   useStudioStore.setState(createDefaultState())
   useTelemetryStore.setState({ telemetry: createDefaultTelemetry() })
   useToastStore.setState({ message: '', visible: false })
+  useOverlayStore.setState({ growthBoardOpen: false, awayIndex: null, tour: null })
   world = createWorld()
   registerWorld(world)
 })
@@ -99,6 +101,17 @@ describe('TopNav speed controls', () => {
     expect(useToastStore.getState().message).toMatch(/^Day 2: plants grew/)
   })
 
+  it('+1 day logs a day report and opens the away card', async () => {
+    render(<TopNav />)
+    await user().click(screen.getByRole('button', { name: '+1 day' }))
+    expect(useOverlayStore.getState().awayIndex).toBe(0)
+    expect(useStudioStore.getState().awayLog[0]).toMatchObject({
+      mode: 'day',
+      reason: '+1 day',
+      tankHours: 24,
+    })
+  })
+
   it('+1 Day that finishes the cycle says the pool has cycled', async () => {
     world.env.cycleProgress = 0.99
     render(<TopNav />)
@@ -129,7 +142,9 @@ describe('TopNav speed controls', () => {
     await vi.waitFor(() => expect(useAccountStore.getState().journal).toHaveLength(1))
     const saved = await backend.listJournal('g_a')
     expect(saved).toHaveLength(1)
-    expect(saved[0]).toMatchObject({ day: 3, auto: true, note: '' })
+    expect(saved[0]).toMatchObject({ day: 3, auto: true })
+    expect(saved[0].note).toMatch(/^(One day later: |A quiet stretch\.)/)
+    expect(saved[0].key).toMatch(/^day:\d+:\d+$/)
     expect(saved[0].issues).toEqual(['The substrate is drying out and the moss looks pale.'])
     expect(useToastStore.getState().message).toMatch(/^Day 3: plants grew/)
 
@@ -163,7 +178,7 @@ describe('TopNav speed controls', () => {
     const [saved] = await backend.listJournal('g_a')
     expect(saved.metrics.nutrients).toBe(48)
     expect(saved.issues).toEqual(['The substrate is drying out and the moss looks pale.'])
-    expect(useTelemetryStore.getState().telemetry.nutrients).toBe(48)
+    expect(useTelemetryStore.getState().telemetry.nutrients).toBeCloseTo(48, 6)
   })
 })
 

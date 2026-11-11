@@ -11,6 +11,7 @@ import { mutateWorld, tryGetWorld } from '@/engine/engineBridge'
 import { hasPool } from '@/engine/geometry'
 import { restoreWorld, snapshotWorld } from '@/engine/persistence'
 import { applyPreset } from '@/engine/presets'
+import { poolScore } from '@/engine/simulation/ecology'
 import { envModel } from '@/engine/room'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { applyGardenSnapshot, gardenSummary, getGardenSnapshot } from './gardenSnapshot'
@@ -105,7 +106,11 @@ export interface AccountActions {
   renameGarden(id: string, name: string): Promise<void>
   deleteGarden(id: string): Promise<void>
   /** Resolves true once the entry is stored; false when nothing is open or the write failed. */
-  addJournalEntry(note: string, auto: boolean): Promise<boolean>
+  addJournalEntry(
+    note: string,
+    auto: boolean,
+    extra?: { events?: JournalEntry['events']; key?: string },
+  ): Promise<boolean>
   refreshGardens(): Promise<void>
   refreshJournal(): Promise<void>
   openPanel(): void
@@ -513,9 +518,10 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
         }
       },
 
-      async addJournalEntry(note, auto) {
+      async addJournalEntry(note, auto, extra) {
         const { phase, activeId, backend } = get()
         if (phase !== 'cloud' || !activeId || !backend) return false
+        if (extra?.key !== undefined && extra.key === get().journal[0]?.key) return false
         const s = studio.getState()
         const t = useTelemetryStore.getState().telemetry
         const m = envModel(s.room, s.hasLid)
@@ -532,12 +538,15 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
             nutrients: Math.round(t.nutrients),
             water: m.water,
             air: m.airEff,
+            pool: Math.round(poolScore(s.cycleProgress)),
           },
           summary: gardenSummary(s, world ? world.items : (s.worldSnapshot?.items ?? [])),
           issues: t.careIssues
             .filter((i) => i.level === 'warn')
             .slice(0, MAX_ISSUES)
             .map((i) => i.text),
+          ...(extra?.events ? { events: extra.events } : {}),
+          ...(extra?.key !== undefined ? { key: extra.key } : {}),
         }
         try {
           await backend.addJournal(activeId, entry)
