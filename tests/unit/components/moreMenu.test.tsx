@@ -55,8 +55,10 @@ describe('MoreMenu time away', () => {
     expect(screen.getByText('Time away')).toBeTruthy()
     expect(screen.getByRole('menuitem', { name: 'Show the last summary' })).toBeTruthy()
     expect(screen.getByText('Preview a gap')).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Time away' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Preview a gap' })).toBeTruthy()
     for (const l of ['8 h', '1 day', '3 days', '1 week'])
-      expect(screen.getByRole('button', { name: l })).toBeTruthy()
+      expect(screen.getByRole('button', { name: `Preview a gap of ${l}` }).textContent).toBe(l)
     expect(
       screen.getByRole('switch', { name: "Grow while I'm away" }).getAttribute('aria-checked'),
     ).toBe('true')
@@ -78,10 +80,11 @@ describe('MoreMenu time away', () => {
 
   it('1 day previews a 24 h gap and opens its card', () => {
     openMenu()
-    click(screen.getByRole('button', { name: '1 day' }))
+    click(screen.getByRole('button', { name: 'Preview a gap of 1 day' }))
     const s = useStudioStore.getState()
     expect(s.awayLog[0]).toMatchObject({ mode: 'preview', hours: 24 })
     expect(useOverlayStore.getState().awayIndex).toBe(0)
+    expect(screen.queryByRole('menu')).toBeNull()
     expect(document.querySelector('#away-card')?.textContent).toContain('Preview · 24 h later')
   })
 
@@ -103,7 +106,7 @@ describe('MoreMenu time away', () => {
     const add = vi.fn().mockResolvedValue(undefined)
     useAccountStore.setState({ phase: 'cloud', activeId: 'g_a', addJournalEntry: add })
     openMenu()
-    click(screen.getByRole('button', { name: '8 h' }))
+    click(screen.getByRole('button', { name: 'Preview a gap of 8 h' }))
     await act(async () => {})
     expect(useStudioStore.getState().awayLog).toHaveLength(1)
     expect(add).not.toHaveBeenCalled()

@@ -138,51 +138,59 @@ function MoreMenu() {
             <LineIcon name="trash" />
             Clear all specimens
           </button>
-          <div className="mt-1 border-t border-sand-border px-3 pb-1 pt-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft">
-              Time away
-            </p>
-          </div>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={run(showLastSummary)}
-            className={`${MENU_ITEM} text-ink-deep hover:bg-linen`}
-          >
-            Show the last summary
-          </button>
-          <div className="px-3 py-1">
-            <p className="mb-1 text-xs font-medium text-ink-deep">Preview a gap</p>
-            <div className="flex gap-1">
-              {GAPS.map((g) => (
-                <button
-                  key={g.hours}
-                  type="button"
-                  onClick={run(() => previewGap(g.hours))}
-                  className="flex-1 rounded-lg bg-sand-pale px-1 py-1 text-[11px] font-medium text-ink-soft transition hover:bg-sand-track"
-                >
-                  {g.label}
-                </button>
-              ))}
+          <div role="group" aria-labelledby="time-away-label">
+            <div className="mt-1 border-t border-sand-border px-3 pb-1 pt-2">
+              <p
+                id="time-away-label"
+                className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft"
+              >
+                Time away
+              </p>
             </div>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={catchupEnabled}
-            onClick={toggleCatchup}
-            className={`${MENU_ITEM} justify-between text-ink-deep hover:bg-linen`}
-          >
-            Grow while I&apos;m away
-            <span
-              aria-hidden="true"
-              className={`inline-flex h-4 w-7 shrink-0 items-center rounded-full px-0.5 transition ${catchupEnabled ? 'bg-forest-mid' : 'bg-sand-track'}`}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={run(showLastSummary)}
+              className={`${MENU_ITEM} text-ink-deep hover:bg-linen`}
             >
+              Show the last summary
+            </button>
+            <div role="group" aria-labelledby="preview-gap-label" className="px-3 py-1">
+              <p id="preview-gap-label" className="mb-1 text-xs font-medium text-ink-deep">
+                Preview a gap
+              </p>
+              <div className="flex gap-1">
+                {GAPS.map((g) => (
+                  <button
+                    key={g.hours}
+                    type="button"
+                    aria-label={`Preview a gap of ${g.label}`}
+                    onClick={run(() => previewGap(g.hours))}
+                    className="flex-1 rounded-lg bg-sand-pale px-1 py-1 text-[11px] font-medium text-ink-soft transition hover:bg-sand-track"
+                  >
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={catchupEnabled}
+              onClick={toggleCatchup}
+              className={`${MENU_ITEM} justify-between text-ink-deep hover:bg-linen`}
+            >
+              Grow while I&apos;m away
               <span
-                className={`h-3 w-3 rounded-full bg-white transition ${catchupEnabled ? 'translate-x-3' : ''}`}
-              />
-            </span>
-          </button>
+                aria-hidden="true"
+                className={`inline-flex h-4 w-7 shrink-0 items-center rounded-full px-0.5 transition ${catchupEnabled ? 'bg-forest-mid' : 'bg-sand-track'}`}
+              >
+                <span
+                  className={`h-3 w-3 rounded-full bg-white transition ${catchupEnabled ? 'translate-x-3' : ''}`}
+                />
+              </span>
+            </button>
+          </div>
         </div>
       )}
     </div>
