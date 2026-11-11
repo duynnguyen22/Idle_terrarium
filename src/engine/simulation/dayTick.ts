@@ -18,9 +18,9 @@ export type DayState = Pick<
 >
 
 /** Sprout `growthProgress` gained per tank day. */
-const SPROUT_RATE = 0.6
+export const SPROUT_RATE = 0.6
 /** A seedling starts at this progress when none is stored. */
-const SPROUT_START = 0.2
+export const SPROUT_START = 0.2
 /** Nutrients lost per flora and gained per cleanup-crew member (max 4) per tank day. */
 const NUTRIENT_PER_FLORA = 0.4
 const NUTRIENT_PER_CREW = 1.4
@@ -31,7 +31,7 @@ const NUTRIENT_MAX = 100
 /** Mold patches one cleanup-crew member (max 6) clears per tank day. */
 const MOLD_CLEARED_PER_CREW_DAY = 27
 /** The pool cycles more slowly with the pump off. */
-const PUMP_OFF_CYCLE_FACTOR = 0.4
+export const PUMP_OFF_CYCLE_FACTOR = 0.4
 
 /** Render scale of a sprout: `base` scaled from 0.58 up to 1 as `growthProgress` goes 0 to 1. */
 export function sproutScale(item: PlacedItem, base: number): number {
