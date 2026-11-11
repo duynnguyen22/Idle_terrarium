@@ -61,9 +61,16 @@ function n(e: WorldEntity, k: string): number {
 /** Ambient mote drift with vertical wrap (prototype 2621-2626). Paused with the rest of the biology at timeSpeed 0. */
 export function updateAmbientMotes(world: EngineWorld, dtMs: number): void {
   const fs = frameScale(dtMs)
-  for (const m of world.ambientMotes) {
+  for (let i = world.ambientMotes.length - 1; i >= 0; i--) {
+    const m = world.ambientMotes[i]!
     m.x = n(m, 'x') + n(m, 'vx') * fs
     m.y = n(m, 'y') + n(m, 'vy') * fs
+    if (m.type === 'leaf') {
+      // A falling leaf never wraps: `ttl` counts down in frame-scale units and it is removed when spent or below the floor.
+      m.ttl = n(m, 'ttl') - fs
+      if (n(m, 'ttl') <= 0 || n(m, 'y') > 0.95) world.ambientMotes.splice(i, 1)
+      continue
+    }
     if (n(m, 'y') < 0.16) m.y = 0.74
     if (n(m, 'y') > 0.76) m.y = 0.18
   }

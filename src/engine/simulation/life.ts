@@ -1,6 +1,6 @@
 import { findCatalogDef } from '@/data/catalog'
 import type { FloraDef, PlacedItem } from '@/data/types'
-import { getLandSurfaceNormY, type TerrainInput } from '@/engine/geometry'
+import { getSoilSurfaceNormalizedY, type TerrainInput } from '@/engine/geometry'
 import { createItemId } from '@/lib/ids'
 import type { Rng } from '@/lib/rng'
 import type { StudioState } from '@/store/useStudioStore'
@@ -91,6 +91,10 @@ const FROND_GROWTH = 1.02
 const FROND_MAX = 1.35
 const SEED_CHANCE = 0.4
 const SEEDLING_SCALE = 0.62
+/** Seedlings sit this far above the soil surface, like flora placed by `addItem`. */
+const SEEDLING_LIFT = 0.05
+/** Frames a falling leaf lives before it fades out. */
+export const LEAF_TTL = 240
 
 /** Light a bloom plant receives: a grow lamp is strong, ambient room light is weak. */
 export function lightDose(state: Pick<StudioState, 'hasGrowLamp'>): number {
@@ -139,7 +143,7 @@ export function spawnSeedling(
     id: parent.id,
     category: 'flora',
     x,
-    y: getLandSurfaceNormY(terrain, x),
+    y: getSoilSurfaceNormalizedY(terrain, x) - SEEDLING_LIFT,
     scale: def.baseScale * SEEDLING_SCALE,
     rotation: 0,
     flipX: false,
@@ -190,6 +194,7 @@ function onCrossing(
           vx: (rng() - 0.5) * 0.00012,
           vy: 0.0001,
           r: 1.6,
+          ttl: LEAF_TTL,
           phase: rng() * Math.PI * 2,
         })
       }
@@ -219,18 +224,27 @@ export function lifeStep(
     if (!def || !life || item.baby !== undefined) continue
     const pace = lifePace(item, env.lightDose)
     if (pace === 0) continue
-    const before = life.cyc
-    const after = before + (dtDay / def.days) * pace
-    life.cyc = after
-    for (const step of LIFE_STEPS[def.kind]) {
-      if (before < step.at && after >= step.at) {
-        emit({ kind: step.name, uid: item.uid, id: item.id })
-        onCrossing(world, item, step.name, rng, emit, env)
-      }
-    }
-    if (after >= 1) {
+    // Any dt works: each pass runs to the end of the cycle (cyc 1) or the end of the delta, whichever is first.
+    while (life.cyc >= 1) {
       life.cyc -= 1
       life.n++
+    }
+    let remaining = (dtDay / def.days) * pace
+    while (remaining > 0) {
+      const before = life.cyc
+      const after = before + remaining
+      const reach = Math.min(after, 1)
+      life.cyc = reach
+      for (const step of LIFE_STEPS[def.kind]) {
+        if (before < step.at && reach >= step.at) {
+          emit({ kind: step.name, uid: item.uid, id: item.id })
+          onCrossing(world, item, step.name, rng, emit, env)
+        }
+      }
+      if (after < 1) break
+      life.cyc = 0
+      life.n++
+      remaining = after - 1
     }
   }
 }

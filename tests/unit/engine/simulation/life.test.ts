@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { findCatalogDef } from '@/data/catalog'
 import type { FloraDef, PlacedItem } from '@/data/types'
-import { getLandSurfaceNormY } from '@/engine/geometry'
+import { getSoilSurfaceNormalizedY } from '@/engine/geometry'
 import {
   ensureLife,
   initLife,
@@ -103,9 +103,18 @@ describe('life stepping', () => {
   })
 
   it('nextStep is the first threshold above cyc, null without life', () => {
-    expect(nextStep(plant('fittonia', { life: { cyc: 0.49, n: 0, tendrils: 0 } }))).toEqual({ name: 'bud', at: 0.5 })
-    expect(nextStep(plant('fittonia', { life: { cyc: 0.5, n: 0, tendrils: 0 } }))).toEqual({ name: 'open', at: 0.68 })
-    expect(nextStep(plant('fittonia', { life: { cyc: 0.95, n: 0, tendrils: 0 } }))).toEqual({ name: 'seed', at: 1 })
+    expect(nextStep(plant('fittonia', { life: { cyc: 0.49, n: 0, tendrils: 0 } }))).toEqual({
+      name: 'bud',
+      at: 0.5,
+    })
+    expect(nextStep(plant('fittonia', { life: { cyc: 0.5, n: 0, tendrils: 0 } }))).toEqual({
+      name: 'open',
+      at: 0.68,
+    })
+    expect(nextStep(plant('fittonia', { life: { cyc: 0.95, n: 0, tendrils: 0 } }))).toEqual({
+      name: 'seed',
+      at: 1,
+    })
     expect(nextStep(item('fittonia'))).toBeNull()
     expect(nextStep(plant('river_rock'))).toBeNull()
   })
@@ -147,7 +156,7 @@ describe('life stepping', () => {
     expect(child.category).toBe('flora')
     expect(child.life).toBeDefined()
     expect(Math.abs(child.x - 0.5)).toBeLessThanOrEqual(0.06)
-    expect(child.y).toBeCloseTo(getLandSurfaceNormY(terrain, child.x))
+    expect(child.y).toBeCloseTo(getSoilSurfaceNormalizedY(terrain, child.x) - 0.05)
     expect(out.map((e) => e.kind)).toEqual(['seed', 'seedling'])
     expect(out[1]!.uid).toBe(child.uid)
   })
@@ -155,13 +164,20 @@ describe('life stepping', () => {
   it('does not spawn a seedling above the 40% roll, and does not step the new child', () => {
     const w = createWorld()
     w.items.push(plant('fittonia', { life: { cyc: 0.99, n: 0, tendrils: 0 } }))
-    lifeStep(w, 1, () => 0.5, () => {}, env)
+    lifeStep(
+      w,
+      1,
+      () => 0.5,
+      () => {},
+      env,
+    )
     expect(w.items).toHaveLength(1)
     const w2 = createWorld()
     w2.items.push(plant('fittonia', { life: { cyc: 0.99, n: 0, tendrils: 0 } }))
     const { out, emit } = events()
     lifeStep(w2, 1, () => 0.3, emit, env)
     expect(out.filter((e) => e.uid !== 'fittonia' && e.kind !== 'seedling')).toEqual([])
+    expect(w2.items[1]!.life!.cyc).toBeCloseTo(0.3 * 0.45)
   })
 
   it('refuses a seedling at 18 flora, 3 of a species, or 70 items', () => {
@@ -169,7 +185,8 @@ describe('life stepping', () => {
     const rng = () => 0.5
     const flora = createWorld()
     flora.items.push(parent)
-    for (let i = 0; i < 17; i++) flora.items.push(plant(i % 2 ? 'echeveria' : 'boston_fern', { uid: `f${i}` }))
+    for (let i = 0; i < 17; i++)
+      flora.items.push(plant(i % 2 ? 'echeveria' : 'boston_fern', { uid: `f${i}` }))
     expect(flora.items).toHaveLength(18)
     expect(spawnSeedling(flora, parent, rng, terrain)).toBeNull()
 
@@ -179,7 +196,8 @@ describe('life stepping', () => {
 
     const items = createWorld()
     items.items.push(parent)
-    for (let i = 0; i < 69; i++) items.items.push(plant('river_rock', { uid: `r${i}`, category: 'hardscape' }))
+    for (let i = 0; i < 69; i++)
+      items.items.push(plant('river_rock', { uid: `r${i}`, category: 'hardscape' }))
     expect(items.items).toHaveLength(70)
     expect(spawnSeedling(items, parent, rng, terrain)).toBeNull()
 
@@ -191,42 +209,115 @@ describe('life stepping', () => {
 
   it('frond grows scale 2% up to base*1.35, else drops a leaf', () => {
     const w = createWorld()
-    const fern = plant('peacock_fern', { scale: 1, life: { cyc: 0.99, n: 0, tendrils: 0 } })
+    const fern = plant('peacock_fern', { life: { cyc: 0.99, n: 0, tendrils: 0 } })
     w.items.push(fern)
     const base = (findCatalogDef('peacock_fern') as FloraDef).baseScale
     fern.scale = base
-    lifeStep(w, 1, () => 0.5, () => {}, env)
+    lifeStep(
+      w,
+      1,
+      () => 0.5,
+      () => {},
+      env,
+    )
     expect(fern.scale).toBeCloseTo(base * 1.02)
     expect(w.ambientMotes).toHaveLength(0)
 
     fern.scale = base * 1.35
     fern.life = { cyc: 0.99, n: 0, tendrils: 0 }
-    lifeStep(w, 1, () => 0.5, () => {}, env)
+    lifeStep(
+      w,
+      1,
+      () => 0.5,
+      () => {},
+      env,
+    )
     expect(fern.scale).toBeCloseTo(base * 1.35)
     expect(w.ambientMotes).toHaveLength(1)
     expect(w.ambientMotes[0]).toMatchObject({ type: 'leaf', x: fern.x, y: fern.y, r: 1.6 })
 
     fern.life = { cyc: 0.99, n: 0, tendrils: 0 }
     w.ambientMotes = Array.from({ length: 48 }, () => ({ type: 'dust' }))
-    lifeStep(w, 1, () => 0.5, () => {}, env)
+    lifeStep(
+      w,
+      1,
+      () => 0.5,
+      () => {},
+      env,
+    )
     expect(w.ambientMotes).toHaveLength(48)
+  })
+
+  it('handles a multi-cycle dt: each cycle emits its own events', () => {
+    const w = createWorld()
+    const f = plant('fittonia', { life: { cyc: 0.1, n: 0, tendrils: 0 } })
+    w.items.push(f)
+    const { out, emit } = events()
+    lifeStep(w, 20, () => 0.9, emit, env) // 20 days / 8 = 2.5 cycles
+    expect(out.map((e) => e.kind)).toEqual([
+      'bud',
+      'open',
+      'fade',
+      'seed',
+      'bud',
+      'open',
+      'fade',
+      'seed',
+      'bud',
+    ])
+    expect(f.life!.cyc).toBeCloseTo(0.6)
+    expect(f.life!.n).toBe(2)
+    expect(w.items).toHaveLength(1)
+  })
+
+  it('a dt of exactly one cycle wraps to cyc 0 and does not loop forever', () => {
+    const w = createWorld()
+    const f = plant('moss_mound', { life: { cyc: 0, n: 0, tendrils: 0 } })
+    w.items.push(f)
+    lifeStep(
+      w,
+      3,
+      () => 0.5,
+      () => {},
+      env,
+    )
+    expect(f.life).toMatchObject({ n: 1 })
+    expect(f.life!.cyc).toBeCloseTo(0)
   })
 
   it('tendril counts up to 4', () => {
     const w = createWorld()
     const ivy = plant('trailing_ivy', { life: { cyc: 0.99, n: 0, tendrils: 3 } })
     w.items.push(ivy)
-    lifeStep(w, 1, () => 0.5, () => {}, env)
+    lifeStep(
+      w,
+      1,
+      () => 0.5,
+      () => {},
+      env,
+    )
     expect(ivy.life!.tendrils).toBe(4)
     ivy.life!.cyc = 0.99
-    lifeStep(w, 1, () => 0.5, () => {}, env)
+    lifeStep(
+      w,
+      1,
+      () => 0.5,
+      () => {},
+      env,
+    )
     expect(ivy.life!.tendrils).toBe(4)
   })
 
   it('spread on a moss plant widens or adds a tuft', () => {
     const w = createWorld()
     w.items.push(plant('moss_mound', { life: { cyc: 0.99, n: 0, tendrils: 0 } }))
-    lifeStep(w, 1, () => 0.5, () => {}, env)
+    lifeStep(
+      w,
+      1,
+      () => 0.5,
+      () => {},
+      env,
+    )
     expect(w.mossTufts).toHaveLength(1)
   })
 
@@ -237,7 +328,13 @@ describe('life stepping', () => {
       plant('fittonia', { uid: 'b', vitality: 40 }),
       plant('fittonia', { uid: 'c', baby: 0.2 }),
     )
-    lifeStep(w, 1, () => 0.5, () => {}, env)
+    lifeStep(
+      w,
+      1,
+      () => 0.5,
+      () => {},
+      env,
+    )
     expect(w.items.map((i) => i.life!.cyc)).toEqual([0, 0, 0])
   })
 
