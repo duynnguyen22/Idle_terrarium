@@ -12,7 +12,18 @@ import type { LifeEvent } from '@/engine/simulation/life'
 import { createWorld } from '@/engine/world'
 
 function fauna(id: string, uid = id, extra: Partial<PlacedItem> = {}): PlacedItem {
-  return { uid, id, category: 'fauna', x: 0.5, y: 0.5, scale: 1, rotation: 0, flipX: false, zIndex: 1, ...extra }
+  return {
+    uid,
+    id,
+    category: 'fauna',
+    x: 0.5,
+    y: 0.5,
+    scale: 1,
+    rotation: 0,
+    flipX: false,
+    zIndex: 1,
+    ...extra,
+  }
 }
 
 const good: BreedConditions = {
@@ -59,7 +70,10 @@ describe('BREED table', () => {
 describe('breedConditions', () => {
   it('reads env, substrates and the cycled pool', () => {
     const w = createWorld()
-    const c = breedConditions(w, { substrates: depths({ leaflitter: 2, water: 10 }), waterSplit: 0.5 })
+    const c = breedConditions(w, {
+      substrates: depths({ leaflitter: 2, water: 10 }),
+      waterSplit: 0.5,
+    })
     expect(c).toMatchObject({
       nutrients: w.env.nutrients,
       soilMoisture: w.env.soilMoisture,
@@ -69,7 +83,10 @@ describe('breedConditions', () => {
       cycleProgress: 1,
       poolScore: 100,
     })
-    expect(breedConditions(w, { substrates: depths(), waterSplit: 0 })).toMatchObject({ leaflitter: 0, poolHasWater: false })
+    expect(breedConditions(w, { substrates: depths(), waterSplit: 0 })).toMatchObject({
+      leaflitter: 0,
+      poolHasWater: false,
+    })
   })
 })
 
@@ -133,7 +150,7 @@ describe('breedStep', () => {
     breedStep(w, 12, rng, emit, good)
     expect(w.items).toHaveLength(6)
     expect(out).toHaveLength(2)
-    expect(w.breed.springtails!).toBeLessThan(1)
+    expect(w.breed.springtails).toBeCloseTo(0.999)
   })
 
   it('babies grow up over 3 days and lose the baby field', () => {
@@ -198,6 +215,31 @@ describe('spawnBaby and babyScale', () => {
     expect(baby.scale).toBe(1.2)
     expect('vx' in baby).toBe(false)
     expect('parentUid' in baby).toBe(false)
+  })
+
+  it('breedStep copies the adult picked by rng and strips its runtime state', () => {
+    const { w, emit } = setup('springtails', 0)
+    w.items.push(
+      fauna('springtails', 'a', { x: 0.2, scale: 1 }),
+      fauna('springtails', 'b', {
+        x: 0.8,
+        scale: 1.4,
+        aiState: 'wandering',
+        aiTimer: 3,
+        offsetX: 0.1,
+        offsetY: 0.1,
+        life: { cyc: 0.3, n: 1, tendrils: 0 },
+        resting: true,
+        lush: 0.5,
+      }),
+    )
+    breedStep(w, 4, () => 0.99, emit, good)
+    const baby = w.items[2]!
+    expect(baby.scale).toBe(1.4)
+    expect(baby.x).toBeCloseTo(0.8 + (0.99 - 0.5) * 0.04)
+    for (const k of ['aiState', 'aiTimer', 'offsetX', 'offsetY', 'life', 'resting', 'lush']) {
+      expect(k in baby).toBe(false)
+    }
   })
 
   it('renders babies at 0.55..1 of the adult scale', () => {

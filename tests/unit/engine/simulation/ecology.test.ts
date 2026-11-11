@@ -161,7 +161,9 @@ describe('ecologyStep', () => {
   })
 
   it('does not grow or shrink sprouts, and keeps them sprout until growthProgress >= 1', () => {
-    const w = worldWith([plant({ stage: 'sprout', growthProgress: 0.5, scale: 0.6, vitality: 100 })])
+    const w = worldWith([
+      plant({ stage: 'sprout', growthProgress: 0.5, scale: 0.6, vitality: 100 }),
+    ])
     ecologyStep(w, 1, { away: false })
     expect(w.items[0].scale).toBe(0.6)
     expect(w.items[0].stage).toBe('sprout')

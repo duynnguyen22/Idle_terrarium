@@ -45,7 +45,8 @@ export const BREED: Readonly<Partial<Record<string, BreedDef>>> = {
   cherry_shrimp: {
     days: 6,
     cap: 6,
-    needs: (c) => (c.poolHasWater && c.cycleProgress >= 1 && c.poolScore > 60 ? null : 'a cycled pool'),
+    needs: (c) =>
+      c.poolHasWater && c.cycleProgress >= 1 && c.poolScore > 60 ? null : 'a cycled pool',
   },
   garden_snail: {
     days: 9,
@@ -88,9 +89,17 @@ export function spawnBaby(world: EngineWorld, adult: PlacedItem, rng: Rng): Plac
     x: adult.x + (rng() - 0.5) * 0.04,
     zIndex: world.items.length + 1,
   }
+  // A newborn starts fresh: no motion/AI state, placement offsets, plant life or shared `life` reference.
   delete baby.vx
   delete baby.vy
+  delete baby.aiState
+  delete baby.aiTimer
   delete baby.parentUid
+  delete baby.offsetX
+  delete baby.offsetY
+  delete baby.life
+  delete baby.resting
+  delete baby.lush
   world.items.push(baby)
   return baby
 }
@@ -106,7 +115,13 @@ export function babyScale(item: PlacedItem, adultScale: number): number {
  * BREED gains progress `dt / days` while it has an adult, mean adult stress < 0.4, its needs are met and it is
  * under cap. Each whole unit of progress spawns a baby and emits `hatch`; progress is held when conditions fail.
  */
-export function breedStep(world: EngineWorld, dtDay: number, rng: Rng, emit: Emit, cond: BreedConditions): void {
+export function breedStep(
+  world: EngineWorld,
+  dtDay: number,
+  rng: Rng,
+  emit: Emit,
+  cond: BreedConditions,
+): void {
   for (const item of world.items) {
     if (item.baby === undefined) continue
     item.baby += dtDay / BABY_DAYS
@@ -135,7 +150,7 @@ export function breedStep(world: EngineWorld, dtDay: number, rng: Rng, emit: Emi
         break
       }
       progress -= 1
-      const parent = adults[Math.floor(rng() * adults.length)] ?? adults[0]!
+      const parent = adults[Math.min(adults.length - 1, Math.floor(rng() * adults.length))]!
       const baby = spawnBaby(world, parent, rng)
       count++
       emit({ kind: 'hatch', uid: baby.uid, id })
