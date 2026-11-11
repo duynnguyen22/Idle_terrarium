@@ -4,11 +4,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mutateWorld, getWorld, unregisterWorld } from '@/engine/engineBridge'
 import { hasPool } from '@/engine/geometry'
 import { configureSpriteCache } from '@/engine/sprites/spriteCache'
+import * as catchup from '@/engine/simulation/catchup'
 import { useTerrariumEngine } from '@/hooks/useTerrariumEngine'
 import { useOverlayStore } from '@/store/useOverlayStore'
 import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
 import { useTelemetryStore } from '@/store/useTelemetryStore'
 import { makeRecordingContext } from '../helpers/recordingContext'
+
+vi.mock('@/engine/simulation/catchup', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/engine/simulation/catchup')>()
+  return { ...actual, runCatchUpIfDue: vi.fn(actual.runCatchUpIfDue) }
+})
 
 function Harness() {
   const ref = useRef<HTMLCanvasElement>(null)
@@ -280,6 +286,23 @@ describe('useTerrariumEngine', () => {
     document.dispatchEvent(new Event('visibilitychange'))
     expect(useStudioStore.getState().awayLog[0]?.mode).toBe('away')
     expect(useOverlayStore.getState().awayIndex).toBe(0)
+    unmount()
+  })
+
+  it('still registers the world and starts the loop when catch-up throws, and skips that gap', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    vi.mocked(catchup.runCatchUpIfDue).mockImplementationOnce(() => {
+      throw new Error('boom')
+    })
+    useStudioStore.setState({ lastSimulatedAt: Date.now() - 2 * 3_600_000, catchupEnabled: true })
+    const { unmount } = render(<Harness />)
+    expect(spy).toHaveBeenCalled()
+    expect(getWorld()).toBeDefined()
+    expect(callbacks.size).toBe(1)
+    const last = useStudioStore.getState().lastSimulatedAt
+    expect(last).not.toBeNull()
+    expect(Date.now() - (last ?? 0)).toBeLessThan(60_000)
+    expect(useStudioStore.getState().awayLog).toHaveLength(0)
     unmount()
   })
 })

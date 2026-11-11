@@ -94,8 +94,12 @@ describe('AwayCard', () => {
 
   it('counts the more line into the title and pluralises', () => {
     open([report({ items: [full().items[0]!], more: 0 })])
-    render(<AwayCard />)
+    const { unmount } = render(<AwayCard />)
     expect(screen.getByRole('dialog')).toHaveAccessibleName(/^1 change since /)
+    unmount()
+    open([report({ items: [full().items[0]!], more: 1 })])
+    render(<AwayCard />)
+    expect(screen.getByRole('dialog')).toHaveAccessibleName(/^2 changes since /)
   })
 
   it('says "A quiet night" and the rested line when empty', () => {
@@ -152,6 +156,19 @@ describe('AwayCard', () => {
     expect(world.marks.rings).toEqual(['a', 'b'])
     unmount()
     expect(world.marks.rings).toEqual([])
+  })
+
+  it('Escape closes the card without touching the selection or other Escape handlers', () => {
+    const other = vi.fn()
+    window.addEventListener('keydown', other)
+    useStudioStore.setState({ selectedId: 'a' })
+    open([full()])
+    render(<AwayCard />)
+    act(() => void fireEvent.keyDown(document.body, { key: 'Escape' }))
+    window.removeEventListener('keydown', other)
+    expect(useOverlayStore.getState().awayIndex).toBeNull()
+    expect(useStudioStore.getState().selectedId).toBe('a')
+    expect(other).not.toHaveBeenCalled()
   })
 
   it('rings only uids that still exist and follow the page', () => {

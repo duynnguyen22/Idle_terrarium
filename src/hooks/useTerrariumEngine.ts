@@ -59,8 +59,18 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
     seedInitialScene(world)
     // Time away: catch the tank up once now and once per return to the tab, outside the rAF frame.
     const catchUp = () => {
-      const r = runCatchUpIfDue(world, useStudioStore.getState(), Date.now())
-      if (r) recordReport(r, { journal: true })
+      try {
+        const r = runCatchUpIfDue(world, useStudioStore.getState(), Date.now())
+        if (r) {
+          recordReport(r, { journal: true })
+          // Persist the caught-up world alongside the already-advanced lastSimulatedAt.
+          commitWorld()
+        }
+      } catch (e) {
+        // Never block the engine: skip this gap instead of retrying it on every reload.
+        console.error('Catch-up failed', e)
+        useStudioStore.getState().setLastSimulatedAt(Date.now())
+      }
     }
     catchUp()
     if (import.meta.env.DEV)

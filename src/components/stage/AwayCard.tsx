@@ -77,11 +77,14 @@ export function AwayCard() {
   const open = report !== undefined
   useEffect(() => {
     if (!open) return
+    // Capture phase + stopPropagation: Escape closes the card only, not relax mode or the selection.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeAway()
+      if (e.key !== 'Escape') return
+      e.stopPropagation()
+      closeAway()
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
   }, [open, closeAway])
 
   if (awayIndex === null || !report) return null
