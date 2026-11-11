@@ -5,6 +5,8 @@ import { drawCondensation, drawMineralSpots } from '@/engine/render/condensation
 import { drawLid, drawPaludariumFrontFrame } from '@/engine/render/frame'
 import { vesselMetrics } from '@/engine/render/metrics'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
+import { drawMarks } from '@/engine/render/marks'
+import { setRings, pingItem, activePings, clearRings } from '@/engine/marks'
 import { drawSpecimens } from '@/engine/render/specimens'
 import { drawSubstrates } from '@/engine/render/substrates'
 import { beginVesselClip } from '@/engine/render/vessel'
@@ -415,5 +417,73 @@ describe('rectangular tanks', () => {
     expect(fill?.args[1]).toBeCloseTo(R.y)
     expect(fill?.args[2]).toBeCloseTo(R.w)
     expect(fill?.args[3]).toBeCloseTo(R.h)
+  })
+})
+
+describe('drawMarks', () => {
+  const R = computeVesselRect(800, 600)
+
+  it('draws nothing without marks', () => {
+    const { ctx, calls } = makeRecordingContext()
+    drawMarks(ctx, populatedWorld(), createDefaultState(), R, 100)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('draws a dashed ring for a ringed item and skips missing uids', () => {
+    const { ctx, calls } = makeRecordingContext()
+    const world = populatedWorld()
+    setRings(world, ['a', 'gone'])
+    drawMarks(ctx, world, createDefaultState(), R, 100)
+    expect(calls.filter((c) => c === 'stroke')).toHaveLength(1)
+    expect(calls).toContain('setLineDash')
+    expect(calls.filter((c) => c === 'save')).toHaveLength(
+      calls.filter((c) => c === 'restore').length,
+    )
+    clearRings(world)
+    expect(world.marks.rings).toEqual([])
+  })
+
+  it('pings an item while active and drops it once expired', () => {
+    const world = populatedWorld()
+    pingItem(world, 'b', 1000, 0)
+    const live = makeRecordingContext()
+    drawMarks(live.ctx, world, createDefaultState(), R, 500)
+    expect(live.calls.filter((c) => c === 'stroke')).toHaveLength(1)
+    const gone = makeRecordingContext()
+    drawMarks(gone.ctx, world, createDefaultState(), R, 1500)
+    expect(gone.calls).toHaveLength(0)
+    expect(world.marks.pings.size).toBe(0)
+  })
+
+  it('activePings keeps live entries and deletes expired ones', () => {
+    const world = createWorld()
+    pingItem(world, 'x', 100, 0)
+    pingItem(world, 'y', 500, 0)
+    expect(activePings(world, 200)).toEqual(['y'])
+    expect([...world.marks.pings.keys()]).toEqual(['y'])
+  })
+})
+
+describe('moss tufts', () => {
+  const R = computeVesselRect(800, 600)
+  const emptyWorld = (tufts: EngineWorld['mossTufts']): EngineWorld => {
+    const world = createWorld()
+    world.surfaceGrains = []
+    world.mossCarpet = []
+    world.moldPatches = []
+    world.mossTufts = tufts
+    return world
+  }
+  const ellipses = (world: EngineWorld, phase: 'soil' | 'water') => {
+    const { ctx, calls } = makeRecordingContext()
+    drawSubstrates(ctx, world, createDefaultState(), R, 0, phase)
+    return calls.filter((c) => c === 'ellipse').length
+  }
+
+  it('draws one ellipse per tuft in the soil pass only', () => {
+    const base = ellipses(emptyWorld([]), 'soil')
+    const world = emptyWorld([{ x: 0.7, r: 0.5, w: 0.05, seed: 0.1 }])
+    expect(ellipses(world, 'soil')).toBe(base + 1)
+    expect(ellipses(world, 'water')).toBe(0)
   })
 })

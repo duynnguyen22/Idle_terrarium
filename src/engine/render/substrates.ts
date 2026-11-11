@@ -3,6 +3,7 @@ import { LAND_LAYER_IDS, SUBSTRATE_LAYERS } from '@/data/substrates'
 import type { StudioState } from '@/store/useStudioStore'
 import type { EngineWorld } from '../world'
 import {
+  getLandSurfaceNormY,
   getPoolBedNormY,
   getSoilSurfaceNormalizedY,
   hasPool,
@@ -225,6 +226,36 @@ function drawSurfaceLife(
   }
 }
 
+/** Soft green moss tufts spreading along the land surface (pool side skipped like the carpet). */
+function drawMossTufts(
+  ctx: CanvasRenderingContext2D,
+  world: EngineWorld,
+  state: StudioState,
+  R: Rect,
+): void {
+  if (world.mossTufts.length === 0) return
+  const t = terrainOf(world, state)
+  const { toPx, toPy, divider } = bankGeometry(t, R)
+  const pool = hasPool(state.waterSplit)
+  ctx.save()
+  ctx.fillStyle = 'rgba(86,140,60,0.55)'
+  world.mossTufts.forEach((tuft) => {
+    if (pool && tuft.x < divider + 0.01) return
+    ctx.beginPath()
+    ctx.ellipse(
+      toPx(tuft.x),
+      toPy(getLandSurfaceNormY(t, tuft.x)),
+      R.w * 0.03 * tuft.r,
+      R.h * tuft.w,
+      0,
+      0,
+      Math.PI * 2,
+    )
+    ctx.fill()
+  })
+  ctx.restore()
+}
+
 /**
  * Prototype drawSubstratesAndLake. The 'soil' phase (before specimens) paints the land strata cut at
  * the bank, the pool gravel bed and foam divider, surface grains, moss and mold. The 'water' phase
@@ -247,4 +278,5 @@ export function drawSubstrates(
   drawLandStrata(ctx, world, state, g, pool)
   if (pool) drawPoolBed(ctx, world, state, g)
   drawSurfaceLife(ctx, world, state, g, pool)
+  drawMossTufts(ctx, world, state, R)
 }

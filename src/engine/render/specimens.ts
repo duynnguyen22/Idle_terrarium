@@ -1,8 +1,29 @@
 import { findCatalogDef, type CatalogId } from '@/data/catalog'
+import type { PlacedItem, Rect } from '@/data/types'
 import { babyScale } from '../simulation/breed'
 import { sproutScale } from '../simulation/dayTick'
 import { getSprite } from '../sprites/spriteCache'
 import { normToPx, vesselMetrics, type RenderFn } from './metrics'
+
+/**
+ * Pixel box of a placed item: centre and drawn size, with the sprout / baby scale applied.
+ * Shared by the specimen pass and the mark rings so both agree on the item's extent.
+ */
+export function itemBox(R: Rect, item: PlacedItem): { x: number; y: number; size: number } | null {
+  const def = findCatalogDef(item.id)
+  if (!def) return null
+  const { cy, r: Rad } = vesselMetrics(R)
+  // Seedlings grow from 0.58 of their species size; young fauna from 0.55 of the adult's.
+  let scale = item.scale || 1
+  if (item.baby !== undefined) scale = babyScale(item, scale)
+  else if (item.category === 'flora' && item.stage === 'sprout')
+    scale = sproutScale(item, def.baseScale)
+  return {
+    x: normToPx(R, item.x),
+    y: cy - Rad + item.y * (Rad * 2),
+    size: Rad * 0.36 * scale,
+  }
+}
 
 /**
  * Placed flora, hardscape and fauna (prototype renderPlacedSpecimens): sprite blit with scale, rotation, flip
@@ -10,7 +31,6 @@ import { normToPx, vesselMetrics, type RenderFn } from './metrics'
  * Mounted children are NOT re-positioned here (the prototype mutated items while drawing); the tick does that.
  */
 export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
-  const { cy, r: Rad } = vesselMetrics(R)
   const sorted = [...world.items].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
 
   sorted.forEach((item) => {
@@ -18,14 +38,9 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
     if (!def) return
     const sprite = getSprite(item.id as CatalogId)
 
-    const px = normToPx(R, item.x)
-    const py = cy - Rad + item.y * (Rad * 2)
-    // Seedlings grow from 0.58 of their species size; young fauna from 0.55 of the adult's.
-    let scale = item.scale || 1
-    if (item.baby !== undefined) scale = babyScale(item, scale)
-    else if (item.category === 'flora' && item.stage === 'sprout')
-      scale = sproutScale(item, def.baseScale)
-    const drawSize = Rad * 0.36 * scale
+    const box = itemBox(R, item)
+    if (!box) return
+    const { x: px, y: py, size: drawSize } = box
 
     ctx.save()
     ctx.translate(px, py)

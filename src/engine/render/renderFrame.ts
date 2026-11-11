@@ -10,6 +10,7 @@ import { drawLamp } from './lamp'
 import { drawMist } from './mist'
 import { drawParticles } from './particles'
 import { drawPouring } from './pouring'
+import { drawMarks } from './marks'
 import { drawSpecimens } from './specimens'
 import { drawSubstrates } from './substrates'
 import { beginVesselClip, drawLampCone, drawVesselRim } from './vessel'
@@ -61,6 +62,8 @@ export function renderFrame(
   drawSubstrates(ctx, world, state, R, timestamp, 'soil')
   // 5. Placed flora, waterfall hardscapes & fauna
   drawSpecimens(ctx, world, state, R, timestamp)
+  // 5B. Dashed rings and pulsing pings around marked items
+  drawMarks(ctx, world, state, R, timestamp)
   // 6. Translucent pool water with pump-driven ripples (nothing when there is no pool)
   drawSubstrates(ctx, world, state, R, timestamp, 'water')
   // 6B. Pour container cursor & falling material stream
