@@ -60,7 +60,7 @@ describe('studio store', () => {
   it('hydration sanitizes a bad musicVolume and an unknown soundPreset', () => {
     localStorage.setItem(
       STUDIO_STORAGE_KEY,
-      JSON.stringify({ state: { musicVolume: 'loud', soundPreset: 'polka' }, version: 3 }),
+      JSON.stringify({ state: { musicVolume: 'loud', soundPreset: 'polka' }, version: 4 }),
     )
     const s = createStudioStore(localStorage).getState()
     expect(s.musicVolume).toBe(0.5)
@@ -77,7 +77,7 @@ describe('studio store', () => {
     expect(store.getState()).toMatchObject({ hasLid: false, dayCount: 2, selectedId: 'x' })
     expect(store.getState().substrates.sand).toBe(5)
     const stored = JSON.parse(localStorage.getItem(STUDIO_STORAGE_KEY) ?? '{}')
-    expect(stored.version).toBe(3)
+    expect(stored.version).toBe(4)
     expect(stored.state.dayCount).toBe(2)
     expect(stored.state).not.toHaveProperty('selectedId')
     store.getState().resetStudio()
@@ -265,13 +265,13 @@ describe('studio store', () => {
     expect(s.getState().backdropHaze).toBe(0)
   })
 
-  it('persists room, backdrop and mineral spots at version 3', () => {
+  it('persists room, backdrop and mineral spots at version 4', () => {
     const s = createStudioStore(localStorage)
     s.getState().setRoom({ water: 'rain', air: 'smoke' })
     s.getState().setBackdrop('karst')
     s.getState().setMineralSpots(0.5)
     const stored = JSON.parse(localStorage.getItem(STUDIO_STORAGE_KEY) ?? '{}')
-    expect(stored.version).toBe(3)
+    expect(stored.version).toBe(4)
     expect(stored.state).toMatchObject({
       room: { water: 'rain', air: 'smoke' },
       backdrop: 'karst',
@@ -303,6 +303,73 @@ describe('studio store', () => {
       room: { water: 'tap_treated', tds: 600, ph: 5.5 },
       backdropHaze: 80,
     })
+  })
+
+  it('hydrates a v3 save with the v4 defaults', () => {
+    localStorage.setItem(STUDIO_STORAGE_KEY, JSON.stringify({ state: { dayCount: 5 }, version: 3 }))
+    const s = createStudioStore(localStorage).getState()
+    expect(s).toMatchObject({
+      dayCount: 5,
+      pace: 'garden',
+      lastSimulatedAt: null,
+      catchupEnabled: true,
+      awayLog: [],
+    })
+    expect(s.worldSeed).toHaveLength(8)
+  })
+
+  it('sanitizes a bad pace and awayLog on a current-version hydration', () => {
+    localStorage.setItem(
+      STUDIO_STORAGE_KEY,
+      JSON.stringify({ state: { pace: 'warp', awayLog: 'nope' }, version: 4 }),
+    )
+    expect(createStudioStore(localStorage).getState()).toMatchObject({
+      pace: 'garden',
+      awayLog: [],
+    })
+  })
+
+  it('pushAwayReport keeps the newest 12 reports, newest first', () => {
+    const s = createStudioStore(localStorage)
+    for (let i = 0; i < 15; i++) s.getState().pushAwayReport({ from: i, to: i + 1 })
+    const log = s.getState().awayLog
+    expect(log).toHaveLength(12)
+    expect(log[0]).toEqual({ from: 14, to: 15 })
+    expect(log[11]).toEqual({ from: 3, to: 4 })
+  })
+
+  it('persists pace, lastSimulatedAt, catchupEnabled, worldSeed and awayLog', () => {
+    const s = createStudioStore(localStorage)
+    s.getState().setPace('calm')
+    s.getState().setLastSimulatedAt(1234)
+    s.getState().setCatchupEnabled(false)
+    s.getState().pushAwayReport({ from: 1, to: 2 })
+    const stored = JSON.parse(localStorage.getItem(STUDIO_STORAGE_KEY) ?? '{}')
+    expect(stored.state).toMatchObject({
+      pace: 'calm',
+      lastSimulatedAt: 1234,
+      catchupEnabled: false,
+      worldSeed: s.getState().worldSeed,
+      awayLog: [{ from: 1, to: 2 }],
+    })
+    expect(partialize(s.getState()).worldSeed).toHaveLength(8)
+  })
+
+  it('setDayCount sets the day count', () => {
+    const s = createStudioStore(localStorage)
+    s.getState().setDayCount(42)
+    expect(s.getState().dayCount).toBe(42)
+  })
+
+  it('defaults to the garden pace with catch-up on and a fresh seed', () => {
+    const s = createStudioStore(localStorage).getState()
+    expect(s).toMatchObject({
+      pace: 'garden',
+      lastSimulatedAt: null,
+      catchupEnabled: true,
+      awayLog: [],
+    })
+    expect(s.worldSeed).toHaveLength(8)
   })
 
   it('ignores non-finite haze and mineral spots and clamps spots to 0–1', () => {

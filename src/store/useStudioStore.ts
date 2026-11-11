@@ -14,6 +14,9 @@ import type { VesselId } from '@/data/vessels'
 import type { WorldSnapshot } from '@/engine/persistence'
 import { DEFAULT_MUSIC_VOLUME } from '@/engine/audio/ambient'
 import { DEFAULT_ROOM } from '@/engine/room'
+import { AWAY_LOG_MAX } from '@/engine/simulation/catchup'
+import type { PaceId } from '@/engine/simulation/pace'
+import type { AwayReport } from '@/engine/simulation/report'
 import { clamp } from '@/lib/clamp'
 import { importPrototypeSave } from './importPrototypeSave'
 import {
@@ -22,8 +25,10 @@ import {
   MAX_BACKDROP_HAZE,
   MAX_WATER_SPLIT,
   migrate,
+  sanitizeAwayLog,
   sanitizeBackdropHaze,
   sanitizeMusicVolume,
+  sanitizePace,
   sanitizeSoundPreset,
   sanitizeRoom,
 } from './migrations'
@@ -34,7 +39,7 @@ export { DEFAULT_TELEMETRY, type Telemetry } from './useTelemetryStore'
 
 export const STUDIO_STORAGE_KEY = 'botanica_studio_v1'
 /** Persisted-state version; `migrate` upgrades anything older (saves and garden snapshots alike). */
-export const STUDIO_VERSION = 3
+export const STUDIO_VERSION = 4
 
 export type HardwareKey = 'hasLid' | 'hasGrowLamp' | 'hasFogger'
 export type ActiveTab = 'vessel' | 'substrate' | 'flora' | 'hardscape' | 'fauna' | (string & {})
@@ -88,6 +93,16 @@ export interface StudioState {
   backdrop: BackdropId
   /** Backdrop haze percentage, 0 to 80. */
   backdropHaze: number
+  /** How many real milliseconds make one tank day. */
+  pace: PaceId
+  /** Wall-clock ms of the last simulated moment; null until the first run. */
+  lastSimulatedAt: number | null
+  /** Whether time passes (is simulated) while the app is closed. */
+  catchupEnabled: boolean
+  /** Seed for the deterministic offline catch-up. */
+  worldSeed: string
+  /** Newest-first summaries of past away catch-ups, at most AWAY_LOG_MAX. */
+  awayLog: AwayReport[]
 }
 
 export interface StudioActions {
@@ -125,6 +140,12 @@ export interface StudioActions {
   setBackdrop: (id: BackdropId) => void
   /** Clamped to 0 to 80. */
   setBackdropHaze: (v: number) => void
+  setPace: (p: PaceId) => void
+  setLastSimulatedAt: (ts: number | null) => void
+  setCatchupEnabled: (v: boolean) => void
+  /** Prepends the report and keeps the newest AWAY_LOG_MAX. */
+  pushAwayReport: (r: AwayReport) => void
+  setDayCount: (n: number) => void
   resetStudio: () => void
 }
 
@@ -171,6 +192,11 @@ export function createDefaultState(): StudioState {
     mineralSpots: 0,
     backdrop: DEFAULT_BACKDROP,
     backdropHaze: DEFAULT_BACKDROP_HAZE,
+    pace: 'garden',
+    lastSimulatedAt: null,
+    catchupEnabled: true,
+    worldSeed: Math.random().toString(36).slice(2, 10),
+    awayLog: [],
   }
 }
 
@@ -202,6 +228,11 @@ export function partialize(s: StudioStore) {
     mineralSpots: s.mineralSpots,
     backdrop: s.backdrop,
     backdropHaze: s.backdropHaze,
+    pace: s.pace,
+    lastSimulatedAt: s.lastSimulatedAt,
+    catchupEnabled: s.catchupEnabled,
+    worldSeed: s.worldSeed,
+    awayLog: s.awayLog,
   }
 }
 
@@ -280,6 +311,11 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
         setBackdropHaze: (v) => {
           if (Number.isFinite(v)) set({ backdropHaze: clamp(v, 0, MAX_BACKDROP_HAZE) })
         },
+        setPace: (pace) => set({ pace }),
+        setLastSimulatedAt: (lastSimulatedAt) => set({ lastSimulatedAt }),
+        setCatchupEnabled: (catchupEnabled) => set({ catchupEnabled }),
+        pushAwayReport: (r) => set((s) => ({ awayLog: [r, ...s.awayLog].slice(0, AWAY_LOG_MAX) })),
+        setDayCount: (dayCount) => set({ dayCount }),
         resetStudio: () =>
           set((s) => ({ ...createDefaultState(), reducedMotion: s.reducedMotion })),
       }),
@@ -302,6 +338,8 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
             merged.musicVolume = sanitizeMusicVolume(saved.musicVolume)
           if (Object.hasOwn(saved, 'soundPreset'))
             merged.soundPreset = sanitizeSoundPreset(saved.soundPreset)
+          if (Object.hasOwn(saved, 'pace')) merged.pace = sanitizePace(saved.pace)
+          if (Object.hasOwn(saved, 'awayLog')) merged.awayLog = sanitizeAwayLog(saved.awayLog)
           return merged
         },
       },

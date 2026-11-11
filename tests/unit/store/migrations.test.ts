@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { RoomEnv } from '@/data/types'
-import { mapLegacySubstrates, migrate, sanitizeRoom } from '@/store/migrations'
+import {
+  mapLegacySubstrates,
+  migrate,
+  sanitizeAwayLog,
+  sanitizePace,
+  sanitizeRoom,
+} from '@/store/migrations'
 
 describe('mapLegacySubstrates', () => {
   it('folds lavarock into pebbles and moss into soil, leaflitter starts at 0', () => {
@@ -154,7 +160,39 @@ describe('migrate', () => {
     })
   })
 
-  it('returns v3 state unchanged', () => {
+  it('v3 → v4 adds pace, lastSimulatedAt, catchupEnabled, worldSeed and awayLog defaults', () => {
+    const out = migrate({ dayCount: 9 }, 3) as Record<string, unknown>
+    expect(out).toMatchObject({
+      dayCount: 9,
+      pace: 'garden',
+      lastSimulatedAt: null,
+      catchupEnabled: true,
+      awayLog: [],
+    })
+    expect(typeof out.worldSeed).toBe('string')
+    expect((out.worldSeed as string).length).toBe(8)
+  })
+
+  it('a v1 save runs through every step to v4', () => {
+    expect(migrate({ substrates: { water: 0 } }, 1)).toMatchObject({
+      pace: 'garden',
+      catchupEnabled: true,
+      awayLog: [],
+    })
+  })
+
+  it('returns v4 state unchanged', () => {
+    const v4 = {
+      pace: 'calm',
+      lastSimulatedAt: 5,
+      catchupEnabled: false,
+      worldSeed: 'abcd1234',
+      awayLog: [],
+    }
+    expect(migrate(v4, 4)).toEqual(v4)
+  })
+
+  it('returns v3 room state unchanged apart from the v4 fields', () => {
     const v3 = {
       substrates: { pebbles: 1 },
       room: { water: 'ro', tds: 90, ph: 6.6, air: 'smoke', purifier: true },
@@ -162,7 +200,7 @@ describe('migrate', () => {
       backdropHaze: 10,
       mineralSpots: 3,
     }
-    expect(migrate(v3, 3)).toEqual(v3)
+    expect(migrate(v3, 3)).toMatchObject(v3)
   })
 
   it('clamps an out-of-range room on migrate', () => {
@@ -178,6 +216,36 @@ describe('migrate', () => {
   it('returns non-object persisted values as an empty object', () => {
     expect(migrate(null, 1)).toEqual({})
     expect(migrate('x', 1)).toEqual({})
+  })
+})
+
+describe('sanitizePace', () => {
+  it('keeps a known pace and falls back to garden otherwise', () => {
+    expect(sanitizePace('brisk')).toBe('brisk')
+    expect(sanitizePace('real')).toBe('real')
+    expect(sanitizePace('warp')).toBe('garden')
+    expect(sanitizePace('toString')).toBe('garden')
+    expect(sanitizePace(3)).toBe('garden')
+    expect(sanitizePace(undefined)).toBe('garden')
+  })
+})
+
+describe('sanitizeAwayLog', () => {
+  it('returns an empty list for a non-array', () => {
+    expect(sanitizeAwayLog('x')).toEqual([])
+    expect(sanitizeAwayLog(null)).toEqual([])
+    expect(sanitizeAwayLog({ length: 2 })).toEqual([])
+  })
+
+  it('drops records without finite from/to and keeps at most 12', () => {
+    const good = { from: 1, to: 2 }
+    expect(
+      sanitizeAwayLog([good, null, 7, { from: 1 }, { from: NaN, to: 2 }, { from: 1, to: '2' }]),
+    ).toEqual([good])
+    const many = Array.from({ length: 20 }, (_, i) => ({ from: i, to: i + 1 }))
+    const out = sanitizeAwayLog(many)
+    expect(out).toHaveLength(12)
+    expect(out[0]).toEqual(many[0])
   })
 })
 

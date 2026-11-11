@@ -2,6 +2,10 @@ import { DEFAULT_SUBSTRATES } from '@/data/substrates'
 import { SOUND_PRESET_IDS } from '@/data/soundPresets'
 import type { BackdropId, PumpFlow, RoomEnv, SoundPresetId, SubstrateDepths } from '@/data/types'
 import { DEFAULT_MUSIC_VOLUME } from '@/engine/audio/ambient'
+import { AWAY_LOG_MAX } from '@/engine/simulation/catchup'
+import type { PaceId } from '@/engine/simulation/pace'
+import { PACES } from '@/engine/simulation/pace'
+import type { AwayReport } from '@/engine/simulation/report'
 import { AIR_SOURCES, DEFAULT_ROOM, PH_RANGE, TDS_RANGE, WATER_SOURCES } from '@/engine/room'
 import { clamp } from '@/lib/clamp'
 import { finiteOr } from '@/lib/finite'
@@ -92,6 +96,19 @@ export function sanitizeSoundPreset(raw: unknown): SoundPresetId {
   return SOUND_PRESET_IDS.includes(raw as SoundPresetId) ? (raw as SoundPresetId) : 'stream'
 }
 
+/** A known pace id; anything else (a hand-edited save, a removed pace) falls back to the garden pace. */
+export function sanitizePace(raw: unknown): PaceId {
+  return typeof raw === 'string' && Object.hasOwn(PACES, raw) ? (raw as PaceId) : 'garden'
+}
+
+/** A non-array becomes []; otherwise the first AWAY_LOG_MAX records with finite `from` and `to` survive. */
+export function sanitizeAwayLog(raw: unknown): AwayReport[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((r): r is AwayReport => isRecord(r) && Number.isFinite(r.from) && Number.isFinite(r.to))
+    .slice(0, AWAY_LOG_MAX)
+}
+
 function migrateV1toV2(persisted: Record<string, unknown>): Record<string, unknown> {
   const { substrates: rawSubstrates, ...rest } = persisted
   if (!isRecord(rawSubstrates)) {
@@ -112,10 +129,22 @@ function migrateV2toV3(persisted: Record<string, unknown>): Record<string, unkno
   }
 }
 
+function migrateV3toV4(persisted: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...persisted,
+    pace: 'garden',
+    lastSimulatedAt: null,
+    catchupEnabled: true,
+    worldSeed: Math.random().toString(36).slice(2, 10),
+    awayLog: [],
+  }
+}
+
 /**
  * Persisted-state migration. Version 0 (unversioned) shares the v1 shape.
  * v1 -> v2: legacy substrate keys map onto the v6 set and pool/pump/cycle fields are added.
  * v2 -> v3: the room, backdrop, backdrop haze and mineral-spot fields are added.
+ * v3 -> v4: the pace, last-simulated time, catch-up toggle, world seed and away log are added.
  * A saved room is also sanitized here, but persist only calls `migrate` when the stored version
  * differs from the current one; the store's `merge` sanitizes every hydration, current saves included.
  */
@@ -124,5 +153,6 @@ export function migrate(persisted: unknown, version: number): Record<string, unk
   let out = persisted
   if (version < 2) out = migrateV1toV2(out)
   if (version < 3) out = migrateV2toV3(out)
+  if (version < 4) out = migrateV3toV4(out)
   return Object.hasOwn(out, 'room') ? { ...out, room: sanitizeRoom(out.room) } : out
 }

@@ -24,3 +24,6 @@ export const selectHardware = (s: StudioStore) => ({
   hasFogger: s.hasFogger,
 })
 export const selectMusicVolume = (s: StudioStore) => s.musicVolume
+export const selectPace = (s: StudioStore) => s.pace
+export const selectCatchupEnabled = (s: StudioStore) => s.catchupEnabled
+export const selectAwayLog = (s: StudioStore) => s.awayLog

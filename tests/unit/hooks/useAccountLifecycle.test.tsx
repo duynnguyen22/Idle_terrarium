@@ -17,7 +17,11 @@ beforeEach(() => {
   initAccount.mockClear()
   watchSession.mockClear()
   scheduleCloudSave.mockClear()
-  useStudioStore.setState(createDefaultState())
+  // createDefaultState draws a fresh worldSeed; keep the live one so the reset is not a persisted change.
+  useStudioStore.setState({
+    ...createDefaultState(),
+    worldSeed: useStudioStore.getState().worldSeed,
+  })
   useAccountStore.setState({
     ...useAccountStore.getInitialState(),
     initAccount,
