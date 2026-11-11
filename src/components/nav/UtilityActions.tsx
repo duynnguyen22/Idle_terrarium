@@ -37,6 +37,9 @@ const rebuildFalls = () => {
 const clearAll = () => {
   mutateWorld((w) => {
     w.items = []
+    // Moss carpet and breeding progress belong to the plants and animals just removed.
+    w.mossTufts = []
+    w.breed = {}
   })
   useStudioStore.getState().selectItem(null)
   showToast('Cleared all specimens')

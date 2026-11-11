@@ -100,7 +100,11 @@ describe('applyPreset', () => {
     w.surfaceGrains.push({ x: 0.5 })
     w.pendingSubstrates = { soil: 3 }
     w.pendingWaterSplit = 0.1
+    w.mossTufts.push({ x: 0.4, r: 3, w: 1, seed: 1 })
+    w.breed = { springtails: 0.4 }
     applyPreset(w, 'falls', store.getState())
+    expect(w.mossTufts).toHaveLength(0)
+    expect(w.breed).toEqual({})
     expect(store.getState().setupDay).toBe(9)
     expect(w.env.cycleProgress).toBe(1)
     expect(w.moldPatches).toHaveLength(0)

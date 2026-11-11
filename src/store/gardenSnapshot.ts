@@ -58,6 +58,7 @@ export function applyGardenSnapshot(snapshot: GardenSnapshot, store: StudioStore
   else {
     world.ecoTime = ecoTimeFromDayCount(s.dayCount)
     world.breed = {}
+    world.mossTufts = []
   }
   world.moldPatches = []
   world.pendingSubstrates = {}

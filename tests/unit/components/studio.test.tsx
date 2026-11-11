@@ -214,11 +214,15 @@ describe('utility actions', () => {
 
   it('Clear empties world items and the stored snapshot', async () => {
     world.items = [item('a', 'flora'), item('b', 'fauna')]
+    world.mossTufts = [{ x: 0.4, r: 3, w: 1, seed: 1 }]
+    world.breed = { springtails: 0.5 }
     render(<TopNav />)
     const u = user()
     await u.click(screen.getByRole('button', { name: 'More actions' }))
     await u.click(screen.getByRole('menuitem', { name: 'Clear all specimens' }))
     expect(world.items).toEqual([])
+    expect(world.mossTufts).toEqual([])
+    expect(world.breed).toEqual({})
     expect(useStudioStore.getState().worldSnapshot?.items).toEqual([])
     expect(useToastStore.getState().message).toBe('Cleared all specimens')
   })

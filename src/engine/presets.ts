@@ -76,7 +76,10 @@ export function applyPreset(world: EngineWorld, presetId: PresetId, store: Prese
 
   if (preset.items.length === 0) return preset.toast
 
+  // A rebuilt scene keeps nothing of the old one's living state.
   world.moldPatches = []
+  world.mossTufts = []
+  world.breed = {}
   store.setSetupDay(store.dayCount)
   world.env.bloomTimer = FALLS_BLOOM_TIMER
 

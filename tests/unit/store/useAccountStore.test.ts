@@ -504,9 +504,12 @@ describe('account store: gardens and journal', () => {
     world.surfaceGrains = [{ x: 0 }]
     world.ecoTime = 11.4
     world.breed = { springtails: 0.5 }
+    world.mossTufts = [{ x: 0.4, r: 3, w: 1, seed: 1 }]
     const g = await store.getState().createGarden('empty', '')
     expect(world.ecoTime).toBe(0)
     expect(world.breed).toEqual({})
+    expect(world.mossTufts).toHaveLength(0)
+    expect(g.snapshot?.worldSnapshot?.mossTufts ?? []).toHaveLength(0)
     expect(g.name).toBe('My terrarium')
     expect(world).toMatchObject({ items: [], moldPatches: [], surfaceGrains: [] })
     expect(studio.getState()).toMatchObject({ dayCount: 1, setupDay: 1, cycleProgress: 0 })
@@ -525,9 +528,11 @@ describe('account store: gardens and journal', () => {
     studio.setState({ dayCount: 9, vessel: 'globe' })
     world.ecoTime = 8.2
     world.breed = { isopod: 0.3 }
+    world.mossTufts = [{ x: 0.4, r: 3, w: 1, seed: 1 }]
     const g = await store.getState().createGarden('falls', 'Falls Lake 1')
     expect(world.ecoTime).toBe(0)
     expect(world.breed).toEqual({})
+    expect(world.mossTufts).toHaveLength(0)
     expect(studio.getState()).toMatchObject({ dayCount: 1, setupDay: 1, vessel: 'paludarium_tank' })
     expect(world.items.length).toBeGreaterThan(0)
     expect(g.snapshot?.worldSnapshot?.items).toHaveLength(world.items.length)

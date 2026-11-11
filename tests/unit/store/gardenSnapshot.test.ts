@@ -134,6 +134,13 @@ describe('gardenSnapshot', () => {
     applyGardenSnapshot(snap, studio)
     expect(world.ecoTime).toBe(8)
 
+    // A garden saved with no world at all leaves none of the previous garden's living state.
+    world.mossTufts = [{ x: 0.4, r: 3, w: 1, seed: 1 }]
+    world.breed = { springtails: 0.5 }
+    applyGardenSnapshot({ ...getGardenSnapshot(other.getState(), null), worldSnapshot: null }, studio)
+    expect(world.mossTufts).toHaveLength(0)
+    expect(world.breed).toEqual({})
+
     const withTime = getGardenSnapshot(other.getState(), source)
     if (withTime.worldSnapshot) withTime.worldSnapshot.ecoTime = 2.5
     applyGardenSnapshot(withTime, studio)

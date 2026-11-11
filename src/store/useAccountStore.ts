@@ -437,6 +437,7 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
             editScene((world) => {
               const cycleProgress = hasPool(studio.getState().waterSplit) ? 0 : 1
               world.items = []
+              world.mossTufts = []
               world.moldPatches = []
               world.surfaceGrains = []
               // Tank time restarts with the day counter (flushTelemetry derives dayCount from ecoTime).
@@ -450,6 +451,7 @@ export function createAccountStore(deps: AccountDeps): AccountStoreHook {
             editScene((world) => {
               world.ecoTime = 0
               world.breed = {}
+              world.mossTufts = []
               studio.setState({ dayCount: 1, selectedId: null })
               applyPreset(world, 'falls', studio.getState())
             })
