@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { AccountDialog } from '@/components/account/AccountDialog'
+import { GrowthBoard } from '@/components/growth/GrowthBoard'
 import { LightingControls } from '@/components/nav/LightingControls'
 import { AwayCard } from '@/components/stage/AwayCard'
 import { CareToolbar } from '@/components/stage/CareToolbar'
@@ -76,6 +77,7 @@ export function StudioLayout({ children }: { children: ReactNode }) {
           <RelaxDock />
           <Toast />
           <AwayCard />
+          <GrowthBoard />
           <AccountDialog />
         </main>
         <RightTelemetry drawerOpen={drawer === 'right'} />

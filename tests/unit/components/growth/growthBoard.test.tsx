@@ -74,6 +74,8 @@ describe('GrowthBoard', () => {
     expect(screen.getByText('Tank age')).toBeInTheDocument()
     expect(screen.getByText('Day 1')).toBeInTheDocument()
     expect(screen.getByText('Moss cover')).toBeInTheDocument()
+    expect(screen.getByText('Pool cycle')).toBeInTheDocument()
+    act(() => useStudioStore.setState({ waterSplit: 0 }))
     expect(screen.queryByText('Pool cycle')).toBeNull()
 
     useStudioStore.setState({ selectedId: 'a' })

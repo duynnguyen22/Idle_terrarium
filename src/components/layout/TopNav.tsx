@@ -1,5 +1,7 @@
 import { ClockSpeedPill } from '@/components/nav/ClockSpeedPill'
 import { UtilityActions } from '@/components/nav/UtilityActions'
+import { LineIcon } from '@/components/ui/LineIcon'
+import { useOverlayStore } from '@/store/useOverlayStore'
 
 export type DrawerSide = 'left' | 'right'
 
@@ -13,6 +15,12 @@ interface TopNavProps {
 }
 
 export function TopNav({ drawer = null, onToggleDrawer }: TopNavProps) {
+  const growthOpen = useOverlayStore((s) => s.growthBoardOpen)
+  const toggleGrowth = () => {
+    const { growthBoardOpen, openGrowthBoard, closeGrowthBoard } = useOverlayStore.getState()
+    if (growthBoardOpen) closeGrowthBoard()
+    else openGrowthBoard()
+  }
   return (
     <header
       id="top-nav"
@@ -83,6 +91,21 @@ export function TopNav({ drawer = null, onToggleDrawer }: TopNavProps) {
         </div>
       </div>
       <ClockSpeedPill />
+      <button
+        type="button"
+        aria-label="Growth"
+        aria-expanded={growthOpen}
+        aria-controls="growth-board"
+        onClick={toggleGrowth}
+        className={`inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-xs font-semibold transition ${
+          growthOpen
+            ? 'bg-forest-deep text-white'
+            : 'bg-sand-pale text-ink-soft hover:bg-sand-track'
+        }`}
+      >
+        <LineIcon name="sprout" />
+        <span className="hidden lg:inline">Growth</span>
+      </button>
       <UtilityActions />
     </header>
   )

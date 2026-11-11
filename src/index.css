@@ -176,6 +176,7 @@
   body.relax-active #care-toolbar,
   body.relax-active #item-inspector,
   body.relax-active #away-card,
+  body.relax-active #growth-board,
   body.relax-active #light-control {
     opacity: 0 !important;
     pointer-events: none !important;
