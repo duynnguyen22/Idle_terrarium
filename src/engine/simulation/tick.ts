@@ -15,6 +15,7 @@ import { updateMold } from './mold'
 import { pointerInsideGlass, spraySpawn, stepMistParticles } from './mist'
 import { initWorldParticles, updateAmbientMotes, updateFireflies } from './particles'
 import { siphonStep, spawnPourStream, stepPourParticles } from './pouring'
+import { eventText, NOTABLE } from './report'
 import { pushTelemetry } from './telemetry'
 
 export interface TickDeps {
@@ -29,23 +30,12 @@ export interface TickDeps {
   commit?: () => void
 }
 
-/** Life events worth a live toast; `grown` is left to the away card and the almanac. */
-const LIVE_TOAST_KINDS: ReadonlySet<EventKind> = new Set([
-  'open',
-  'seedling',
-  'hatch',
-  'frond',
-  'bud',
-  'spread',
-  'tendril',
-])
+/** Life events worth a live toast: the notable ones, minus `grown`, which is left to the away card and the almanac. */
+function isLiveToastKind(kind: EventKind): boolean {
+  return NOTABLE[kind] === 1 && kind !== 'grown'
+}
 /** At most one live event toast per this many milliseconds. */
 const LIVE_TOAST_GAP_MS = 20_000
-
-/** Plain text of a live event until the journal copy lands. */
-function liveEventText(e: LifeEvent): string {
-  return e.kind
-}
 
 /**
  * Child items follow their parent via offsetX/offsetY; orphans are detached (prototype 2361-2370). offsetX is
@@ -111,10 +101,10 @@ export function tick(
     updateFauna(world, store, dtMs, timestamp, rng)
     if (!store.reducedMotion) updateAmbientMotes(world, dtMs)
     const liveEmit = (e: LifeEvent): void => {
-      if (!LIVE_TOAST_KINDS.has(e.kind) || !deps.onToast) return
+      if (!isLiveToastKind(e.kind) || !deps.onToast) return
       if (timestamp - world.lastLiveToast < LIVE_TOAST_GAP_MS && world.lastLiveToast > 0) return
       world.lastLiveToast = timestamp
-      deps.onToast(liveEventText(e))
+      deps.onToast(eventText(e.kind, e.id))
     }
     dayTick(world, store, dtMs, rng, liveEmit, () =>
       deps.onToast?.('The pool has cycled. Ammonia and nitrite read 0.'),

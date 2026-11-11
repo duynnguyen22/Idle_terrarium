@@ -1,5 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { AwayReport } from '@/engine/simulation/report'
 import { createStudioStore, partialize, STUDIO_STORAGE_KEY } from '@/store/useStudioStore'
+
+function awayReport(from: number, to: number): AwayReport {
+  return {
+    from,
+    to,
+    hours: 1,
+    tankHours: 1,
+    capped: false,
+    mode: 'away',
+    reason: '',
+    items: [],
+    more: 0,
+    rest: [],
+    hints: [],
+  }
+}
 
 beforeEach(() => localStorage.clear())
 
@@ -331,11 +348,11 @@ describe('studio store', () => {
 
   it('pushAwayReport keeps the newest 12 reports, newest first', () => {
     const s = createStudioStore(localStorage)
-    for (let i = 0; i < 15; i++) s.getState().pushAwayReport({ from: i, to: i + 1 })
+    for (let i = 0; i < 15; i++) s.getState().pushAwayReport(awayReport(i, i + 1))
     const log = s.getState().awayLog
     expect(log).toHaveLength(12)
-    expect(log[0]).toEqual({ from: 14, to: 15 })
-    expect(log[11]).toEqual({ from: 3, to: 4 })
+    expect(log[0]).toEqual(awayReport(14, 15))
+    expect(log[11]).toEqual(awayReport(3, 4))
   })
 
   it('persists pace, lastSimulatedAt, catchupEnabled, worldSeed and awayLog', () => {
@@ -343,14 +360,14 @@ describe('studio store', () => {
     s.getState().setPace('calm')
     s.getState().setLastSimulatedAt(1234)
     s.getState().setCatchupEnabled(false)
-    s.getState().pushAwayReport({ from: 1, to: 2 })
+    s.getState().pushAwayReport(awayReport(1, 2))
     const stored = JSON.parse(localStorage.getItem(STUDIO_STORAGE_KEY) ?? '{}')
     expect(stored.state).toMatchObject({
       pace: 'calm',
       lastSimulatedAt: 1234,
       catchupEnabled: false,
       worldSeed: s.getState().worldSeed,
-      awayLog: [{ from: 1, to: 2 }],
+      awayLog: [awayReport(1, 2)],
     })
     expect(partialize(s.getState()).worldSeed).toHaveLength(8)
   })

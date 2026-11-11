@@ -15,6 +15,7 @@ import { FRAME_MS } from '@/engine/simulation/constants'
 import { faunaZone, updateFauna } from '@/engine/simulation/fauna'
 import { slowStep } from '@/engine/simulation/dayTick'
 import { addSporePatch, updateMold } from '@/engine/simulation/mold'
+import { eventText } from '@/engine/simulation/report'
 import {
   initWorldParticles,
   updateAmbientMotes,
@@ -680,13 +681,13 @@ describe('tick living time', () => {
     // 250 ms at 5x on the garden pace is ~0.0006 of a day; push both items over their thresholds.
     fern.life!.cyc = 1 - 1e-9
     tick(w, 250, 1000, deps)
-    expect(toasts).toEqual(['tendril'])
+    expect(toasts).toEqual([eventText('tendril', 'trailing_ivy')])
     fern.life!.cyc = 1 - 1e-9
     tick(w, 250, 5000, deps)
     expect(toasts).toHaveLength(1)
     fern.life!.cyc = 1 - 1e-9
     tick(w, 250, 21_500, deps)
-    expect(toasts).toEqual(['tendril', 'tendril'])
+    expect(toasts).toEqual(Array(2).fill(eventText('tendril', 'trailing_ivy')))
     expect(sprout.stage).toBe('mature')
   })
   it('hands the snapshot hook to pushTelemetry', () => {
