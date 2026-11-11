@@ -1,8 +1,10 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   getWorld,
   isOwnSnapshot,
   mutateWorld,
+  notifyWorldRestored,
+  onWorldRestored,
   registerWorld,
   unregisterWorld,
 } from '@/engine/engineBridge'
@@ -15,6 +17,22 @@ beforeEach(() => {
 })
 
 describe('engineBridge', () => {
+  it('onWorldRestored keeps one handler and its remover only removes its own', () => {
+    const first = vi.fn()
+    const second = vi.fn()
+    const offFirst = onWorldRestored(first)
+    const offSecond = onWorldRestored(second)
+    notifyWorldRestored()
+    expect(first).not.toHaveBeenCalled()
+    expect(second).toHaveBeenCalledTimes(1)
+    offFirst()
+    notifyWorldRestored()
+    expect(second).toHaveBeenCalledTimes(2)
+    offSecond()
+    notifyWorldRestored()
+    expect(second).toHaveBeenCalledTimes(2)
+  })
+
   it('throws a clear error when no world is registered', () => {
     expect(() => mutateWorld(() => {})).toThrow(/no world registered/)
     expect(() => getWorld()).toThrow(/no world registered/)

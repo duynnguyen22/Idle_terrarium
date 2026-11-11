@@ -1,6 +1,6 @@
 import type { GardenSummary } from '@/auth/backend'
 import type { PlacedItem } from '@/data/types'
-import { commitWorld, tryGetWorld } from '@/engine/engineBridge'
+import { commitWorld, notifyWorldRestored, tryGetWorld } from '@/engine/engineBridge'
 import { seedWorldEnv } from '@/engine/envSeed'
 import { ecoTimeFromDayCount, restoreWorld, snapshotWorld } from '@/engine/persistence'
 import type { EngineWorld } from '@/engine/world'
@@ -34,7 +34,8 @@ export function getGardenSnapshot(store: StudioStore, world: EngineWorld | null)
 /**
  * Loads a saved terrarium (spec applySnapshotData): migrates it from its version, writes only the
  * persisted keys to the store, then rebuilds the registered world from it: scene, environment
- * gauges, cycle and glass residue. Mold and pending pour deltas belong to the previous build.
+ * gauges, cycle and glass residue. Mold and pending pour deltas belong to the previous build. Finally it tells
+ * the engine the world was restored, so a gap since the garden's last save is caught up.
  */
 export function applyGardenSnapshot(snapshot: GardenSnapshot, store: StudioStoreHook): void {
   const migrated = migrate(snapshot, snapshot.version ?? STUDIO_VERSION)
@@ -64,6 +65,8 @@ export function applyGardenSnapshot(snapshot: GardenSnapshot, store: StudioStore
   // The env flush is one-way (world -> store), so the gauges must be re-seeded from the snapshot.
   seedWorldEnv(world, s)
   commitWorld()
+  // The applied garden's clock may be days old: let the engine catch it up now.
+  notifyWorldRestored()
 }
 
 /** The card line for a terrarium (spec gardenSummary). */

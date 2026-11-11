@@ -4,6 +4,7 @@ import { useStudioStore } from '@/store/useStudioStore'
 
 let current: EngineWorld | null = null
 let lastCommitted: WorldSnapshot | null = null
+let restored: (() => void) | null = null
 
 /** Called by the engine hook once it has created its world. */
 export function registerWorld(world: EngineWorld): void {
@@ -23,6 +24,22 @@ export function getWorld(): EngineWorld {
     )
   }
   return current
+}
+
+/**
+ * Sets the handler run after a saved garden has replaced the registered world (the engine hook catches it up
+ * there). Returns a function that removes it.
+ */
+export function onWorldRestored(cb: () => void): () => void {
+  restored = cb
+  return () => {
+    if (restored === cb) restored = null
+  }
+}
+
+/** Called once a saved garden has been applied to the registered world and committed. */
+export function notifyWorldRestored(): void {
+  restored?.()
 }
 
 /** Like getWorld but returns null instead of throwing; safe to call during render. */

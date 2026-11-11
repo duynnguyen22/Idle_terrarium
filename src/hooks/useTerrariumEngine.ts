@@ -4,6 +4,7 @@ import { vesselKX } from '@/data/vessels'
 import {
   commitWorld,
   isOwnSnapshot,
+  onWorldRestored,
   tryGetWorld,
   registerWorld,
   unregisterWorld,
@@ -20,6 +21,8 @@ import { createWorld, type EngineWorld } from '@/engine/world'
 import { play } from '@/hooks/useAudio'
 import { recordReport } from '@/store/awayFlow'
 import { showToast } from '@/store/toastStore'
+import { useAccountStore } from '@/store/useAccountStore'
+import { useOverlayStore } from '@/store/useOverlayStore'
 import { useStudioStore } from '@/store/useStudioStore'
 import { useTelemetryStore } from '@/store/useTelemetryStore'
 
@@ -57,7 +60,8 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
     if (initial) restoreWorld(world, initial, dayCount)
     registerWorld(world)
     seedInitialScene(world)
-    // Time away: catch the tank up once now and once per return to the tab, outside the rAF frame.
+    // Time away: catch the tank up on load, after a saved garden replaces it, and on each return to the tab,
+    // outside the rAF frame.
     const catchUp = () => {
       try {
         const r = runCatchUpIfDue(world, useStudioStore.getState(), Date.now())
@@ -72,7 +76,24 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
         useStudioStore.getState().setLastSimulatedAt(Date.now())
       }
     }
-    catchUp()
+    // While the account check runs, sign-in may still replace this garden with a saved one, so the catch-up
+    // waits for the phase to settle and then runs against whichever garden is in place.
+    let catchUpPending = false
+    const catchUpWhenSettled = () => {
+      if (useAccountStore.getState().phase === 'checking') catchUpPending = true
+      else catchUp()
+    }
+    const unsubscribeAccount = useAccountStore.subscribe((a) => {
+      if (!catchUpPending || a.phase === 'checking') return
+      catchUpPending = false
+      catchUp()
+    })
+    const offRestored = onWorldRestored(() => {
+      // An open card showed the previous garden's log; the applied one reopens it only for its own gap.
+      useOverlayStore.getState().closeAway()
+      catchUpWhenSettled()
+    })
+    catchUpWhenSettled()
     if (import.meta.env.DEV)
       window.__botanica = {
         world: () => world,
@@ -147,7 +168,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
         stop()
         saveNow()
       } else {
-        catchUp()
+        catchUpWhenSettled()
         start()
       }
     }
@@ -160,6 +181,8 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       stop()
       saveNow()
       unsubscribe()
+      unsubscribeAccount()
+      offRestored()
       unregisterWorld()
       if (import.meta.env.DEV) delete window.__botanica
     }

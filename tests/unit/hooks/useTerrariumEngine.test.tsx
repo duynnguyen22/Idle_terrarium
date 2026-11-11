@@ -1,13 +1,19 @@
-import { render } from '@testing-library/react'
+import { act, render } from '@testing-library/react'
 import { useRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { PublicUser, Session } from '@/auth'
+import { createLocalBackend } from '@/auth/backend'
+import type { PlacedItem } from '@/data/types'
 import { mutateWorld, getWorld, unregisterWorld } from '@/engine/engineBridge'
 import { hasPool } from '@/engine/geometry'
 import { configureSpriteCache } from '@/engine/sprites/spriteCache'
 import * as catchup from '@/engine/simulation/catchup'
+import { createWorld } from '@/engine/world'
 import { useTerrariumEngine } from '@/hooks/useTerrariumEngine'
+import { applyGardenSnapshot, getGardenSnapshot } from '@/store/gardenSnapshot'
+import { useAccountStore } from '@/store/useAccountStore'
 import { useOverlayStore } from '@/store/useOverlayStore'
-import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+import { createDefaultState, createStudioStore, useStudioStore } from '@/store/useStudioStore'
 import { useTelemetryStore } from '@/store/useTelemetryStore'
 import { makeRecordingContext } from '../helpers/recordingContext'
 
@@ -15,6 +21,57 @@ vi.mock('@/engine/simulation/catchup', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/engine/simulation/catchup')>()
   return { ...actual, runCatchUpIfDue: vi.fn(actual.runCatchUpIfDue) }
 })
+
+const initialAccount = useAccountStore.getState()
+
+class MemoryStorage implements Storage {
+  private map = new Map<string, string>()
+  get length() {
+    return this.map.size
+  }
+  clear() {
+    this.map.clear()
+  }
+  getItem(key: string) {
+    return this.map.get(key) ?? null
+  }
+  key(index: number) {
+    return [...this.map.keys()][index] ?? null
+  }
+  removeItem(key: string) {
+    this.map.delete(key)
+  }
+  setItem(key: string, value: string) {
+    this.map.set(key, String(value))
+  }
+}
+
+const fern = (uid: string): PlacedItem => ({
+  uid,
+  id: 'fern',
+  category: 'flora',
+  x: 0.5,
+  y: 0.7,
+  scale: 1,
+  rotation: 0,
+  flipX: false,
+  zIndex: 1,
+  stage: 'mature',
+  growthProgress: 1,
+  vitality: 100,
+  parentUid: null,
+  offsetX: 0,
+  offsetY: 0,
+})
+
+/** A saved garden whose clock stopped `hoursAgo` hours ago, holding one fern. */
+function staleGarden(hoursAgo: number, uid: string) {
+  const s = createStudioStore(new MemoryStorage())
+  s.setState({ lastSimulatedAt: Date.now() - hoursAgo * 3_600_000, awayLog: [] })
+  const w = createWorld()
+  w.items = [fern(uid)]
+  return getGardenSnapshot(s.getState(), w)
+}
 
 function Harness() {
   const ref = useRef<HTMLCanvasElement>(null)
@@ -37,6 +94,7 @@ describe('useTerrariumEngine', () => {
   beforeEach(() => {
     useOverlayStore.setState({ growthBoardOpen: false, awayIndex: null, tour: null })
     useStudioStore.setState({ awayLog: [] })
+    useAccountStore.setState({ phase: 'signedout' })
     callbacks = new Map()
     nextId = 1
     cancel.mockClear()
@@ -62,6 +120,7 @@ describe('useTerrariumEngine', () => {
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
     configureSpriteCache()
+    useAccountStore.setState(initialAccount, true)
   })
 
   it('starts exactly one loop, keeps it single across frames, and stops on unmount', () => {
@@ -303,6 +362,94 @@ describe('useTerrariumEngine', () => {
     expect(last).not.toBeNull()
     expect(Date.now() - (last ?? 0)).toBeLessThan(60_000)
     expect(useStudioStore.getState().awayLog).toHaveLength(0)
+    unmount()
+  })
+
+  it('defers the mount catch-up while the account is checking and runs it once the phase settles', () => {
+    useAccountStore.setState({ phase: 'checking' })
+    useStudioStore.setState({ lastSimulatedAt: Date.now() - 2 * 3_600_000, catchupEnabled: true })
+    const { unmount } = render(<Harness />)
+    expect(useStudioStore.getState().awayLog).toHaveLength(0)
+    expect(useOverlayStore.getState().awayIndex).toBeNull()
+    act(() => useAccountStore.setState({ phase: 'signedout' }))
+    expect(useStudioStore.getState().awayLog).toHaveLength(1)
+    expect(useOverlayStore.getState().awayIndex).toBe(0)
+    act(() => useAccountStore.setState({ phase: 'checking' }))
+    act(() => useAccountStore.setState({ phase: 'signedout' }))
+    expect(useStudioStore.getState().awayLog).toHaveLength(1)
+    unmount()
+  })
+
+  it('signing in during the check catches up the cloud garden once, journals it, and points the card at it', async () => {
+    const user: PublicUser = {
+      id: 'u_engine',
+      name: 'Engine Test',
+      email: 'engine@botanica.app',
+      verified: true,
+      provider: 'password',
+      createdAt: 1,
+    }
+    const session: Session = {
+      userId: user.id,
+      email: user.email,
+      version: 1,
+      remember: true,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 86_400_000,
+      device: 'Test on jsdom',
+    }
+    // The global account store's backend factory defaults to the local backend over localStorage.
+    const backend = createLocalBackend(user.id)
+    const snapshot = staleGarden(3, 'cloud-fern')
+    await backend.saveGarden('g_cloud', {
+      name: 'Cloud',
+      createdAt: 1,
+      updatedAt: 1,
+      summary: { vessel: 'globe', day: 1, plants: 1, animals: 0 },
+      snapshot,
+    })
+    await backend.setProfile({ activeGardenId: 'g_cloud' })
+    useAccountStore.setState({ phase: 'checking' })
+    // The local save is stale too: its gap must not be reported once the cloud garden replaces it.
+    useStudioStore.setState({ lastSimulatedAt: Date.now() - 5 * 3_600_000, catchupEnabled: true })
+    const { unmount } = render(<Harness />)
+    expect(useStudioStore.getState().awayLog).toHaveLength(0)
+
+    try {
+      await act(async () => {
+        await useAccountStore.getState().beginSession(user, session, { isNew: false })
+      })
+      const log = useStudioStore.getState().awayLog
+      expect(log).toHaveLength(1)
+      expect(log[0]?.from).toBe(snapshot.lastSimulatedAt)
+      expect(getWorld().items.map((i) => i.uid)).toContain('cloud-fern')
+      expect(useOverlayStore.getState().awayIndex).toBe(0)
+      await vi.waitFor(() => expect(useAccountStore.getState().journal).toHaveLength(1))
+      expect(useAccountStore.getState().journal[0]).toMatchObject({
+        auto: true,
+        key: `away:${log[0]?.from}:${log[0]?.to}`,
+      })
+    } finally {
+      await backend.deleteAll()
+    }
+    unmount()
+  })
+
+  it('opening another garden catches it up right away and closes the previous card', () => {
+    useStudioStore.setState({ lastSimulatedAt: Date.now(), catchupEnabled: true })
+    const { unmount } = render(<Harness />)
+    useOverlayStore.getState().openAway(0)
+    const snapshot = staleGarden(4, 'other-fern')
+    act(() => applyGardenSnapshot(snapshot, useStudioStore))
+    const log = useStudioStore.getState().awayLog
+    expect(log).toHaveLength(1)
+    expect(log[0]?.from).toBe(snapshot.lastSimulatedAt)
+    expect(useOverlayStore.getState().awayIndex).toBe(0)
+
+    // A fresh garden (no gap) leaves no stale card open on the new garden's log.
+    act(() => applyGardenSnapshot(staleGarden(0, 'fresh-fern'), useStudioStore))
+    expect(useStudioStore.getState().awayLog).toHaveLength(0)
+    expect(useOverlayStore.getState().awayIndex).toBeNull()
     unmount()
   })
 })

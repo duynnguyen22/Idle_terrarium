@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PlacedItem } from '@/data/types'
-import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
+import { onWorldRestored, registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { snapshotWorld } from '@/engine/persistence'
 import { DEFAULT_ROOM } from '@/engine/room'
 import { createWorld, type EngineWorld } from '@/engine/world'
@@ -138,6 +138,33 @@ describe('gardenSnapshot', () => {
     if (withTime.worldSnapshot) withTime.worldSnapshot.ecoTime = 2.5
     applyGardenSnapshot(withTime, studio)
     expect(world.ecoTime).toBe(2.5)
+  })
+
+  it('applyGardenSnapshot calls the restored handler once, after the world is committed', () => {
+    const source = createWorld()
+    source.items = [item('r1', 'flora')]
+    const snap = getGardenSnapshot(studio.getState(), source)
+    registerWorld(world)
+    const seen: string[][] = []
+    const handler = vi.fn(() => {
+      seen.push(world.items.map((i) => i.uid))
+      expect(studio.getState().worldSnapshot?.items.map((i) => i.uid)).toEqual(['r1'])
+    })
+    const off = onWorldRestored(handler)
+    applyGardenSnapshot(snap, studio)
+    expect(handler).toHaveBeenCalledTimes(1)
+    expect(seen).toEqual([['r1']])
+    off()
+    applyGardenSnapshot(snap, studio)
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it('applyGardenSnapshot calls no restored handler when no world is registered', () => {
+    const handler = vi.fn()
+    const off = onWorldRestored(handler)
+    applyGardenSnapshot(getGardenSnapshot(studio.getState(), null), studio)
+    expect(handler).not.toHaveBeenCalled()
+    off()
   })
 
   it('applyGardenSnapshot migrates a v2-shaped snapshot (no room) to defaults', () => {
