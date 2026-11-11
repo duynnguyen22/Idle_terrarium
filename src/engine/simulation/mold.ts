@@ -15,10 +15,9 @@ export function countCleanupCrew(world: EngineWorld): number {
 }
 
 /**
- * New-build mold bloom and crew cleanup (prototype v6 3287-3303). `env.bloomTimer` counts down by speedMult per
- * 60 fps frame; when it crosses 0 three patches appear on land and the toast fires. The timer then stays <= 0,
- * so the `> 0` guard keeps the bloom from firing again. Each cleanup-crew member (capped at 6) shrinks every
- * patch by 0.0025 per frame (x3.5 at 5x speed); patches at size <= 3 vanish.
+ * New-build mold bloom (prototype v6 3287-3303). `env.bloomTimer` counts down by speedMult per 60 fps frame;
+ * when it crosses 0 three patches appear on land and the toast fires. The timer then stays <= 0, so the `> 0`
+ * guard keeps the bloom from firing again. The cleanup crew clears patches per tank day in `slowStep`.
  */
 export function updateMold(
   world: EngineWorld,
@@ -37,16 +36,6 @@ export function updateMold(
       }
       onToast?.(MOLD_BLOOM_TOAST)
     }
-  }
-
-  const crew = countCleanupCrew(world)
-  if (crew === 0 || world.moldPatches.length === 0) return
-  const dec = 0.0025 * Math.min(6, crew) * speedMult
-  for (let i = world.moldPatches.length - 1; i >= 0; i--) {
-    const patch = world.moldPatches[i]
-    const size = (typeof patch.size === 'number' ? patch.size : 12) - dec
-    patch.size = size
-    if (size <= 3) world.moldPatches.splice(i, 1)
   }
 }
 

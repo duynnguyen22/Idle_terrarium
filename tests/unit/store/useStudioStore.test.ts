@@ -72,7 +72,7 @@ describe('studio store', () => {
     const a = store.getState()
     a.toggleHardware('hasLid')
     a.setSubstrate('sand', 5)
-    a.advanceDay()
+    a.setDayCount(2)
     a.selectItem('x')
     expect(store.getState()).toMatchObject({ hasLid: false, dayCount: 2, selectedId: 'x' })
     expect(store.getState().substrates.sand).toBe(5)

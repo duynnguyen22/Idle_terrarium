@@ -77,40 +77,17 @@ describe('environment model', () => {
     expect(w.env.mistBoost).toBeCloseTo(10 * (1 - 0.0025 * 3.5), 6)
     expect(w.env.humidity).toBeCloseTo(50 + (Math.min(99, 81.68 + w.env.mistBoost) - 50) * 0.014, 3)
   })
-  it('nutrients drift by flora and crew, clamped to [15, 100]', () => {
+  it('updateEnvironment leaves nutrients and the pool cycle to the per-day rules', () => {
     const w = createWorld()
     w.env.nutrients = 50
+    w.env.cycleProgress = 0.5
     w.items = [
-      ...Array.from({ length: 4 }, (_, i) => ({
-        uid: `p${i}`,
-        id: 'peacock_fern',
-        category: 'flora',
-      })),
-      { uid: 's1', id: 'springtails', category: 'fauna' },
-      { uid: 's2', id: 'isopod', category: 'fauna' },
+      { uid: 'p', id: 'peacock_fern', category: 'flora' },
+      { uid: 's', id: 'springtails', category: 'fauna' },
     ] as PlacedItem[]
-    updateEnvironment(w, base, 1000 / 60)
-    expect(w.env.nutrients).toBeCloseTo(50 - 0.001 + 0.0006, 6)
-    w.env.nutrients = 15.0001
-    w.items = w.items.filter((i) => i.category === 'flora')
-    updateEnvironment(w, base, 1000 / 60)
-    expect(w.env.nutrients).toBe(15)
-  })
-  it('cycleProgress advances only with a pool and fires the toast at 1', () => {
-    const w = createWorld()
-    w.env.cycleProgress = 0.999999
-    const toasts: string[] = []
-    updateEnvironment(w, base, 1000 / 60, (m) => toasts.push(m))
-    expect(w.env.cycleProgress).toBe(1)
-    expect(toasts).toEqual(['The pool has cycled. Ammonia and nitrite read 0.'])
-    const w2 = createWorld()
-    w2.env.cycleProgress = 0.5
-    updateEnvironment(w2, { ...base, waterSplit: 0 }, 16)
-    expect(w2.env.cycleProgress).toBe(0.5)
-    const w3 = createWorld()
-    w3.env.cycleProgress = 0
-    updateEnvironment(w3, { ...base, pumpFlow: 'off' }, 1000 / 60)
-    expect(w3.env.cycleProgress).toBeCloseTo(0.000004 * 0.4, 9)
+    for (let i = 0; i < 600; i++) updateEnvironment(w, base, 1000 / 60)
+    expect(w.env.nutrients).toBe(50)
+    expect(w.env.cycleProgress).toBe(0.5)
   })
   it('isLampOn is false at night', () => {
     expect(isLampOn({ hasGrowLamp: true, lighting: 'night' })).toBe(false)

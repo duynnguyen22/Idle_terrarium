@@ -2,11 +2,10 @@ import { findCatalogDef } from '@/data/catalog'
 import type { PlacedItem } from '@/data/types'
 import { clamp } from '@/lib/clamp'
 import type { StudioState } from '@/store/useStudioStore'
-import { hasPool, poolHasWater } from '../geometry'
+import { poolHasWater } from '../geometry'
 import type { EngineWorld, EnvState } from '../world'
 import { isLampOn } from './clock'
 import { frameScale, simSpeedMult } from './constants'
-import { countCleanupCrew } from './mold'
 
 export type EnvInputs = Pick<
   StudioState,
@@ -109,14 +108,9 @@ export function computeEnvTargets(
 
 /**
  * Per-frame environment step (prototype 3174-3213, frame-rate independent via frameScale). The mold bloom
- * timer is driven elsewhere.
+ * timer is driven elsewhere; nutrients, the pool cycle and mold clearing are per-tank-day rules in `slowStep`.
  */
-export function updateEnvironment(
-  world: EngineWorld,
-  s: EnvInputs,
-  dtMs: number,
-  onToast?: (msg: string) => void,
-): void {
+export function updateEnvironment(world: EngineWorld, s: EnvInputs, dtMs: number): void {
   const env = world.env
   const speedMult = simSpeedMult(s.timeSpeed)
   const fs = frameScale(dtMs)
@@ -137,22 +131,5 @@ export function updateEnvironment(
       1,
       world.mineralSpots + (s.tds - 300) * 0.0000004 * speedMult * fs * (world.isMisting ? 25 : 1),
     )
-  }
-
-  const flora = world.items.filter((i) => i.category === 'flora').length
-  const crew = countCleanupCrew(world)
-  const litter = (s.substrates.leaflitter || 0) > 1 ? 1 : 0.4
-  env.nutrients = clamp(
-    env.nutrients + (-0.00025 * flora + 0.0003 * Math.min(4, crew) * litter) * speedMult * fs,
-    15,
-    100,
-  )
-
-  if (hasPool(s.waterSplit) && env.cycleProgress < 1) {
-    env.cycleProgress = Math.min(
-      1,
-      env.cycleProgress + 0.000004 * speedMult * (s.pumpFlow === 'off' ? 0.4 : 1) * fs,
-    )
-    if (env.cycleProgress >= 1) onToast?.('The pool has cycled. Ammonia and nitrite read 0.')
   }
 }

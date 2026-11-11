@@ -6,10 +6,11 @@ import type { AsmrCue } from '../interaction'
 import type { EngineWorld } from '../world'
 import { advanceClock } from './clock'
 import type { Rng } from './constants'
+import { dayTick } from './dayTick'
 import { wakeResting, wokeToast } from './ecology'
 import { updateEnvironment } from './environment'
 import { updateFauna } from './fauna'
-import { updateGrowth } from './growth'
+import type { EventKind, LifeEvent } from './life'
 import { updateMold } from './mold'
 import { pointerInsideGlass, spraySpawn, stepMistParticles } from './mist'
 import { initWorldParticles, updateAmbientMotes, updateFireflies } from './particles'
@@ -24,6 +25,26 @@ export interface TickDeps {
   onCue?: (cue: AsmrCue) => void
   /** Optional toast hook (e.g. the pool finished cycling); the engine stays free of UI imports. */
   onToast?: (msg: string) => void
+  /** Optional snapshot hook (the hook passes `commitWorld`); called about once a minute. */
+  commit?: () => void
+}
+
+/** Life events worth a live toast; `grown` is left to the away card and the almanac. */
+const LIVE_TOAST_KINDS: ReadonlySet<EventKind> = new Set([
+  'open',
+  'seedling',
+  'hatch',
+  'frond',
+  'bud',
+  'spread',
+  'tendril',
+])
+/** At most one live event toast per this many milliseconds. */
+const LIVE_TOAST_GAP_MS = 20_000
+
+/** Plain text of a live event until the journal copy lands. */
+function liveEventText(e: LifeEvent): string {
+  return e.kind
 }
 
 /**
@@ -56,7 +77,8 @@ export function refreshCareReport(world: EngineWorld, store: StudioStore): void 
 /**
  * Per-frame simulation step, in the prototype's order: frame counter, pour spawn / siphon, clock, environment,
  * fauna AI, ambient motes,
- * growth, mold cleanup (all skipped at timeSpeed 0, ambient motes included, as the prototype early-returns), then the draw-phase mutations
+ * the tank-day step (ecology, life cycles, breeding, sprouts, pool cycle, nutrients; paced by wall-clock time) and
+ * the mold bloom (all skipped at timeSpeed 0, ambient motes included, as the prototype early-returns), then the draw-phase mutations
  * (child sync, firefly drift, stream integration), the care report refresh and the throttled store flush
  * (live gauges to the telemetry store, persisted fields to the studio store).
  */
@@ -85,10 +107,18 @@ export function tick(
     }
     advanceClock(store, deps.now)
     const em = envModel(store.room, store.hasLid)
-    updateEnvironment(world, { ...store, airEff: em.airEff, tds: em.tds }, dtMs, deps.onToast)
+    updateEnvironment(world, { ...store, airEff: em.airEff, tds: em.tds }, dtMs)
     updateFauna(world, store, dtMs, timestamp, rng)
     if (!store.reducedMotion) updateAmbientMotes(world, dtMs)
-    updateGrowth(world, store, dtMs)
+    const liveEmit = (e: LifeEvent): void => {
+      if (!LIVE_TOAST_KINDS.has(e.kind) || !deps.onToast) return
+      if (timestamp - world.lastLiveToast < LIVE_TOAST_GAP_MS && world.lastLiveToast > 0) return
+      world.lastLiveToast = timestamp
+      deps.onToast(liveEventText(e))
+    }
+    dayTick(world, store, dtMs, rng, liveEmit, () =>
+      deps.onToast?.('The pool has cycled. Ammonia and nitrite read 0.'),
+    )
     updateMold(world, store, dtMs, rng, deps.onToast)
   }
 
@@ -119,5 +149,5 @@ export function tick(
   // Care report every 30 frames (prototype 3138, 3307); every frame while paused so edits show at once.
   // Assign a fresh array; the throttled flush copies it into the telemetry store (compared by content).
   if (world.frame % 30 === 0 || store.timeSpeed === 0) refreshCareReport(world, store)
-  pushTelemetry(world, store, timestamp)
+  pushTelemetry(world, store, timestamp, store, deps.commit)
 }

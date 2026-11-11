@@ -178,6 +178,25 @@ describe('useTerrariumEngine', () => {
     expect(useStudioStore.getState().envSeed.nutrients).toBe(25)
   })
 
+  it('hiding the tab commits the world snapshot and lastSimulatedAt', () => {
+    const { unmount } = render(<Harness />)
+    const world = getWorld()
+    useStudioStore.getState().setWorldSnapshot(null)
+    useStudioStore.getState().setLastSimulatedAt(null)
+    world.terrainContour[3] = 5
+    vi.spyOn(Date, 'now').mockReturnValue(1_800_000_000_000)
+    const hidden = vi.spyOn(document, 'hidden', 'get')
+    hidden.mockReturnValue(true)
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(useStudioStore.getState().worldSnapshot?.terrainContour[3]).toBe(5)
+    expect(useStudioStore.getState().lastSimulatedAt).toBe(1_800_000_000_000)
+    hidden.mockReturnValue(false)
+    document.dispatchEvent(new Event('visibilitychange'))
+    useStudioStore.getState().setLastSimulatedAt(null)
+    unmount()
+    expect(useStudioStore.getState().lastSimulatedAt).toBe(1_800_000_000_000)
+  })
+
   it('registers its world, skips its own snapshots, applies external ones, and unregisters', () => {
     const { unmount } = render(<Harness />)
     const world = getWorld()

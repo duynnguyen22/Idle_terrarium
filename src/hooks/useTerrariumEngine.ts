@@ -81,7 +81,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       last = timestamp
 
       const state = useStudioStore.getState()
-      tick(world, dt, timestamp, { onCue: play, onToast: showToast })
+      tick(world, dt, timestamp, { onCue: play, onToast: showToast, commit: commitWorld })
       if (world.pourSettled) {
         // Pointer-up committed before the last particles landed; commit once more outside the frame.
         world.pourSettled = false
@@ -114,10 +114,16 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       cancelAnimationFrame(rafId)
       rafId = 0
     }
+    const saveNow = () => {
+      const s = useStudioStore.getState()
+      flushEnvSeed(world, s)
+      commitWorld()
+      s.setLastSimulatedAt(Date.now())
+    }
     const onVisibility = () => {
       if (document.hidden) {
         stop()
-        flushEnvSeed(world, useStudioStore.getState())
+        saveNow()
       } else {
         start()
       }
@@ -129,7 +135,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
     return () => {
       document.removeEventListener('visibilitychange', onVisibility)
       stop()
-      flushEnvSeed(world, useStudioStore.getState())
+      saveNow()
       unsubscribe()
       unregisterWorld()
       if (import.meta.env.DEV) delete window.__botanica

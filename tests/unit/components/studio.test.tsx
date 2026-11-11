@@ -88,12 +88,14 @@ describe('TopNav speed controls', () => {
     expect(screen.getByText('14:05:08')).toBeInTheDocument()
   })
 
-  it('+1 Day advances the day, grows flora and toasts', async () => {
+  it('+1 Day advances one tank day and toasts', async () => {
     world.items = [{ ...item('f', 'flora'), scale: 1 }]
     render(<TopNav />)
     await user().click(screen.getByRole('button', { name: '+1 day' }))
     expect(useStudioStore.getState().dayCount).toBe(2)
-    expect(world.items[0].scale).toBeCloseTo(1.06)
+    expect(world.ecoTime).toBeCloseTo(1, 9)
+    // The flat x1.06 bump is gone; size now follows plant vitality inside the ecology step.
+    expect(world.items[0].scale).toBe(1)
     expect(useToastStore.getState().message).toMatch(/^Day 2: plants grew/)
   })
 
@@ -150,6 +152,8 @@ describe('TopNav speed controls', () => {
     })
     world.env.nutrients = 50
     world.env.soilMoisture = 30
+    // Five plants draw nutrients down by 0.4 each per tank day: 50 -> 48.
+    world.items = Array.from({ length: 5 }, (_, i) => item(`f${i}`, 'flora'))
     // Inside the throttle window: a throttled push would skip the flush.
     world.lastTelemetryPush = performance.now()
     useAccountStore.setState({ phase: 'cloud', activeId: 'g_a', backend })

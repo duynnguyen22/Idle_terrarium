@@ -13,7 +13,7 @@ import { addItem } from '@/engine/items'
 import { advanceClock, lightingForHour } from '@/engine/simulation/clock'
 import { FRAME_MS } from '@/engine/simulation/constants'
 import { faunaZone, updateFauna } from '@/engine/simulation/fauna'
-import { advanceDay, updateGrowth } from '@/engine/simulation/growth'
+import { slowStep } from '@/engine/simulation/dayTick'
 import { addSporePatch, updateMold } from '@/engine/simulation/mold'
 import {
   initWorldParticles,
@@ -26,7 +26,12 @@ import {
   spawnPourStream,
   stepPourParticles,
 } from '@/engine/simulation/pouring'
-import { pushTelemetry, TELEMETRY_INTERVAL_MS } from '@/engine/simulation/telemetry'
+import {
+  flushTelemetry,
+  pushTelemetry,
+  SNAPSHOT_INTERVAL_MS,
+  TELEMETRY_INTERVAL_MS,
+} from '@/engine/simulation/telemetry'
 import { syncChildren, tick } from '@/engine/simulation/tick'
 import { createWorld, type EngineWorld, type WorldEntity } from '@/engine/world'
 import { createStudioStore } from '@/store/useStudioStore'
@@ -62,21 +67,6 @@ const st = {
   lighting: 'sunlight',
 } as const
 const terrain = { substrates: st.substrates, waterSplit: st.waterSplit }
-
-function makeMemoryStorage(): Storage {
-  const m = new Map<string, string>()
-  return {
-    get length() {
-      return m.size
-    },
-    clear: () => m.clear(),
-    getItem: (k) => m.get(k) ?? null,
-    key: (i) => [...m.keys()][i] ?? null,
-    removeItem: (k) => void m.delete(k),
-    setItem: (k, v) => void m.set(k, String(v)),
-  }
-}
-const memoryStorage = makeMemoryStorage()
 
 let store: ReturnType<typeof createStudioStore>
 beforeEach(() => {
@@ -194,86 +184,6 @@ describe('fauna', () => {
   })
 })
 
-describe('growth', () => {
-  it('sprout reaches mature after ~3200 frames and +1 Day makes it lush', () => {
-    const world = createWorld()
-    world.items.push(
-      item({
-        uid: 'p',
-        id: 'boston_fern',
-        category: 'flora',
-        stage: 'sprout',
-        growthProgress: 0.2,
-      }),
-    )
-    const state = store.getState()
-    for (let i = 0; i < 3100; i++) updateGrowth(world, state, FRAME_MS)
-    expect(world.items[0].stage).toBe('sprout')
-    for (let i = 0; i < 200; i++) updateGrowth(world, state, FRAME_MS)
-    expect(world.items[0].stage).toBe('mature')
-    expect(world.items[0].scale).toBe(1.05)
-    const day = state.dayCount
-    advanceDay(world, state)
-    expect(world.items[0].stage).toBe('lush')
-    expect(world.items[0].scale).toBeCloseTo(1.05 * 1.06)
-    expect(store.getState().dayCount).toBe(day + 1)
-  })
-  it('5x speed grows 3.5x faster', () => {
-    const w = createWorld()
-    w.items.push(
-      item({
-        uid: 'p',
-        id: 'boston_fern',
-        category: 'flora',
-        stage: 'sprout',
-        growthProgress: 0.2,
-      }),
-    )
-    updateGrowth(w, { timeSpeed: 5 }, FRAME_MS)
-    expect(w.items[0].growthProgress).toBeCloseTo(0.2 + 0.00025 * 3.5)
-  })
-  it('vitality drifts by humidity range', () => {
-    const w = createWorld()
-    const fern = addItem(w, 'peacock_fern', 'mature', { terrain })!
-    fern.vitality = 50
-    w.env.humidity = 50
-    updateGrowth(w, { timeSpeed: 1 }, 1000 / 60)
-    expect(fern.vitality).toBeCloseTo(50 - 0.003, 6)
-    w.env.humidity = 80
-    updateGrowth(w, { timeSpeed: 1 }, 1000 / 60)
-    expect(fern.vitality).toBeCloseTo(50 - 0.003 + 0.004, 6)
-    fern.vitality = 30
-    w.env.humidity = 50
-    updateGrowth(w, { timeSpeed: 1 }, 1000 / 60)
-    expect(fern.vitality).toBe(30)
-  })
-  it('+1 Day advances the cycle, feeds mold chance and costs nutrients', () => {
-    const store = createStudioStore(memoryStorage)
-    const w = createWorld()
-    w.env.cycleProgress = 0
-    w.env.nutrients = 88
-    const fern = addItem(w, 'peacock_fern', 'mature', { terrain })!
-    fern.scale = 1.45
-    advanceDay(w, store.getState(), () => 0.5)
-    expect(store.getState().dayCount).toBe(2)
-    expect(w.env.cycleProgress).toBeCloseTo(1 / 21, 6)
-    expect(w.env.nutrients).toBe(86)
-    expect(fern.scale).toBe(1.5)
-    expect(fern.stage).toBe('lush')
-    expect(w.moldPatches).toHaveLength(1)
-    advanceDay(w, store.getState(), () => 0.7)
-    expect(w.moldPatches).toHaveLength(1)
-    store.getState().setSetupDay(-10)
-    advanceDay(w, store.getState(), () => 0.1)
-    expect(w.moldPatches).toHaveLength(1)
-    const noPool = createStudioStore(memoryStorage)
-    noPool.getState().setWaterSplit(0)
-    const w2 = createWorld()
-    advanceDay(w2, noPool.getState(), () => 0.9)
-    expect(w2.env.cycleProgress).toBe(1)
-  })
-})
-
 describe('mold', () => {
   it('a fresh world never blooms (bloomTimer idles at 0 until a new build arms it)', () => {
     const w = createWorld()
@@ -311,25 +221,34 @@ describe('mold', () => {
     )
     expect(w.moldPatches).toHaveLength(3)
     expect(toasts).toHaveLength(1)
+    // The crew clears patches per tank day (slowStep), not per frame.
     addItem(w, 'springtails', 'mature', { terrain })
     addItem(w, 'isopod', 'mature', { terrain })
-    const before = w.moldPatches[0].size as number
+    const sizes = w.moldPatches.map((p) => p.size)
     updateMold(w, st, 1000 / 60, () => 0.5)
-    expect(w.moldPatches[0].size).toBeCloseTo(before - 0.005, 6)
-    w.moldPatches[0].size = 3
-    updateMold(w, st, 1000 / 60, () => 0.5)
-    expect(w.moldPatches).toHaveLength(2)
+    expect(w.moldPatches.map((p) => p.size)).toEqual(sizes)
+    slowStep(
+      w,
+      0.05,
+      { ...st, pace: 'garden', hasGrowLamp: true, pumpFlow: 'gentle' },
+      { away: false },
+    )
+    expect(w.moldPatches).toHaveLength(3 - 2) // 27 * 2 * 0.05 = 2.7 patches
+    slowStep(
+      w,
+      0.05,
+      { ...st, pace: 'garden', hasGrowLamp: true, pumpFlow: 'gentle' },
+      { away: false },
+    )
+    expect(w.moldPatches).toHaveLength(0)
   })
-  it('+Spore places a patch on land and a lone crew member eats 0.0025 per frame', () => {
+  it('+Spore places a patch on land', () => {
     const world = createWorld()
     world.env.bloomTimer = 0
     addSporePatch(world, st, () => 0)
     expect(world.moldPatches[0]).toEqual({ x: getDividerNormX(0.32) + 0.03, size: 11 })
     updateMold(world, st, FRAME_MS, () => 0.5)
     expect(world.moldPatches[0].size).toBe(11)
-    addItem(world, 'springtails', 'mature', { terrain })
-    updateMold(world, st, FRAME_MS, () => 0.5)
-    expect(world.moldPatches[0].size as number).toBeCloseTo(11 - 0.0025, 9)
   })
 })
 
@@ -601,6 +520,52 @@ describe('pushTelemetry', () => {
     expect(writes).toBe(1)
     expect(store.getState().cycleProgress).toBe(Math.floor(0.32 * 210) / 210)
   })
+  it('flushTelemetry sets dayCount to floor(ecoTime)+1 once', () => {
+    const w = createWorld()
+    let writes = 0
+    const unsub = store.subscribe((s, prev) => {
+      if (s.dayCount !== prev.dayCount) writes++
+    })
+    w.ecoTime = 2.4
+    flushTelemetry(w, store.getState())
+    flushTelemetry(w, store.getState())
+    expect(store.getState().dayCount).toBe(3)
+    expect(writes).toBe(1)
+    w.ecoTime = 2.99
+    flushTelemetry(w, store.getState())
+    expect(writes).toBe(1)
+    w.ecoTime = 3
+    flushTelemetry(w, store.getState())
+    unsub()
+    expect(store.getState().dayCount).toBe(4)
+    expect(writes).toBe(2)
+  })
+  it('pushTelemetry commits a snapshot and lastSimulatedAt once per minute', () => {
+    const w = createWorld()
+    const commit = vi.fn()
+    vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000)
+    pushTelemetry(w, store.getState(), 1000, store.getState(), commit)
+    expect(commit).not.toHaveBeenCalled()
+    expect(store.getState().lastSimulatedAt).toBeNull()
+    let t = 1000
+    while (t < SNAPSHOT_INTERVAL_MS)
+      pushTelemetry(w, store.getState(), (t += 250), store.getState(), commit)
+    expect(commit).toHaveBeenCalledTimes(1)
+    expect(store.getState().lastSimulatedAt).toBe(1_700_000_000_000)
+    expect(w.lastSnapshotCommit).toBe(t)
+    for (let i = 0; i < 100; i++)
+      pushTelemetry(w, store.getState(), (t += 250), store.getState(), commit)
+    expect(commit).toHaveBeenCalledTimes(1)
+    pushTelemetry(
+      w,
+      store.getState(),
+      w.lastSnapshotCommit + SNAPSHOT_INTERVAL_MS,
+      store.getState(),
+      commit,
+    )
+    expect(commit).toHaveBeenCalledTimes(2)
+    vi.restoreAllMocks()
+  })
   it('writes the env seed at most once every 5 s, rounded to 1 decimal', () => {
     const w = createWorld()
     let seedWrites = 0
@@ -671,6 +636,64 @@ describe('tick', () => {
     expect(world.fallingStreams.length + world.surfaceGrains.length).toBeGreaterThan(0)
     expect(world.items[0].growthProgress as number).toBeGreaterThan(0.2)
     expect(world.ambientMotes[0].y).not.toBe(y0)
+  })
+})
+
+describe('tick living time', () => {
+  it('toasts that the pool has cycled when a tank day pushes it past 1', () => {
+    const w = createWorld()
+    w.env.cycleProgress = 1 - 1e-9
+    store.getState().setTimeSpeed(5)
+    const toasts: string[] = []
+    tick(w, 250, 1000, {
+      store: store.getState(),
+      rng: mulberry32(1),
+      onToast: (m) => toasts.push(m),
+    })
+    expect(w.env.cycleProgress).toBe(1)
+    expect(toasts).toContain('The pool has cycled. Ammonia and nitrite read 0.')
+  })
+  it('live-toasts notable life events at most once per 20 s, never grown', () => {
+    const w = createWorld()
+    const fern = item({
+      uid: 'f',
+      id: 'trailing_ivy',
+      category: 'flora',
+      life: { cyc: 0.999, n: 0, tendrils: 0 },
+    })
+    const sprout = item({
+      uid: 's',
+      id: 'boston_fern',
+      category: 'flora',
+      stage: 'sprout',
+      born: true,
+      growthProgress: 1 - 1e-9,
+    })
+    w.items.push(fern, sprout)
+    store.getState().setTimeSpeed(5)
+    const toasts: string[] = []
+    const deps = {
+      store: store.getState(),
+      rng: mulberry32(1),
+      onToast: (m: string) => toasts.push(m),
+    }
+    // 250 ms at 5x on the garden pace is ~0.0006 of a day; push both items over their thresholds.
+    fern.life!.cyc = 1 - 1e-9
+    tick(w, 250, 1000, deps)
+    expect(toasts).toEqual(['tendril'])
+    fern.life!.cyc = 1 - 1e-9
+    tick(w, 250, 5000, deps)
+    expect(toasts).toHaveLength(1)
+    fern.life!.cyc = 1 - 1e-9
+    tick(w, 250, 21_500, deps)
+    expect(toasts).toEqual(['tendril', 'tendril'])
+    expect(sprout.stage).toBe('mature')
+  })
+  it('hands the snapshot hook to pushTelemetry', () => {
+    const w = createWorld()
+    const commit = vi.fn()
+    tick(w, 16, SNAPSHOT_INTERVAL_MS + 1000, { store: store.getState(), commit })
+    expect(commit).toHaveBeenCalledTimes(1)
   })
 })
 

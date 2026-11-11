@@ -1,4 +1,6 @@
 import { findCatalogDef, type CatalogId } from '@/data/catalog'
+import { babyScale } from '../simulation/breed'
+import { sproutScale } from '../simulation/dayTick'
 import { getSprite } from '../sprites/spriteCache'
 import { normToPx, vesselMetrics, type RenderFn } from './metrics'
 
@@ -18,7 +20,12 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
 
     const px = normToPx(R, item.x)
     const py = cy - Rad + item.y * (Rad * 2)
-    const drawSize = Rad * 0.36 * (item.scale || 1)
+    // Seedlings grow from 0.58 of their species size; young fauna from 0.55 of the adult's.
+    let scale = item.scale || 1
+    if (item.baby !== undefined) scale = babyScale(item, scale)
+    else if (item.category === 'flora' && item.stage === 'sprout')
+      scale = sproutScale(item, def.baseScale)
+    const drawSize = Rad * 0.36 * scale
 
     ctx.save()
     ctx.translate(px, py)

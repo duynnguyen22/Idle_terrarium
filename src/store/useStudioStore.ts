@@ -130,7 +130,6 @@ export interface StudioActions {
   setSubstrates: (obj: SubstrateDepths) => void
   selectItem: (id: string | null) => void
   setActivePourMaterial: (id: string | null) => void
-  advanceDay: () => void
   /** Rounds to 1 decimal; a no-op when all four rounded values are unchanged. */
   setEnvSeed: (seed: EnvSeed) => void
   setWorldSnapshot: (snapshot: WorldSnapshot | null) => void
@@ -290,7 +289,6 @@ export function createStudioStore(storage: Storage = localStorage): StudioStoreH
         },
         selectItem: (selectedId) => set({ selectedId }),
         setActivePourMaterial: (activePourMaterial) => set({ activePourMaterial }),
-        advanceDay: () => set((s) => ({ dayCount: s.dayCount + 1 })),
         setEnvSeed: (seed) => {
           // A hand-edited save could hydrate a null seed; treat it as the defaults.
           const cur = get().envSeed ?? defaultEnvSeed()

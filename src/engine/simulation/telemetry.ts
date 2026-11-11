@@ -8,8 +8,12 @@ import { countCleanupCrew } from './mold'
 export const TELEMETRY_INTERVAL_MS = 250
 /** The persisted environment seed is written at most once per this interval. */
 export const ENV_SEED_INTERVAL_MS = 5000
+/** The world snapshot is committed and `lastSimulatedAt` stamped at most once per this interval. */
+export const SNAPSHOT_INTERVAL_MS = 60_000
 /** Cycle progress reaches the (persisted) studio store in steps of 1/CYCLE_PROGRESS_STEPS, floored so the store never runs ahead of the engine. */
 const CYCLE_PROGRESS_STEPS = 210
+
+type StateSlice = Pick<StudioState, 'substrates' | 'cycleProgress' | 'dayCount'>
 
 /** Store substrates plus the deltas pouring has accumulated but not yet flushed. */
 export function effectiveSubstrate(
@@ -56,11 +60,17 @@ export function pushTelemetry(
   world: EngineWorld,
   store: StudioStore,
   now: number,
-  state: Pick<StudioState, 'substrates' | 'cycleProgress'> = store,
+  state: StateSlice = store,
+  commit?: () => void,
 ): boolean {
   if (now - world.lastTelemetryPush < TELEMETRY_INTERVAL_MS) return false
   world.lastTelemetryPush = now
   flushTelemetry(world, store, state)
+  if (commit && now - world.lastSnapshotCommit >= SNAPSHOT_INTERVAL_MS) {
+    world.lastSnapshotCommit = now
+    commit()
+    store.setLastSimulatedAt(Date.now())
+  }
   if (now - world.lastEnvSeedPush >= ENV_SEED_INTERVAL_MS) {
     world.lastEnvSeedPush = now
     flushEnvSeed(world, store)
@@ -70,13 +80,13 @@ export function pushTelemetry(
 
 /**
  * The unthrottled body of pushTelemetry (everything but the env seed cadence): pending substrates,
- * the live gauges and care issues, cycle progress and a pending water split. Called directly when a
+ * the live gauges and care issues, cycle progress, the day count and a pending water split. Called directly when a
  * discrete change (e.g. +1 day) must reach the stores before the next throttled push.
  */
 export function flushTelemetry(
   world: EngineWorld,
   store: StudioStore,
-  state: Pick<StudioState, 'substrates' | 'cycleProgress'> = store,
+  state: StateSlice = store,
 ): void {
   const keys = Object.keys(world.pendingSubstrates) as (keyof SubstrateDepths)[]
   if (keys.some((k) => world.pendingSubstrates[k])) {
@@ -98,6 +108,9 @@ export function flushTelemetry(
   })
   const cycle = Math.floor(env.cycleProgress * CYCLE_PROGRESS_STEPS) / CYCLE_PROGRESS_STEPS
   if (cycle !== state.cycleProgress) store.setCycleProgress(cycle)
+  // The day counter is derived from living time: tank day N runs from ecoTime N - 1 to N.
+  const day = Math.floor(world.ecoTime) + 1
+  if (day !== state.dayCount) store.setDayCount(day)
   if (world.pendingWaterSplit !== undefined) {
     store.setWaterSplit(world.pendingWaterSplit)
     world.pendingWaterSplit = undefined
