@@ -93,6 +93,21 @@ export interface SubstrateDepths {
   water: number
 }
 
+/** Per-plant life-cycle position: `cyc` 0..1 through the species cycle, `n` completed cycles, `tendrils` grown shoots. */
+export interface LifeState {
+  cyc: number
+  n: number
+  tendrils: number
+}
+
+/** One tuft of the spreading moss carpet. */
+export interface MossTuft {
+  x: number
+  r: number
+  w: number
+  seed: number
+}
+
 export interface PlacedItem {
   uid: string
   id: string
@@ -110,6 +125,11 @@ export interface PlacedItem {
   parentUid?: string | null
   offsetX?: number
   offsetY?: number
+  life?: LifeState
+  born?: boolean
+  baby?: number
+  resting?: boolean
+  lush?: number
   // fauna runtime
   vx?: number
   vy?: number

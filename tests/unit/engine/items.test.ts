@@ -41,6 +41,12 @@ describe('addItem', () => {
     )
   })
 
+  it('addItem seeds life for a plant in the LIFE table', () => {
+    const fit = addItem(pw, 'fittonia', 'mature', { terrain, rng: () => 0.5 })!
+    expect(fit.life).toEqual({ cyc: 0.225, n: 0, tendrils: 0 })
+    expect(addItem(pw, 'isopod', 'mature', { terrain })!.life).toBeUndefined()
+  })
+
   it('floating flora sit on the water top; land items sit on the surface', () => {
     expect(addItem(pw, 'frogbit_pads', 'mature', { terrain })!.y).toBeCloseTo(
       getWaterTopNormY(terrain),

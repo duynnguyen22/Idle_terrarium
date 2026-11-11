@@ -40,4 +40,47 @@ describe('world persistence', () => {
     restoreWorld(w, { items: [], terrainContour: [] })
     expect(w.surfaceGrains).toEqual([])
   })
+
+  it('snapshot round-trips mossTufts, ecoTime and breed', () => {
+    const w = createWorld()
+    w.mossTufts.push({ x: 0.4, r: 0.02, w: 0.5, seed: 7 })
+    w.ecoTime = 12.5
+    w.breed = { shrimp: 3 }
+    const snap = snapshotWorld(w)
+    const w2 = createWorld()
+    restoreWorld(w2, snap)
+    expect(w2.mossTufts).toEqual(w.mossTufts)
+    expect(w2.mossTufts[0]).not.toBe(w.mossTufts[0])
+    expect(w2.ecoTime).toBe(12.5)
+    expect(w2.breed).toEqual({ shrimp: 3 })
+  })
+
+  it('restoreWorld falls back to defaults for an old snapshot', () => {
+    const w = createWorld()
+    w.mossTufts.push({ x: 0.4, r: 0.02, w: 0.5, seed: 7 })
+    w.ecoTime = 9
+    w.breed = { shrimp: 1 }
+    restoreWorld(w, { items: [], terrainContour: [] })
+    expect(w.mossTufts).toEqual([])
+    expect(w.ecoTime).toBe(0)
+    expect(w.breed).toEqual({})
+  })
+
+  it('restoreWorld initialises life on old items', () => {
+    const w = createWorld()
+    const old: PlacedItem = {
+      uid: 'f',
+      id: 'fittonia',
+      category: 'flora',
+      x: 0.5,
+      y: 0.5,
+      scale: 1,
+      rotation: 0,
+      flipX: false,
+      zIndex: 1,
+    }
+    restoreWorld(w, { items: [old], terrainContour: [] })
+    expect(w.items[0]!.life?.cyc).toBeGreaterThanOrEqual(0)
+    expect(w.items[0]!.life?.cyc).toBeLessThan(0.45)
+  })
 })

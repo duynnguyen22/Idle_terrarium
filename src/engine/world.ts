@@ -1,4 +1,4 @@
-import type { PlacedItem, SubstrateDepths } from '@/data/types'
+import type { MossTuft, PlacedItem, SubstrateDepths } from '@/data/types'
 import type { CareIssue } from './care'
 
 /** Loose shape for per-frame particles; the engine narrows these in later tasks. */
@@ -71,6 +71,18 @@ export interface EngineWorld {
   careIssues: CareIssue[]
   /** Water split the engine wants written to the store on the next flush. */
   pendingWaterSplit?: number
+  /** Spreading moss carpet tufts; persisted. */
+  mossTufts: MossTuft[]
+  /** Tank days elapsed in living time; persisted. */
+  ecoTime: number
+  /** Per-species breeding progress; persisted. */
+  breed: Record<string, number>
+  moldClearAcc: number
+  marks: { rings: string[]; pings: Map<string, number> }
+  lastSnapshotCommit: number
+  lastLiveToast: number
+  wasMisting: boolean
+  wasPouring: boolean
 }
 
 export function createWorld(): EngineWorld {
@@ -117,5 +129,14 @@ export function createWorld(): EngineWorld {
     frame: 0,
     mineralSpots: 0,
     careIssues: [],
+    mossTufts: [],
+    ecoTime: 0,
+    breed: {},
+    moldClearAcc: 0,
+    marks: { rings: [], pings: new Map() },
+    lastSnapshotCommit: 0,
+    lastLiveToast: 0,
+    wasMisting: false,
+    wasPouring: false,
   }
 }

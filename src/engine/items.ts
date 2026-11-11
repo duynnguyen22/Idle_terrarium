@@ -10,6 +10,7 @@ import {
   randomLandX,
   type TerrainInput,
 } from '@/engine/geometry'
+import { initLife } from './simulation/life'
 import type { Rng } from './simulation/constants'
 import { clamp } from '@/lib/clamp'
 import { createItemId } from '@/lib/ids'
@@ -94,6 +95,7 @@ export function addItem(
     item.aiState = 'wandering'
     item.aiTimer = 100 + rng() * 120
   }
+  initLife(item, rng)
   world.items.push(item)
   return item
 }
