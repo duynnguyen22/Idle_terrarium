@@ -57,7 +57,7 @@ export function ClockSpeedPill() {
         <span className="text-xs font-semibold text-forest-deep">{`${dateLabel} · Day ${Math.floor(dayCount)}`}</span>
         <span className="h-3.5 w-px bg-sand-border" />
         <span className="font-mono-clock text-xs font-semibold text-ink-bark">{clock}</span>
-        <span className="hidden text-[11px] text-stone xl:inline">{PHASE_BADGES[lighting]}</span>
+        <span className="hidden text-[11px] text-stone 2xl:inline">{PHASE_BADGES[lighting]}</span>
       </div>
 
       <button

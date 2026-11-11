@@ -85,7 +85,7 @@ test('studio journey: biome, 5x, relax, persistence', async ({ page }) => {
     }
   })
   // STUDIO_VERSION in src/store/useStudioStore.ts; importing it here would run the store, which needs localStorage.
-  expect(persisted).toEqual({ version: 3, items: count, pumpFlow: 'strong', waterSplit: 0.32 })
+  expect(persisted).toEqual({ version: 4, items: count, pumpFlow: 'strong', waterSplit: 0.32 })
   await expect.poll(() => liveItemCount(page)).toBe(count)
   await expect(
     page.getByRole('radiogroup', { name: 'Waterfall pump' }).getByRole('radio', { name: 'Strong' }),

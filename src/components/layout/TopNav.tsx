@@ -24,9 +24,9 @@ export function TopNav({ drawer = null, onToggleDrawer }: TopNavProps) {
   return (
     <header
       id="top-nav"
-      className="z-30 flex h-14 shrink-0 flex-nowrap items-center justify-between gap-2 border-b border-sand-border bg-paper/95 px-3 backdrop-blur-md"
+      className="z-30 flex h-14 shrink-0 flex-nowrap items-center justify-between gap-1 border-b border-sand-border bg-paper/95 px-2 lg:gap-2 lg:px-3 backdrop-blur-md"
     >
-      <div className="flex shrink-0 items-center gap-2.5">
+      <div className="flex shrink-0 items-center gap-1.5 lg:gap-2.5">
         <button
           type="button"
           aria-label="Toggle catalog panel"
