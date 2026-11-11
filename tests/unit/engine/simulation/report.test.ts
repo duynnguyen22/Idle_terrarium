@@ -7,6 +7,7 @@ import { PACES } from '@/engine/simulation/pace'
 import {
   buildReport,
   DOT_COLOURS,
+  dotColour,
   durationLabel,
   etaLabel,
   EVENT_ORDER,
@@ -83,8 +84,23 @@ describe('tables', () => {
     ])
   })
 
-  it('has a default dot colour', () => {
-    expect(typeof DOT_COLOURS.default).toBe('string')
+  it('uses the spec dot colours, and the default for every other kind', () => {
+    const expected: Record<string, string> = {
+      open: '#e0789f',
+      bud: '#e0789f',
+      fade: '#e0789f',
+      hatch: '#c2853f',
+      rest: '#9aa79d',
+      seedling: '#a3cf4f',
+      grown: '#a3cf4f',
+      fiddle: '#65a33a',
+      frond: '#65a33a',
+      tendril: '#65a33a',
+      spread: '#65a33a',
+      seed: '#65a33a',
+    }
+    for (const [kind, colour] of Object.entries(expected)) expect(dotColour(kind)).toBe(colour)
+    expect(DOT_COLOURS.default).toBe('#65a33a')
   })
 })
 

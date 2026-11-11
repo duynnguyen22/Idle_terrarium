@@ -71,20 +71,21 @@ export const EVENT_ORDER: EventKind[] = [
   'rest',
 ]
 
-/** Dot colour per event kind, for canvas rings and the card's list dots. */
+/** Dot colour per event kind for the card's list dots (spec §Time-away card); other kinds use `default`. */
 export const DOT_COLOURS: Record<string, string> = {
-  open: '#e8a0b8',
-  bud: '#d9b3c4',
-  fade: '#b9a7a0',
-  seedling: '#8fc47a',
-  grown: '#6fae62',
-  fiddle: '#a7cf8a',
-  frond: '#7fbf7a',
-  tendril: '#9bc58a',
-  spread: '#86b57d',
-  hatch: '#e5c06a',
-  rest: '#93a4b8',
-  default: '#9fb59a',
+  open: '#e0789f',
+  bud: '#e0789f',
+  fade: '#e0789f',
+  hatch: '#c2853f',
+  rest: '#9aa79d',
+  seedling: '#a3cf4f',
+  grown: '#a3cf4f',
+  default: '#65a33a',
+}
+
+/** The card dot colour for an event kind. */
+export function dotColour(kind: string): string {
+  return Object.hasOwn(DOT_COLOURS, kind) ? DOT_COLOURS[kind] : DOT_COLOURS.default
 }
 
 function speciesName(id: string): string {

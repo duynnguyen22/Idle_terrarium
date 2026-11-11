@@ -4,7 +4,7 @@ import { tryGetWorld } from '@/engine/engineBridge'
 import { clearRings, pingItem, PING_MS, setRings } from '@/engine/marks'
 import { paceMs } from '@/engine/simulation/pace'
 import {
-  DOT_COLOURS,
+  dotColour,
   durationLabel,
   etaLabel,
   restLine,
@@ -36,7 +36,6 @@ function titleOf(r: AwayReport): string {
   return `Resting since ${sinceLabel(r.from)}`
 }
 
-const colourOf = (kind: string): string => DOT_COLOURS[kind] ?? DOT_COLOURS.default ?? '#9fb59a'
 
 function Dot({ colour }: { colour: string }) {
   return (
@@ -131,14 +130,14 @@ export function AwayCard() {
                 onClick={() => select(item.uid)}
                 className="flex w-full items-start gap-2 rounded-lg text-left text-xs text-forest-ink hover:bg-forest-ink/5"
               >
-                <Dot colour={colourOf(item.kind)} />
+                <Dot colour={dotColour(item.kind)} />
                 <span>{item.text}</span>
               </button>
             </li>
           ))}
           {report.rest.length > 0 && (
             <li className="flex items-start gap-2 text-xs text-forest-ink">
-              <Dot colour={colourOf('rest')} />
+              <Dot colour={dotColour('rest')} />
               <span>{restLine(report.rest)}</span>
             </li>
           )}
