@@ -81,9 +81,9 @@ describe('floraRow', () => {
     expect(born.phase).toBe('Seedling')
     expect(born.bar).toBeCloseTo(0.5)
     expect(born.next).toMatch(/^Fills out in about/)
-    // (1 - 0.6) / 0.6 tank days at 2 h per day = 80 min
+    // (1 - 0.6) / 0.6 tank days at 2 h per day = 1.3 h
     expect(born.eta).toBeCloseTo(0.4 / 0.6)
-    expect(born.next).toBe('Fills out in about 80 min')
+    expect(born.next).toBe('Fills out in about 1.3 h')
     expect(born.ticks).toEqual([])
     const planted = floraRow(item('fittonia', { stage: 'sprout' }), 0.55, 'garden')
     expect(planted.phase).toBe('Sprout')
