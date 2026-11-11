@@ -113,8 +113,9 @@ export function GrowthBoard() {
   useEffect(() => {
     if (!open) return
     // Capture phase + stopPropagation: Escape closes the board only, not relax mode or the selection.
+    // Relax mode hides the board, so there Escape is left to leave relax mode.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
+      if (e.key !== 'Escape' || useStudioStore.getState().relaxMode) return
       e.stopPropagation()
       closeGrowthBoard()
     }

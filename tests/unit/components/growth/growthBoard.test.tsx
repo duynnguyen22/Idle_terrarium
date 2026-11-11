@@ -88,6 +88,22 @@ describe('GrowthBoard', () => {
     expect(useStudioStore.getState().selectedId).toBe('a')
   })
 
+  it('leaves Escape to relax mode while relax hides the board', () => {
+    act(() => useOverlayStore.getState().openGrowthBoard())
+    useStudioStore.setState({ relaxMode: true })
+    const other = vi.fn()
+    window.addEventListener('keydown', other)
+    try {
+      render(<GrowthBoard />)
+      act(() => void fireEvent.keyDown(document.body, { key: 'Escape' }))
+      expect(useOverlayStore.getState().growthBoardOpen).toBe(true)
+      expect(other).toHaveBeenCalledTimes(1)
+    } finally {
+      window.removeEventListener('keydown', other)
+      useStudioStore.setState({ relaxMode: false })
+    }
+  })
+
   it('shows both empty states', () => {
     act(() => useOverlayStore.getState().openGrowthBoard())
     render(<GrowthBoard />)

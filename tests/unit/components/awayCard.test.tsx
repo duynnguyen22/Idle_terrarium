@@ -170,6 +170,22 @@ describe('AwayCard', () => {
     expect(other).not.toHaveBeenCalled()
   })
 
+  it('leaves Escape to relax mode while relax hides the card', () => {
+    const other = vi.fn()
+    window.addEventListener('keydown', other)
+    useStudioStore.setState({ relaxMode: true })
+    try {
+      open([full()])
+      render(<AwayCard />)
+      act(() => void fireEvent.keyDown(document.body, { key: 'Escape' }))
+      expect(useOverlayStore.getState().awayIndex).toBe(0)
+      expect(other).toHaveBeenCalledTimes(1)
+    } finally {
+      window.removeEventListener('keydown', other)
+      useStudioStore.setState({ relaxMode: false })
+    }
+  })
+
   it('rings only uids that still exist and follow the page', () => {
     const gone = report({
       items: [{ kind: 'open', uid: 'zz', id: 'x', text: 'Gone.', count: 1 }],
