@@ -149,8 +149,9 @@ export function breedStep(
         progress = Math.min(progress, PROGRESS_CEILING)
         break
       }
+      const parent = adults[Math.min(adults.length - 1, Math.floor(rng() * adults.length))]
+      if (!parent) break
       progress -= 1
-      const parent = adults[Math.min(adults.length - 1, Math.floor(rng() * adults.length))]!
       const baby = spawnBaby(world, parent, rng)
       count++
       emit({ kind: 'hatch', uid: baby.uid, id })
