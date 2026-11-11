@@ -36,7 +36,6 @@ function titleOf(r: AwayReport): string {
   return `Resting since ${sinceLabel(r.from)}`
 }
 
-
 function Dot({ colour }: { colour: string }) {
   return (
     <span
