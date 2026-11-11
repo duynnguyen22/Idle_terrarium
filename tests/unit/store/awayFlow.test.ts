@@ -107,6 +107,25 @@ describe('recordReport', () => {
     expect(add).toHaveBeenCalledTimes(1)
   })
 
+  it('flushes the caught-up world to the stores before journaling, so the entry carries its day', async () => {
+    const backend = createLocalBackend('u_demo', new MemoryStorage())
+    useAccountStore.setState({ phase: 'cloud', activeId: 'g_a', backend })
+    useStudioStore.setState({ dayCount: 1 })
+    // The catch-up moved the world three days on; nothing has pushed it to the stores yet.
+    world.ecoTime = 3.2
+    world.env.nutrients = 12
+    const staleIssues = world.careIssues
+    recordReport(report({ to: 9000 }), { journal: true })
+    // The care report is recomputed for the caught-up world.
+    expect(world.careIssues).not.toBe(staleIssues)
+    expect(useStudioStore.getState().dayCount).toBe(4)
+    await vi.waitFor(() => expect(useAccountStore.getState().journal).toHaveLength(1))
+    expect(useAccountStore.getState().journal[0]).toMatchObject({
+      day: 4,
+      metrics: { nutrients: 12 },
+    })
+  })
+
   it('routes a journal failure to handleCloudError', async () => {
     const backend = createLocalBackend('u_demo', new MemoryStorage())
     const handle = vi.fn()

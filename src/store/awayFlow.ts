@@ -1,4 +1,4 @@
-import { getWorld, mutateWorld } from '@/engine/engineBridge'
+import { getWorld, mutateWorld, tryGetWorld } from '@/engine/engineBridge'
 import { hasPool, randomLandX } from '@/engine/geometry'
 import { catchUpSpan } from '@/engine/simulation/catchup'
 import type { EventKind } from '@/engine/simulation/life'
@@ -33,10 +33,16 @@ export function journalFromReport(r: AwayReport): JournalFromReport {
 }
 
 /**
- * Logs the report (unless it is already the newest one), opens the card on it and, when asked and signed in
- * with a terrarium open, adds an automatic journal entry.
+ * Pushes the simulated world's care report, gauges and day count to the stores, logs the report (unless it is
+ * already the newest one), opens the card on it and, when asked and signed in with a terrarium open, adds an
+ * automatic journal entry, which therefore carries the post-simulation day and gauges.
  */
 export function recordReport(r: AwayReport, opts: { journal: boolean }): void {
+  const world = tryGetWorld()
+  if (world) {
+    refreshCareReport(world, useStudioStore.getState())
+    flushTelemetry(world, useStudioStore.getState())
+  }
   const studio = useStudioStore.getState()
   const last = studio.awayLog[0]
   if (!last || last.from !== r.from || last.to !== r.to || last.mode !== r.mode) {
