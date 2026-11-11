@@ -5,6 +5,7 @@ import { mutateWorld, getWorld, unregisterWorld } from '@/engine/engineBridge'
 import { hasPool } from '@/engine/geometry'
 import { configureSpriteCache } from '@/engine/sprites/spriteCache'
 import { useTerrariumEngine } from '@/hooks/useTerrariumEngine'
+import { useOverlayStore } from '@/store/useOverlayStore'
 import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
 import { useTelemetryStore } from '@/store/useTelemetryStore'
 import { makeRecordingContext } from '../helpers/recordingContext'
@@ -28,6 +29,8 @@ describe('useTerrariumEngine', () => {
   }
 
   beforeEach(() => {
+    useOverlayStore.setState({ growthBoardOpen: false, awayIndex: null, tour: null })
+    useStudioStore.setState({ awayLog: [] })
     callbacks = new Map()
     nextId = 1
     cancel.mockClear()
@@ -246,5 +249,37 @@ describe('useTerrariumEngine', () => {
     unmount()
     expect(() => getWorld()).toThrow(/no world registered/)
     unregisterWorld()
+  })
+
+  it('runs catch-up on mount when lastSimulatedAt is 2 h old and opens the card', () => {
+    useStudioStore.setState({ lastSimulatedAt: Date.now() - 2 * 3_600_000, catchupEnabled: true })
+    const { unmount } = render(<Harness />)
+    const r = useStudioStore.getState().awayLog[0]
+    expect(r).toBeDefined()
+    expect(r?.mode).toBe('away')
+    expect(useOverlayStore.getState().awayIndex).toBe(0)
+    unmount()
+  })
+
+  it('pushes nothing on mount when lastSimulatedAt is 1 min old', () => {
+    useStudioStore.setState({ lastSimulatedAt: Date.now() - 60_000, catchupEnabled: true })
+    const { unmount } = render(<Harness />)
+    expect(useStudioStore.getState().awayLog).toHaveLength(0)
+    expect(useOverlayStore.getState().awayIndex).toBeNull()
+    unmount()
+  })
+
+  it('runs catch-up when the tab becomes visible again after a long gap', () => {
+    const { unmount } = render(<Harness />)
+    const hidden = vi.spyOn(document, 'hidden', 'get')
+    hidden.mockReturnValue(true)
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(useStudioStore.getState().awayLog).toHaveLength(0)
+    useStudioStore.setState({ lastSimulatedAt: Date.now() - 3 * 3_600_000 })
+    hidden.mockReturnValue(false)
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(useStudioStore.getState().awayLog[0]?.mode).toBe('away')
+    expect(useOverlayStore.getState().awayIndex).toBe(0)
+    unmount()
   })
 })

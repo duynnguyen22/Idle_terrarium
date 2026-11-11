@@ -12,11 +12,13 @@ import { seedWorldEnv } from '@/engine/envSeed'
 import { seedInitialScene } from '@/engine/presets'
 import { ecoTimeFromDayCount, restoreWorld } from '@/engine/persistence'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
+import { runCatchUpIfDue } from '@/engine/simulation/catchup'
 import { flushEnvSeed, flushTelemetry } from '@/engine/simulation/telemetry'
 import { tick } from '@/engine/simulation/tick'
 import { warmSpriteCache } from '@/engine/sprites/spriteCache'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { play } from '@/hooks/useAudio'
+import { recordReport } from '@/store/awayFlow'
 import { showToast } from '@/store/toastStore'
 import { useStudioStore } from '@/store/useStudioStore'
 import { useTelemetryStore } from '@/store/useTelemetryStore'
@@ -55,6 +57,12 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
     if (initial) restoreWorld(world, initial, dayCount)
     registerWorld(world)
     seedInitialScene(world)
+    // Time away: catch the tank up once now and once per return to the tab, outside the rAF frame.
+    const catchUp = () => {
+      const r = runCatchUpIfDue(world, useStudioStore.getState(), Date.now())
+      if (r) recordReport(r, { journal: true })
+    }
+    catchUp()
     if (import.meta.env.DEV)
       window.__botanica = {
         world: () => world,
@@ -129,6 +137,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
         stop()
         saveNow()
       } else {
+        catchUp()
         start()
       }
     }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { AccountDialog } from '@/components/account/AccountDialog'
 import { LightingControls } from '@/components/nav/LightingControls'
+import { AwayCard } from '@/components/stage/AwayCard'
 import { CareToolbar } from '@/components/stage/CareToolbar'
 import { ItemInspector } from '@/components/stage/ItemInspector'
 import { RelaxDock } from '@/components/stage/RelaxDock'
@@ -74,6 +75,7 @@ export function StudioLayout({ children }: { children: ReactNode }) {
           <ItemInspector />
           <RelaxDock />
           <Toast />
+          <AwayCard />
           <AccountDialog />
         </main>
         <RightTelemetry drawerOpen={drawer === 'right'} />
