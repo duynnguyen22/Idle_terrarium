@@ -4,9 +4,45 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+# Superseded PR runs are cancelled; pushes to main always finish.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
   verify:
+    name: Lint, typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  # Runs in parallel with `verify`. Uses the dev server (see playwright.config.ts),
+  # since the e2e specs rely on import.meta.env.DEV hooks.
+  e2e:
+    name: E2E (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -17,19 +53,17 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
       - name: Get Playwright version
         id: pw
         run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
       - name: Cache Playwright browsers
+        id: pw-cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
       - name: Install Playwright Chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
         run: |
           for i in 1 2 3; do
             pnpm exec playwright install chromium && exit 0
@@ -48,16 +82,18 @@ jobs:
           exit 1
       - run: pnpm e2e
       - name: Upload Playwright report
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: playwright-report/
+          retention-days: 14
           if-no-files-found: ignore
-      - name: Upload e2e screenshot
-        if: always()
+      - name: Upload test results (screenshots, traces)
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-screenshot
-          path: test-results/studio-journey.png
+          name: test-results
+          path: test-results/
+          retention-days: 14
           if-no-files-found: ignore
