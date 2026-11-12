@@ -1,4 +1,5 @@
 import { act, render } from '@testing-library/react'
+import { createStore } from 'jotai'
 import { useRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PublicUser, Session } from '@/auth'
@@ -11,18 +12,28 @@ import * as catchup from '@/engine/simulation/catchup'
 import { createWorld } from '@/engine/world'
 import { useTerrariumEngine } from '@/hooks/useTerrariumEngine'
 import { applyGardenSnapshot, getGardenSnapshot } from '@/store/gardenSnapshot'
-import { useAccountStore } from '@/store/useAccountStore'
-import { useOverlayStore } from '@/store/useOverlayStore'
-import { createDefaultState, createStudioStore, useStudioStore } from '@/store/useStudioStore'
-import { useTelemetryStore } from '@/store/useTelemetryStore'
+import { account, journalAtom, patchAccountAtom, resetAccountAtom } from '@/store/account'
+import { appStore } from '@/store/appStore'
+import { awayIndexAtom, openAwayAtom, resetOverlayAtom } from '@/store/overlay'
+import {
+  awayLogAtom,
+  bindStudioStorage,
+  createDefaultState,
+  dayCountAtom,
+  envSeedAtom,
+  lastSimulatedAtAtom,
+  patchStudioAtom,
+  studioStateAtom,
+  waterSplitAtom,
+  worldSnapshotAtom,
+} from '@/store/studio'
+import { telemetryAtom } from '@/store/telemetry'
 import { makeRecordingContext } from '../helpers/recordingContext'
 
 vi.mock('@/engine/simulation/catchup', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/engine/simulation/catchup')>()
   return { ...actual, runCatchUpIfDue: vi.fn(actual.runCatchUpIfDue) }
 })
-
-const initialAccount = useAccountStore.getState()
 
 class MemoryStorage implements Storage {
   private map = new Map<string, string>()
@@ -66,11 +77,12 @@ const fern = (uid: string): PlacedItem => ({
 
 /** A saved garden whose clock stopped `hoursAgo` hours ago, holding one fern. */
 function staleGarden(hoursAgo: number, uid: string) {
-  const s = createStudioStore(new MemoryStorage())
-  s.setState({ lastSimulatedAt: Date.now() - hoursAgo * 3_600_000, awayLog: [] })
+  const s = createStore()
+  bindStudioStorage(s, new MemoryStorage())
+  s.set(patchStudioAtom, { lastSimulatedAt: Date.now() - hoursAgo * 3_600_000, awayLog: [] })
   const w = createWorld()
   w.items = [fern(uid)]
-  return getGardenSnapshot(s.getState(), w)
+  return getGardenSnapshot(s.get(studioStateAtom), w)
 }
 
 function Harness() {
@@ -92,9 +104,9 @@ describe('useTerrariumEngine', () => {
   }
 
   beforeEach(() => {
-    useOverlayStore.setState({ growthBoardOpen: false, awayIndex: null, tour: null })
-    useStudioStore.setState({ awayLog: [] })
-    useAccountStore.setState({ phase: 'signedout' })
+    appStore.set(resetOverlayAtom)
+    appStore.set(patchStudioAtom, { awayLog: [] })
+    appStore.set(patchAccountAtom, { phase: 'signedout' })
     callbacks = new Map()
     nextId = 1
     cancel.mockClear()
@@ -120,7 +132,7 @@ describe('useTerrariumEngine', () => {
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
     configureSpriteCache()
-    useAccountStore.setState(initialAccount, true)
+    appStore.set(resetAccountAtom)
   })
 
   it('starts exactly one loop, keeps it single across frames, and stops on unmount', () => {
@@ -130,7 +142,7 @@ describe('useTerrariumEngine', () => {
     runFrame(32)
     expect(callbacks.size).toBe(1)
     // Two frames; each clips the vessel, plus the bank cut and gravel bed when there is a pool.
-    const clipsPerFrame = 1 + (hasPool(useStudioStore.getState().waterSplit) ? 2 : 0)
+    const clipsPerFrame = 1 + (hasPool(appStore.get(waterSplitAtom)) ? 2 : 0)
     expect(ctxCalls.filter((c) => c === 'clip').length).toBe(2 * clipsPerFrame)
     unmount()
     expect(callbacks.size).toBe(0)
@@ -143,11 +155,14 @@ describe('useTerrariumEngine', () => {
     let snapshotWrites = 0
     let telemetryWrites = 0
     let otherWrites = 0
-    const unsubscribe = useStudioStore.subscribe((s, prev) => {
-      if (s.worldSnapshot !== prev.worldSnapshot) snapshotWrites++
+    let prevSnapshot = appStore.get(worldSnapshotAtom)
+    const unsubscribe = appStore.sub(studioStateAtom, () => {
+      const snapshot = appStore.get(worldSnapshotAtom)
+      if (snapshot !== prevSnapshot) snapshotWrites++
       else otherWrites++
+      prevSnapshot = snapshot
     })
-    const unsubscribeTelemetry = useTelemetryStore.subscribe(() => telemetryWrites++)
+    const unsubscribeTelemetry = appStore.sub(telemetryAtom, () => telemetryWrites++)
     const simulatedMs = 2000
     for (let t = 16; t <= simulatedMs; t += 16) runFrame(t)
     unsubscribe()
@@ -160,7 +175,7 @@ describe('useTerrariumEngine', () => {
   })
 
   it('seeds the environment from the persisted envSeed, falling back per field', () => {
-    useStudioStore.setState({
+    appStore.set(patchStudioAtom, {
       envSeed: { humidity: 64, temperature: Number.NaN, soilMoisture: 51, nutrients: 30 },
     })
     try {
@@ -173,25 +188,25 @@ describe('useTerrariumEngine', () => {
       expect(env.o2).toBe(96)
       unmount()
     } finally {
-      useStudioStore.setState({ envSeed: createDefaultState().envSeed })
+      appStore.set(patchStudioAtom, { envSeed: createDefaultState().envSeed })
     }
   })
 
   it('a world mounted after setEnvSeed reads the seeded nutrients', () => {
-    useStudioStore.getState().setEnvSeed({ ...useStudioStore.getState().envSeed, nutrients: 30 })
+    appStore.set(envSeedAtom, { ...appStore.get(envSeedAtom), nutrients: 30 })
     try {
       const { unmount } = render(<Harness />)
       expect(getWorld().env.nutrients).toBe(30)
       unmount()
     } finally {
-      useStudioStore.setState({ envSeed: createDefaultState().envSeed })
+      appStore.set(patchStudioAtom, { envSeed: createDefaultState().envSeed })
     }
   })
 
   it('commits exactly once after in-flight pour particles land, none while they fall', async () => {
     render(<Harness />)
     const world = getWorld()
-    useStudioStore.setState({ activeTool: 'pour', activePourMaterial: 'soil' })
+    appStore.set(patchStudioAtom, { activeTool: 'pour', activePourMaterial: 'soil' })
     world.pointerNorm = { x: 0.5, y: 0.3 }
     world.isPouring = true
     let t = 0
@@ -200,9 +215,8 @@ describe('useTerrariumEngine', () => {
     // Pointer-up: the pour ends with particles still in the air.
     world.isPouring = false
     let commits = 0
-    const unsubscribe = useStudioStore.subscribe((s, prev) => {
-      if (s.worldSnapshot !== prev.worldSnapshot) commits++
-    })
+    // sub only fires when worldSnapshot is replaced.
+    const unsubscribe = appStore.sub(worldSnapshotAtom, () => commits++)
     runFrame((t += 16))
     await Promise.resolve()
     expect(world.fallingStreams.length).toBeGreaterThan(0)
@@ -236,48 +250,48 @@ describe('useTerrariumEngine', () => {
     })
     hidden.mockReturnValue(true)
     document.dispatchEvent(new Event('visibilitychange'))
-    expect(useStudioStore.getState().envSeed.nutrients).toBe(30)
+    expect(appStore.get(envSeedAtom).nutrients).toBe(30)
     hidden.mockReturnValue(false)
     document.dispatchEvent(new Event('visibilitychange'))
     mutateWorld((w) => {
       w.env.nutrients = 25
     })
     unmount()
-    expect(useStudioStore.getState().envSeed.nutrients).toBe(25)
+    expect(appStore.get(envSeedAtom).nutrients).toBe(25)
   })
 
   it('hiding the tab commits the world snapshot and lastSimulatedAt', () => {
     const { unmount } = render(<Harness />)
     const world = getWorld()
-    useStudioStore.getState().setWorldSnapshot(null)
-    useStudioStore.getState().setLastSimulatedAt(null)
+    appStore.set(worldSnapshotAtom, null)
+    appStore.set(lastSimulatedAtAtom, null)
     world.terrainContour[3] = 5
     vi.spyOn(Date, 'now').mockReturnValue(1_800_000_000_000)
     const hidden = vi.spyOn(document, 'hidden', 'get')
     hidden.mockReturnValue(true)
     document.dispatchEvent(new Event('visibilitychange'))
-    expect(useStudioStore.getState().worldSnapshot?.terrainContour[3]).toBe(5)
-    expect(useStudioStore.getState().lastSimulatedAt).toBe(1_800_000_000_000)
+    expect(appStore.get(worldSnapshotAtom)?.terrainContour[3]).toBe(5)
+    expect(appStore.get(lastSimulatedAtAtom)).toBe(1_800_000_000_000)
     hidden.mockReturnValue(false)
     document.dispatchEvent(new Event('visibilitychange'))
-    useStudioStore.getState().setLastSimulatedAt(null)
+    appStore.set(lastSimulatedAtAtom, null)
     unmount()
-    expect(useStudioStore.getState().lastSimulatedAt).toBe(1_800_000_000_000)
+    expect(appStore.get(lastSimulatedAtAtom)).toBe(1_800_000_000_000)
   })
 
   it('seeds ecoTime from the stored day count so an old save keeps its day', () => {
-    useStudioStore.setState({ dayCount: 7, worldSnapshot: null })
+    appStore.set(patchStudioAtom, { dayCount: 7, worldSnapshot: null })
     const { unmount } = render(<Harness />)
     expect(getWorld().ecoTime).toBe(6)
     // A snapshot from before living time (no ecoTime) seeds the same way.
     unmount()
-    useStudioStore.setState({ dayCount: 5, worldSnapshot: { items: [], terrainContour: [] } })
+    appStore.set(patchStudioAtom, { dayCount: 5, worldSnapshot: { items: [], terrainContour: [] } })
     const second = render(<Harness />)
     expect(getWorld().ecoTime).toBe(4)
     for (let t = 16; t <= 600; t += 16) runFrame(t)
-    expect(useStudioStore.getState().dayCount).toBe(5)
+    expect(appStore.get(dayCountAtom)).toBe(5)
     second.unmount()
-    useStudioStore.setState({ dayCount: 1, worldSnapshot: null })
+    appStore.set(patchStudioAtom, { dayCount: 1, worldSnapshot: null })
   })
 
   it('hiding the tab flushes the day count before committing', () => {
@@ -286,11 +300,11 @@ describe('useTerrariumEngine', () => {
     const hidden = vi.spyOn(document, 'hidden', 'get')
     hidden.mockReturnValue(true)
     document.dispatchEvent(new Event('visibilitychange'))
-    expect(useStudioStore.getState().dayCount).toBe(4)
+    expect(appStore.get(dayCountAtom)).toBe(4)
     hidden.mockReturnValue(false)
     document.dispatchEvent(new Event('visibilitychange'))
     unmount()
-    useStudioStore.setState({ dayCount: 1 })
+    appStore.set(patchStudioAtom, { dayCount: 1 })
   })
 
   it('registers its world, skips its own snapshots, applies external ones, and unregisters', () => {
@@ -301,13 +315,13 @@ describe('useTerrariumEngine', () => {
     mutateWorld((w) => {
       w.terrainContour[0] = 7
     })
-    expect(useStudioStore.getState().worldSnapshot?.terrainContour[0]).toBe(7)
+    expect(appStore.get(worldSnapshotAtom)?.terrainContour[0]).toBe(7)
     // Own write: restoreWorld skipped, so the world's arrays are not replaced.
     expect(world.terrainContour).toBe(contourBefore)
     expect(world.items).toBe(itemsBefore)
 
     const external = { items: [], terrainContour: new Array<number>(21).fill(1) }
-    useStudioStore.getState().setWorldSnapshot(external)
+    appStore.set(worldSnapshotAtom, external)
     expect(world.terrainContour[0]).toBe(1)
     expect(world.terrainContour).not.toBe(contourBefore)
 
@@ -317,20 +331,23 @@ describe('useTerrariumEngine', () => {
   })
 
   it('runs catch-up on mount when lastSimulatedAt is 2 h old and opens the card', () => {
-    useStudioStore.setState({ lastSimulatedAt: Date.now() - 2 * 3_600_000, catchupEnabled: true })
+    appStore.set(patchStudioAtom, {
+      lastSimulatedAt: Date.now() - 2 * 3_600_000,
+      catchupEnabled: true,
+    })
     const { unmount } = render(<Harness />)
-    const r = useStudioStore.getState().awayLog[0]
+    const r = appStore.get(awayLogAtom)[0]
     expect(r).toBeDefined()
     expect(r?.mode).toBe('away')
-    expect(useOverlayStore.getState().awayIndex).toBe(0)
+    expect(appStore.get(awayIndexAtom)).toBe(0)
     unmount()
   })
 
   it('pushes nothing on mount when lastSimulatedAt is 1 min old', () => {
-    useStudioStore.setState({ lastSimulatedAt: Date.now() - 60_000, catchupEnabled: true })
+    appStore.set(patchStudioAtom, { lastSimulatedAt: Date.now() - 60_000, catchupEnabled: true })
     const { unmount } = render(<Harness />)
-    expect(useStudioStore.getState().awayLog).toHaveLength(0)
-    expect(useOverlayStore.getState().awayIndex).toBeNull()
+    expect(appStore.get(awayLogAtom)).toHaveLength(0)
+    expect(appStore.get(awayIndexAtom)).toBeNull()
     unmount()
   })
 
@@ -339,12 +356,12 @@ describe('useTerrariumEngine', () => {
     const hidden = vi.spyOn(document, 'hidden', 'get')
     hidden.mockReturnValue(true)
     document.dispatchEvent(new Event('visibilitychange'))
-    expect(useStudioStore.getState().awayLog).toHaveLength(0)
-    useStudioStore.setState({ lastSimulatedAt: Date.now() - 3 * 3_600_000 })
+    expect(appStore.get(awayLogAtom)).toHaveLength(0)
+    appStore.set(patchStudioAtom, { lastSimulatedAt: Date.now() - 3 * 3_600_000 })
     hidden.mockReturnValue(false)
     document.dispatchEvent(new Event('visibilitychange'))
-    expect(useStudioStore.getState().awayLog[0]?.mode).toBe('away')
-    expect(useOverlayStore.getState().awayIndex).toBe(0)
+    expect(appStore.get(awayLogAtom)[0]?.mode).toBe('away')
+    expect(appStore.get(awayIndexAtom)).toBe(0)
     unmount()
   })
 
@@ -353,30 +370,36 @@ describe('useTerrariumEngine', () => {
     vi.mocked(catchup.runCatchUpIfDue).mockImplementationOnce(() => {
       throw new Error('boom')
     })
-    useStudioStore.setState({ lastSimulatedAt: Date.now() - 2 * 3_600_000, catchupEnabled: true })
+    appStore.set(patchStudioAtom, {
+      lastSimulatedAt: Date.now() - 2 * 3_600_000,
+      catchupEnabled: true,
+    })
     const { unmount } = render(<Harness />)
     expect(spy).toHaveBeenCalled()
     expect(getWorld()).toBeDefined()
     expect(callbacks.size).toBe(1)
-    const last = useStudioStore.getState().lastSimulatedAt
+    const last = appStore.get(lastSimulatedAtAtom)
     expect(last).not.toBeNull()
     expect(Date.now() - (last ?? 0)).toBeLessThan(60_000)
-    expect(useStudioStore.getState().awayLog).toHaveLength(0)
+    expect(appStore.get(awayLogAtom)).toHaveLength(0)
     unmount()
   })
 
   it('defers the mount catch-up while the account is checking and runs it once the phase settles', () => {
-    useAccountStore.setState({ phase: 'checking' })
-    useStudioStore.setState({ lastSimulatedAt: Date.now() - 2 * 3_600_000, catchupEnabled: true })
+    appStore.set(patchAccountAtom, { phase: 'checking' })
+    appStore.set(patchStudioAtom, {
+      lastSimulatedAt: Date.now() - 2 * 3_600_000,
+      catchupEnabled: true,
+    })
     const { unmount } = render(<Harness />)
-    expect(useStudioStore.getState().awayLog).toHaveLength(0)
-    expect(useOverlayStore.getState().awayIndex).toBeNull()
-    act(() => useAccountStore.setState({ phase: 'signedout' }))
-    expect(useStudioStore.getState().awayLog).toHaveLength(1)
-    expect(useOverlayStore.getState().awayIndex).toBe(0)
-    act(() => useAccountStore.setState({ phase: 'checking' }))
-    act(() => useAccountStore.setState({ phase: 'signedout' }))
-    expect(useStudioStore.getState().awayLog).toHaveLength(1)
+    expect(appStore.get(awayLogAtom)).toHaveLength(0)
+    expect(appStore.get(awayIndexAtom)).toBeNull()
+    act(() => appStore.set(patchAccountAtom, { phase: 'signedout' }))
+    expect(appStore.get(awayLogAtom)).toHaveLength(1)
+    expect(appStore.get(awayIndexAtom)).toBe(0)
+    act(() => appStore.set(patchAccountAtom, { phase: 'checking' }))
+    act(() => appStore.set(patchAccountAtom, { phase: 'signedout' }))
+    expect(appStore.get(awayLogAtom)).toHaveLength(1)
     unmount()
   })
 
@@ -398,7 +421,7 @@ describe('useTerrariumEngine', () => {
       expiresAt: Date.now() + 86_400_000,
       device: 'Test on jsdom',
     }
-    // The global account store's backend factory defaults to the local backend over localStorage.
+    // The account singleton's backend factory defaults to the local backend over localStorage.
     const backend = createLocalBackend(user.id)
     const snapshot = staleGarden(3, 'cloud-fern')
     await backend.saveGarden('g_cloud', {
@@ -409,23 +432,26 @@ describe('useTerrariumEngine', () => {
       snapshot,
     })
     await backend.setProfile({ activeGardenId: 'g_cloud' })
-    useAccountStore.setState({ phase: 'checking' })
+    appStore.set(patchAccountAtom, { phase: 'checking' })
     // The local save is stale too: its gap must not be reported once the cloud garden replaces it.
-    useStudioStore.setState({ lastSimulatedAt: Date.now() - 5 * 3_600_000, catchupEnabled: true })
+    appStore.set(patchStudioAtom, {
+      lastSimulatedAt: Date.now() - 5 * 3_600_000,
+      catchupEnabled: true,
+    })
     const { unmount } = render(<Harness />)
-    expect(useStudioStore.getState().awayLog).toHaveLength(0)
+    expect(appStore.get(awayLogAtom)).toHaveLength(0)
 
     try {
       await act(async () => {
-        await useAccountStore.getState().beginSession(user, session, { isNew: false })
+        await account.beginSession(user, session, { isNew: false })
       })
-      const log = useStudioStore.getState().awayLog
+      const log = appStore.get(awayLogAtom)
       expect(log).toHaveLength(1)
       expect(log[0]?.from).toBe(snapshot.lastSimulatedAt)
       expect(getWorld().items.map((i) => i.uid)).toContain('cloud-fern')
-      expect(useOverlayStore.getState().awayIndex).toBe(0)
-      await vi.waitFor(() => expect(useAccountStore.getState().journal).toHaveLength(1))
-      expect(useAccountStore.getState().journal[0]).toMatchObject({
+      expect(appStore.get(awayIndexAtom)).toBe(0)
+      await vi.waitFor(() => expect(appStore.get(journalAtom)).toHaveLength(1))
+      expect(appStore.get(journalAtom)[0]).toMatchObject({
         auto: true,
         key: `away:${log[0]?.from}:${log[0]?.to}`,
       })
@@ -436,20 +462,20 @@ describe('useTerrariumEngine', () => {
   })
 
   it('opening another garden catches it up right away and closes the previous card', () => {
-    useStudioStore.setState({ lastSimulatedAt: Date.now(), catchupEnabled: true })
+    appStore.set(patchStudioAtom, { lastSimulatedAt: Date.now(), catchupEnabled: true })
     const { unmount } = render(<Harness />)
-    useOverlayStore.getState().openAway(0)
+    appStore.set(openAwayAtom, 0)
     const snapshot = staleGarden(4, 'other-fern')
-    act(() => applyGardenSnapshot(snapshot, useStudioStore))
-    const log = useStudioStore.getState().awayLog
+    act(() => applyGardenSnapshot(snapshot, appStore))
+    const log = appStore.get(awayLogAtom)
     expect(log).toHaveLength(1)
     expect(log[0]?.from).toBe(snapshot.lastSimulatedAt)
-    expect(useOverlayStore.getState().awayIndex).toBe(0)
+    expect(appStore.get(awayIndexAtom)).toBe(0)
 
     // A fresh garden (no gap) leaves no stale card open on the new garden's log.
-    act(() => applyGardenSnapshot(staleGarden(0, 'fresh-fern'), useStudioStore))
-    expect(useStudioStore.getState().awayLog).toHaveLength(0)
-    expect(useOverlayStore.getState().awayIndex).toBeNull()
+    act(() => applyGardenSnapshot(staleGarden(0, 'fresh-fern'), appStore))
+    expect(appStore.get(awayLogAtom)).toHaveLength(0)
+    expect(appStore.get(awayIndexAtom)).toBeNull()
     unmount()
   })
 })

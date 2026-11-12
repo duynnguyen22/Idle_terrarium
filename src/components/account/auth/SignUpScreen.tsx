@@ -1,5 +1,7 @@
+import { useAtomValue, useStore } from 'jotai'
 import type { FormEvent } from 'react'
-import { RESEND_WINDOW_MS, useAccount, useAuthEnv } from './authEnv'
+import { RESEND_WINDOW_MS, useAuthEnv } from './authEnv'
+import { viewDataAtom } from '@/store/account'
 import { AuthField } from './AuthField'
 import {
   AuthHeader,
@@ -17,24 +19,25 @@ const TERMS_ERROR = 'Accept the terms to continue.'
 
 /** New account with name, email and password; leads to email verification (spec Screens.signup). */
 export function SignUpScreen() {
-  const { store, auth } = useAuthEnv()
-  const terms = useAccount((s) => s.viewData.terms ?? false)
-  const termsError = useAccount((s) => s.viewData.fieldErrors?.terms)
+  const { account, auth } = useAuthEnv()
+  const store = useStore()
+  const terms = useAtomValue(viewDataAtom).terms ?? false
+  const termsError = useAtomValue(viewDataAtom).fieldErrors?.terms
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
-    if (!store.getState().viewData.terms) {
-      store.getState().setViewData({ fieldErrors: { terms: TERMS_ERROR } })
+    if (!store.get(viewDataAtom).terms) {
+      account.setViewData({ fieldErrors: { terms: TERMS_ERROR } })
       return
     }
-    void store.getState().run(async () => {
-      const v = store.getState().viewData
+    void account.run(async () => {
+      const v = store.get(viewDataAtom)
       const r = await auth.signUp({
         name: v.name ?? '',
         email: v.email ?? '',
         password: v.password ?? '',
       })
-      store.getState().goView('verify', {
+      account.goView('verify', {
         email: r.email,
         resendAt: Date.now() + RESEND_WINDOW_MS,
         code: '',
@@ -76,7 +79,7 @@ export function SignUpScreen() {
             checked={terms}
             aria-invalid={termsError ? true : undefined}
             aria-describedby={termsError ? 'auth-terms-err' : undefined}
-            onChange={(e) => store.getState().setViewData({ terms: e.target.checked })}
+            onChange={(e) => account.setViewData({ terms: e.target.checked })}
           />
           I agree to the Terms of Service and Privacy Policy
         </label>
@@ -90,9 +93,7 @@ export function SignUpScreen() {
       </form>
       <p className="auth-foot">
         {'Already have an account? '}
-        <LinkButton onClick={() => store.getState().goView('signin', { banner: null })}>
-          Sign in
-        </LinkButton>
+        <LinkButton onClick={() => account.goView('signin', { banner: null })}>Sign in</LinkButton>
       </p>
       <ProtoNote />
     </div>

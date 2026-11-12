@@ -1,7 +1,9 @@
+import { atom, useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
-import { useAccount, useAuthEnv } from '@/components/account/auth/authEnv'
+import { useAuthEnv } from '@/components/account/auth/authEnv'
 import type { JournalEntry } from '@/auth/backend'
 import { qualityTier } from '@/engine/room'
+import { activeIdAtom, gardensAtom, journalAtom } from '@/store/account'
 
 const DRAFT_KEY = 'botanica_journal_draft'
 
@@ -77,11 +79,16 @@ function JournalItem({ entry }: { entry: JournalEntry }) {
   )
 }
 
+const activeGardenAtom = atom((get) => {
+  const activeId = get(activeIdAtom)
+  return get(gardensAtom).find((g) => g.id === activeId)
+})
+
 /** The Journal tab: a note composer and the open terrarium's entries, newest first (spec journalTab). */
 export function JournalTab() {
-  const { store } = useAuthEnv()
-  const journal = useAccount((s) => s.journal)
-  const active = useAccount((s) => s.gardens.find((g) => g.id === s.activeId))
+  const { account } = useAuthEnv()
+  const journal = useAtomValue(journalAtom)
+  const active = useAtomValue(activeGardenAtom)
   const [note, setNote] = useState(readDraft)
   // The latest typed text, so a slow save does not clear words typed while it ran.
   const latest = useRef(note)
@@ -90,8 +97,7 @@ export function JournalTab() {
     const value = note
     // The store toasts on success and routes backend errors through handleCloudError itself. The
     // draft is cleared only once the entry is stored, and only if nothing new was typed meanwhile.
-    store
-      .getState()
+    account
       .addJournalEntry(value, false)
       .then((ok) => {
         if (!ok || latest.current !== value) return
@@ -99,7 +105,7 @@ export function JournalTab() {
         setNote('')
         clearDraft()
       })
-      .catch((e: unknown) => store.getState().handleCloudError(e, { user: true }))
+      .catch((e: unknown) => account.handleCloudError(e, { user: true }))
   }
 
   return (

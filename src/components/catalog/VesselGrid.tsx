@@ -1,11 +1,10 @@
+import { useAtom } from 'jotai'
 import { VESSELS_FOR_PICKER } from '@/data/vessels'
 import { getVesselPreviewSVG } from '@/lib/vesselPreview'
-import { selectVessel } from '@/store/selectors'
-import { useStudioStore } from '@/store/useStudioStore'
+import { vesselAtom } from '@/store/studio'
 
 export function VesselGrid() {
-  const vessel = useStudioStore(selectVessel)
-  const setVessel = useStudioStore((s) => s.setVessel)
+  const [vessel, setVessel] = useAtom(vesselAtom)
   return (
     <div className="grid grid-cols-2 gap-2">
       {VESSELS_FOR_PICKER.map((v) => {

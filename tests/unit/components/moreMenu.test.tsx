@@ -5,10 +5,17 @@ import { UtilityActions } from '@/components/nav/UtilityActions'
 import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import type { AwayReport } from '@/engine/simulation/report'
 import { createWorld } from '@/engine/world'
-import { useAccountStore } from '@/store/useAccountStore'
-import { useOverlayStore } from '@/store/useOverlayStore'
-import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
-import { useToastStore } from '@/store/toastStore'
+import { appStore } from '@/store/appStore'
+import {
+  awayLogAtom,
+  catchupEnabledAtom,
+  createDefaultState,
+  patchStudioAtom,
+  studioStateAtom,
+} from '@/store/studio'
+import { awayIndexAtom, resetOverlayAtom } from '@/store/overlay'
+import { toastAtom } from '@/store/toast'
+import { account, patchAccountAtom, resetAccountAtom } from '@/store/account'
 
 const click = (el: HTMLElement) => act(() => void fireEvent.click(el))
 /** Radix opens its menu on pointerdown or Enter, not on click. */
@@ -45,15 +52,15 @@ const logged = (): AwayReport => ({
 })
 
 beforeEach(() => {
-  useStudioStore.setState(createDefaultState())
-  useOverlayStore.setState({ growthBoardOpen: false, awayIndex: null, tour: null })
-  useToastStore.setState({ message: '', visible: false })
+  appStore.set(patchStudioAtom, createDefaultState())
+  appStore.set(resetOverlayAtom)
+  appStore.set(toastAtom, { message: '', visible: false })
   registerWorld(createWorld())
 })
 
 afterEach(() => {
   unregisterWorld()
-  useAccountStore.setState(useAccountStore.getInitialState(), true)
+  appStore.set(resetAccountAtom)
   vi.restoreAllMocks()
 })
 
@@ -77,23 +84,23 @@ describe('MoreMenu time away', () => {
   it('toasts when no time away is recorded, otherwise opens the last summary', () => {
     openMenu()
     click(screen.getByRole('menuitem', { name: 'Show the last summary' }))
-    expect(useToastStore.getState().message).toBe(
+    expect(appStore.get(toastAtom).message).toBe(
       'No time away recorded yet. Come back later, or preview a gap below.',
     )
-    expect(useOverlayStore.getState().awayIndex).toBeNull()
+    expect(appStore.get(awayIndexAtom)).toBeNull()
 
-    useStudioStore.setState({ awayLog: [logged()] })
+    appStore.set(patchStudioAtom, { awayLog: [logged()] })
     openTrigger()
     click(screen.getByRole('menuitem', { name: 'Show the last summary' }))
-    expect(useOverlayStore.getState().awayIndex).toBe(0)
+    expect(appStore.get(awayIndexAtom)).toBe(0)
   })
 
   it('1 day previews a 24 h gap and opens its card', () => {
     openMenu()
     click(screen.getByRole('menuitem', { name: 'Preview a gap of 1 day' }))
-    const s = useStudioStore.getState()
+    const s = appStore.get(studioStateAtom)
     expect(s.awayLog[0]).toMatchObject({ mode: 'preview', hours: 24 })
-    expect(useOverlayStore.getState().awayIndex).toBe(0)
+    expect(appStore.get(awayIndexAtom)).toBe(0)
     expect(screen.queryByRole('menu')).toBeNull()
     expect(document.querySelector('#away-card')?.textContent).toContain('Preview · 24 h later')
   })
@@ -102,23 +109,23 @@ describe('MoreMenu time away', () => {
     openMenu()
     const sw = () => screen.getByRole('menuitemcheckbox', { name: "Grow while I'm away" })
     click(sw())
-    expect(useStudioStore.getState().catchupEnabled).toBe(false)
-    expect(useToastStore.getState().message).toBe(
+    expect(appStore.get(catchupEnabledAtom)).toBe(false)
+    expect(appStore.get(toastAtom).message).toBe(
       'Growing while away is off. The tank waits for you.',
     )
     expect(sw().getAttribute('aria-checked')).toBe('false')
     click(sw())
-    expect(useStudioStore.getState().catchupEnabled).toBe(true)
-    expect(useToastStore.getState().message).toBe('The tank will keep growing while you are away')
+    expect(appStore.get(catchupEnabledAtom)).toBe(true)
+    expect(appStore.get(toastAtom).message).toBe('The tank will keep growing while you are away')
   })
 
   it('a preview adds no journal entry', async () => {
-    const add = vi.fn().mockResolvedValue(undefined)
-    useAccountStore.setState({ phase: 'cloud', activeId: 'g_a', addJournalEntry: add })
+    const add = vi.spyOn(account, 'addJournalEntry').mockResolvedValue(true)
+    appStore.set(patchAccountAtom, { phase: 'cloud', activeId: 'g_a' })
     openMenu()
     click(screen.getByRole('menuitem', { name: 'Preview a gap of 8 h' }))
     await act(async () => {})
-    expect(useStudioStore.getState().awayLog).toHaveLength(1)
+    expect(appStore.get(awayLogAtom)).toHaveLength(1)
     expect(add).not.toHaveBeenCalled()
   })
 })

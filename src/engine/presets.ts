@@ -10,25 +10,24 @@ import {
 } from '@/engine/geometry'
 import { mutateWorld } from '@/engine/engineBridge'
 import { createItemId } from '@/lib/ids'
-import { useStudioStore, type StudioStore } from '@/store/useStudioStore'
+import type { Store } from 'jotai'
+import { appStore } from '@/store/appStore'
+import {
+  cycleProgressAtom,
+  dayCountAtom,
+  hardwareAtoms,
+  pumpFlowAtom,
+  setupDayAtom,
+  substratesAtom,
+  vesselAtom,
+  waterSplitAtom,
+} from '@/store/studio'
 import { TERRAIN_POINTS, type EngineWorld } from './world'
 
 /** Falls Lake's new-build mold bloom countdown (prototype applyFallsLakePreset `state.bloomTimer = 700`). */
 export const FALLS_BLOOM_TIMER = 700
 /** The prototype measures every 'land'-anchored preset item from the land surface at this x (`sY`). */
 const LAND_REF_X = 0.6
-
-type PresetStore = Pick<
-  StudioStore,
-  | 'setVessel'
-  | 'setHardware'
-  | 'setPumpFlow'
-  | 'setWaterSplit'
-  | 'setCycleProgress'
-  | 'setSetupDay'
-  | 'setSubstrates'
-  | 'dayCount'
->
 
 function anchorY(p: PresetItem, t: TerrainInput): number {
   switch (p.anchor) {
@@ -49,22 +48,26 @@ function anchorY(p: PresetItem, t: TerrainInput): number {
  * grains but keep the placed items. Falls Lake also sets vessel, pump and cycle, restarts the build clock
  * (setupDay, mold bloom), clears mold and replaces every item with mature instances placed by anchor.
  */
-export function applyPreset(world: EngineWorld, presetId: PresetId, store: PresetStore): string {
+export function applyPreset(
+  world: EngineWorld,
+  presetId: PresetId,
+  store: Store = appStore,
+): string {
   const preset = BIOME_PRESETS.find((p) => p.id === presetId)
   if (!preset) return ''
 
-  if ('vessel' in preset) store.setVessel(preset.vessel)
+  if ('vessel' in preset) store.set(vesselAtom, preset.vessel)
   for (const key of ['hasLid', 'hasGrowLamp', 'hasFogger'] as const) {
-    if (key in preset) store.setHardware(key, (preset as Record<typeof key, boolean>)[key])
+    if (key in preset) store.set(hardwareAtoms[key], (preset as Record<typeof key, boolean>)[key])
   }
-  if ('pumpFlow' in preset) store.setPumpFlow(preset.pumpFlow)
-  store.setWaterSplit(preset.waterSplit)
+  if ('pumpFlow' in preset) store.set(pumpFlowAtom, preset.pumpFlow)
+  store.set(waterSplitAtom, preset.waterSplit)
   if ('cycleProgress' in preset) {
-    store.setCycleProgress(preset.cycleProgress)
+    store.set(cycleProgressAtom, preset.cycleProgress)
     // The env -> store flush is one-way, so the live gauge must be set too.
     world.env.cycleProgress = preset.cycleProgress
   }
-  store.setSubstrates(preset.substrates)
+  store.set(substratesAtom, preset.substrates)
 
   world.terrainContour =
     preset.terrainContour.length === TERRAIN_POINTS
@@ -80,7 +83,7 @@ export function applyPreset(world: EngineWorld, presetId: PresetId, store: Prese
   world.moldPatches = []
   world.mossTufts = []
   world.breed = {}
-  store.setSetupDay(store.dayCount)
+  store.set(setupDayAtom, store.get(dayCountAtom))
   world.env.bloomTimer = FALLS_BLOOM_TIMER
 
   const terrain: TerrainInput = {
@@ -132,7 +135,7 @@ export function applyPreset(world: EngineWorld, presetId: PresetId, store: Prese
 export function seedInitialScene(world: EngineWorld): boolean {
   if (world.items.length > 0) return false
   mutateWorld((w) => {
-    applyPreset(w, 'falls', useStudioStore.getState())
+    applyPreset(w, 'falls')
   })
   return true
 }

@@ -1,9 +1,34 @@
 import { useEffect, useState } from 'react'
-import { useShallow } from 'zustand/react/shallow'
-import { useAccount } from '@/components/account/auth/authEnv'
-import { avatarColor, chipStatus, initialsOf } from '@/store/useAccountStore'
+import { atom, useAtomValue } from 'jotai'
+import { useAccountActions } from '@/components/account/auth/authEnv'
+import {
+  avatarColor,
+  chipStatus,
+  initialsOf,
+  lastErrorAtom,
+  lastSavedAtom,
+  panelOpenAtom,
+  phaseAtom,
+  saveTimerAtom,
+  userAtom,
+  writingAtom,
+  type AccountState,
+} from '@/store/account'
 
 const TICK_MS = 30_000
+
+/** Just the fields chipStatus reads, so unrelated account changes do not re-render the chip. */
+const chipInputAtom = atom(
+  (get) =>
+    ({
+      phase: get(phaseAtom),
+      user: get(userAtom),
+      lastError: get(lastErrorAtom),
+      writing: get(writingAtom),
+      saveTimer: get(saveTimerAtom),
+      lastSaved: get(lastSavedAtom),
+    }) as AccountState,
+)
 
 /** Re-renders the caller on an interval so relative times ("Saved 2 min ago") keep aging. */
 function useNow(intervalMs: number): number {
@@ -18,11 +43,10 @@ function useNow(intervalMs: number): number {
 /** The header chip (spec 431-436): dark "Sign in" when signed out, avatar + save status when in. */
 export function AccountChip() {
   const now = useNow(TICK_MS)
-  // The derived status is a flat object of primitives, so a shallow compare skips unrelated store changes.
-  const status = useAccount(useShallow((s) => chipStatus(s, now)))
-  const userId = useAccount((s) => s.user?.id ?? '')
-  const panelOpen = useAccount((s) => s.panelOpen)
-  const openPanel = useAccount((s) => s.openPanel)
+  const status = chipStatus(useAtomValue(chipInputAtom), now)
+  const userId = useAtomValue(userAtom)?.id ?? ''
+  const panelOpen = useAtomValue(panelOpenAtom)
+  const { openPanel } = useAccountActions()
 
   return (
     <button

@@ -1,5 +1,7 @@
+import { useAtomValue, useStore } from 'jotai'
 import type { FormEvent } from 'react'
-import { useAccount, useAuthEnv } from './authEnv'
+import { useAuthEnv } from './authEnv'
+import { busyAtom, viewDataAtom } from '@/store/account'
 import { AuthField } from './AuthField'
 import {
   AuthHeader,
@@ -15,20 +17,21 @@ import { StrengthBlock } from './StrengthBlock'
 
 /** The emailed reset code plus a new password (spec Screens.reset). */
 export function ResetScreen() {
-  const { store, auth } = useAuthEnv()
-  const email = useAccount((s) => s.viewData.email ?? '')
+  const { account, auth } = useAuthEnv()
+  const store = useStore()
+  const email = useAtomValue(viewDataAtom).email ?? ''
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
-    void store.getState().run(async () => {
-      const v = store.getState().viewData
+    void account.run(async () => {
+      const v = store.get(viewDataAtom)
       await auth.resetPassword({
         email,
         code: (v.code ?? '').replace(/\s/g, ''),
         password: v.password ?? '',
       })
-      store.setState({ busy: false })
-      store.getState().goView('resetDone', { password: '' })
+      store.set(busyAtom, false)
+      account.goView('resetDone', { password: '' })
     })
   }
 
@@ -56,7 +59,7 @@ export function ResetScreen() {
       </form>
       <ResendRow email={email} purpose="reset" />
       <p className="auth-foot">
-        <LinkButton onClick={() => store.getState().goView('signin')}>Back to sign in</LinkButton>
+        <LinkButton onClick={() => account.goView('signin')}>Back to sign in</LinkButton>
       </p>
     </div>
   )

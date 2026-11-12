@@ -1,5 +1,5 @@
 import { AccountScreen } from '@/components/account/AccountScreen'
-import type { AuthView } from '@/store/useAccountStore'
+import type { AuthView } from '@/store/account'
 import { ForgotScreen } from './ForgotScreen'
 import { MagicSentScreen } from './MagicSentScreen'
 import { OnboardingScreen } from './OnboardingScreen'

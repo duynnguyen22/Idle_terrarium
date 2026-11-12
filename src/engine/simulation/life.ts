@@ -3,7 +3,7 @@ import type { FloraDef, PlacedItem } from '@/data/types'
 import { getSoilSurfaceNormalizedY, type TerrainInput } from '@/engine/geometry'
 import { createItemId } from '@/lib/ids'
 import type { Rng } from '@/lib/rng'
-import type { StudioState } from '@/store/useStudioStore'
+import type { StudioState } from '@/store/studio'
 import type { EngineWorld } from '../world'
 import { spreadMoss } from './moss'
 

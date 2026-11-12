@@ -1,3 +1,4 @@
+import { atom, useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { BotanistNotes, CareList } from '@/components/telemetry/BotanistNotes'
 import { EcoStats } from '@/components/telemetry/EcoStats'
@@ -6,13 +7,20 @@ import type { PlacedItem } from '@/data/types'
 import { idealRange } from '@/engine/care'
 import { envModel, qualityWord } from '@/engine/room'
 import { isLampOn } from '@/engine/simulation/clock'
-import { selectTelemetry } from '@/store/selectors'
-import { useStudioStore, type StudioStore } from '@/store/useStudioStore'
-import { useTelemetryStore } from '@/store/useTelemetryStore'
+import {
+  hasGrowLampAtom,
+  hasLidAtom,
+  lightingAtom,
+  roomAtom,
+  worldSnapshotAtom,
+} from '@/store/studio'
+import { telemetryAtom } from '@/store/telemetry'
 
 const NO_ITEMS: PlacedItem[] = []
-const selectItems = (s: StudioStore) => s.worldSnapshot?.items ?? NO_ITEMS
-const selectLampOn = (s: StudioStore) => isLampOn(s)
+const itemsAtom = atom((get) => get(worldSnapshotAtom)?.items ?? NO_ITEMS)
+const lampOnAtom = atom((get) =>
+  isLampOn({ hasGrowLamp: get(hasGrowLampAtom), lighting: get(lightingAtom) }),
+)
 
 const toF = (c: number) => ((c * 9) / 5 + 32).toFixed(1)
 
@@ -23,11 +31,11 @@ function badge(warns: number): [label: string, cls: string] {
 }
 
 export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean }) {
-  const t = useTelemetryStore(selectTelemetry)
-  const items = useStudioStore(selectItems)
-  const lampOn = useStudioStore(selectLampOn)
-  const room = useStudioStore((s) => s.room)
-  const hasLid = useStudioStore((s) => s.hasLid)
+  const t = useAtomValue(telemetryAtom)
+  const items = useAtomValue(itemsAtom)
+  const lampOn = useAtomValue(lampOnAtom)
+  const room = useAtomValue(roomAtom)
+  const hasLid = useAtomValue(hasLidAtom)
   const m = useMemo(() => envModel(room, hasLid), [room, hasLid])
   const hum = idealRange(items, 'hum')
   const tmp = idealRange(items, 'temp')

@@ -2,8 +2,7 @@ import { LineIcon, type IconName } from '@/components/ui/LineIcon'
 import { BIOME_PRESETS, type BiomePreset } from '@/data/presets'
 import { mutateWorld } from '@/engine/engineBridge'
 import { applyPreset } from '@/engine/presets'
-import { showToast } from '@/store/toastStore'
-import { useStudioStore } from '@/store/useStudioStore'
+import { showToast } from '@/store/toast'
 
 /** Card copy per recipe (prototype `.recipe-btn`). */
 const CARD: Record<BiomePreset['id'], { icon: IconName; name: string; sub: string }> = {
@@ -25,7 +24,7 @@ export function BiomeRecipes() {
             onClick={() => {
               let message = ''
               mutateWorld((w) => {
-                message = applyPreset(w, p.id, useStudioStore.getState())
+                message = applyPreset(w, p.id)
               })
               showToast(message)
             }}

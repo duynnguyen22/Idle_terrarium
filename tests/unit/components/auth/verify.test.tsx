@@ -37,7 +37,7 @@ describe('VerifyScreen', () => {
     expect(screen.getByText('482913').tagName).toBe('B')
     await u.click(screen.getByLabelText('Digit 1'))
     await u.keyboard('482913')
-    await vi.waitFor(() => expect(env.store.getState().phase).toBe('onboarding'))
+    await vi.waitFor(() => expect(env.state().phase).toBe('onboarding'))
     expect(verifyEmail).toHaveBeenCalledTimes(1)
     expect(verifyEmail).toHaveBeenCalledWith({ email: 'demo@botanica.app', code: '482913' })
   })

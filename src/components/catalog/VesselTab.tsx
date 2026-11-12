@@ -1,7 +1,7 @@
+import { useAtomValue, useSetAtom } from 'jotai'
 import { mutateWorld } from '@/engine/engineBridge'
-import { selectHardware } from '@/store/selectors'
-import { showToast } from '@/store/toastStore'
-import { useStudioStore } from '@/store/useStudioStore'
+import { toggleHardwareAtom, hasLidAtom } from '@/store/studio'
+import { showToast } from '@/store/toast'
 import { BackdropSection } from './BackdropSection'
 import { BiomeRecipes } from './BiomeRecipes'
 import { HardwarePanel } from './HardwarePanel'
@@ -12,8 +12,8 @@ import { VesselGrid } from './VesselGrid'
 const H2 = 'text-xs font-semibold text-forest-deep'
 
 export function VesselTab() {
-  const hasLid = useStudioStore((s) => selectHardware(s).hasLid)
-  const toggleHardware = useStudioStore((s) => s.toggleHardware)
+  const hasLid = useAtomValue(hasLidAtom)
+  const toggleHardware = useSetAtom(toggleHardwareAtom)
 
   const levelTerrain = () => {
     mutateWorld((w) => {

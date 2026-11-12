@@ -1,4 +1,5 @@
 import { useId, useMemo, useRef, useSyncExternalStore, type ChangeEvent } from 'react'
+import { useAtom } from 'jotai'
 import { RadioGroup } from 'radix-ui'
 import { BACKDROPS } from '@/data/backdrops'
 import type { BackdropId } from '@/data/types'
@@ -10,8 +11,8 @@ import {
   subscribeCustomBackdrop,
 } from '@/lib/backdropPhoto'
 import { MAX_BACKDROP_HAZE } from '@/store/migrations'
-import { showToast } from '@/store/toastStore'
-import { useStudioStore } from '@/store/useStudioStore'
+import { backdropAtom, backdropHazeAtom } from '@/store/studio'
+import { showToast } from '@/store/toast'
 import { LineIcon } from '../ui/LineIcon'
 import { Slider } from '../ui/Slider'
 
@@ -58,10 +59,8 @@ function sceneThumb(id: BackdropId): string {
 
 /** "Miniature landscape backdrop" section of the Vessel tab: scene grid, photo upload and removal, depth haze. */
 export function BackdropSection() {
-  const backdrop = useStudioStore((s) => s.backdrop)
-  const haze = useStudioStore((s) => s.backdropHaze)
-  const setBackdrop = useStudioStore((s) => s.setBackdrop)
-  const setBackdropHaze = useStudioStore((s) => s.setBackdropHaze)
+  const [backdrop, setBackdrop] = useAtom(backdropAtom)
+  const [haze, setBackdropHaze] = useAtom(backdropHazeAtom)
   const photo = useSyncExternalStore(subscribeCustomBackdrop, getCustomBackdrop)
   const fileRef = useRef<HTMLInputElement>(null)
   // Radix clicks a radio that arrow keys move focus onto; that click must not open the file picker.

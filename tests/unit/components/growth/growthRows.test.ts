@@ -12,7 +12,7 @@ import { findCatalogDef } from '@/data/catalog'
 import type { PlacedItem } from '@/data/types'
 import { breedConditions, type BreedConditions } from '@/engine/simulation/breed'
 import { createWorld } from '@/engine/world'
-import { createDefaultState } from '@/store/useStudioStore'
+import { createDefaultState } from '@/store/studio'
 
 const item = (id: string, over: Partial<PlacedItem> = {}): PlacedItem => ({
   uid: `${id}-${Math.random().toString(36).slice(2, 6)}`,

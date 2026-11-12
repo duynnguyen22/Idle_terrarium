@@ -1,5 +1,5 @@
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useId } from 'react'
-import { useShallow } from 'zustand/react/shallow'
 import { tryGetWorld } from '@/engine/engineBridge'
 import { clearRings, pingItem, PING_MS, setRings } from '@/engine/marks'
 import { paceMs } from '@/engine/simulation/pace'
@@ -12,8 +12,9 @@ import {
   type AwayReport,
 } from '@/engine/simulation/report'
 import { startEveningVisit } from '@/store/awayFlow'
-import { useOverlayStore } from '@/store/useOverlayStore'
-import { useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import { awayIndexAtom } from '@/store/overlay'
+import { awayLogAtom, paceAtom, relaxModeAtom, selectedIdAtom } from '@/store/studio'
 
 function tankSpan(tankHours: number): string {
   const days = tankHours / 24
@@ -52,12 +53,10 @@ const pagerBtn =
 /** The time-away summary: what changed while the player was gone (or after a preview or "+1 day"). */
 export function AwayCard() {
   const titleId = useId()
-  const awayIndex = useOverlayStore((s) => s.awayIndex)
-  const awayLog = useStudioStore((s) => s.awayLog)
-  const pace = useStudioStore((s) => s.pace)
-  const { closeAway, setAwayIndex } = useOverlayStore(
-    useShallow((s) => ({ closeAway: s.closeAway, setAwayIndex: s.setAwayIndex })),
-  )
+  const awayIndex = useAtomValue(awayIndexAtom)
+  const awayLog = useAtomValue(awayLogAtom)
+  const pace = useAtomValue(paceAtom)
+  const setAwayIndex = useSetAtom(awayIndexAtom)
   const report = awayIndex === null ? undefined : awayLog[awayIndex]
 
   // Dashed rings around everything the card mentions, for as long as it is showing this page.
@@ -79,13 +78,13 @@ export function AwayCard() {
     // Capture phase + stopPropagation: Escape closes the card only, not relax mode or the selection.
     // Relax mode hides the card, so there Escape is left to leave relax mode.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || useStudioStore.getState().relaxMode) return
+      if (e.key !== 'Escape' || appStore.get(relaxModeAtom)) return
       e.stopPropagation()
-      closeAway()
+      setAwayIndex(null)
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [open, closeAway])
+  }, [open, setAwayIndex])
 
   if (awayIndex === null || !report) return null
 
@@ -93,7 +92,7 @@ export function AwayCard() {
     const world = tryGetWorld()
     if (world) pingItem(world, uid, PING_MS)
   }
-  const select = (uid: string) => useStudioStore.getState().selectItem(uid)
+  const select = (uid: string) => appStore.set(selectedIdAtom, uid)
   const msPerDay = paceMs(pace)
   const empty = report.items.length === 0 && report.rest.length === 0
   const here = new Set(tryGetWorld()?.items.map((i) => i.uid))
@@ -208,7 +207,7 @@ export function AwayCard() {
           )}
           <button
             type="button"
-            onClick={closeAway}
+            onClick={() => setAwayIndex(null)}
             className="inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-lg bg-wheat px-3 text-xs font-semibold text-wheat-ink transition hover:bg-wheat-hover"
           >
             Got it

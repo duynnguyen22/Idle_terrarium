@@ -1,6 +1,6 @@
 import { findCatalogDef } from '@/data/catalog'
 import type { AiState, FaunaDef } from '@/data/types'
-import type { StudioState } from '@/store/useStudioStore'
+import type { StudioState } from '@/store/studio'
 import {
   BANK_W,
   getDividerNormX,

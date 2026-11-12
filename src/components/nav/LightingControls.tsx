@@ -1,8 +1,8 @@
+import { useAtomValue, useSetAtom } from 'jotai'
 import { LineIcon, type IconName } from '@/components/ui/LineIcon'
 import type { LightingId } from '@/data/types'
-import { selectAutoLightSync, selectLighting } from '@/store/selectors'
-import { showToast } from '@/store/toastStore'
-import { useStudioStore } from '@/store/useStudioStore'
+import { autoLightSyncAtom, lightingAtom } from '@/store/studio'
+import { showToast } from '@/store/toast'
 
 const PHASES: { id: LightingId; icon: IconName; label: string }[] = [
   { id: 'dawn', icon: 'sunrise', label: 'Dawn' },
@@ -16,10 +16,10 @@ const BTN =
 
 /** Floating light switcher in the canvas corner (prototype #light-control); hidden in relax mode. */
 export function LightingControls() {
-  const lighting = useStudioStore(selectLighting)
-  const autoSync = useStudioStore(selectAutoLightSync)
-  const setLighting = useStudioStore((s) => s.setLighting)
-  const setAutoLightSync = useStudioStore((s) => s.setAutoLightSync)
+  const lighting = useAtomValue(lightingAtom)
+  const autoSync = useAtomValue(autoLightSyncAtom)
+  const setLighting = useSetAtom(lightingAtom)
+  const setAutoLightSync = useSetAtom(autoLightSyncAtom)
 
   const choose = (id: LightingId) => {
     setLighting(id)

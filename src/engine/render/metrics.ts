@@ -1,5 +1,5 @@
 import type { Rect } from '@/data/types'
-import type { StudioState } from '@/store/useStudioStore'
+import type { StudioState } from '@/store/studio'
 import type { EngineWorld, WorldEntity } from '../world'
 
 /** Every render function is pure and shares this signature. */

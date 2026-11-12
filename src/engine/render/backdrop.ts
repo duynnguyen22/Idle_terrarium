@@ -1,6 +1,6 @@
 import type { Rect } from '@/data/types'
 import { getCustomBackdropRevision } from '@/lib/backdropPhoto'
-import type { StudioState } from '@/store/useStudioStore'
+import type { StudioState } from '@/store/studio'
 import { paintBackdrop } from './backdropPainters'
 import { vesselMetrics } from './metrics'
 

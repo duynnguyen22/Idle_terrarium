@@ -13,7 +13,7 @@ import { beginVesselClip } from '@/engine/render/vessel'
 import { drawWater, rippleAmplitude } from '@/engine/render/water'
 import { configureSpriteCache } from '@/engine/sprites/spriteCache'
 import { createWorld, type EngineWorld } from '@/engine/world'
-import { createDefaultState, type StudioState } from '@/store/useStudioStore'
+import { createDefaultState, type StudioState } from '@/store/studio'
 import type { PlacedItem } from '@/data/types'
 import { makeRecordingContext, record } from '../helpers/recordingContext'
 

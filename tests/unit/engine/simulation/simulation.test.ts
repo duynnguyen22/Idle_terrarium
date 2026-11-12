@@ -1,3 +1,4 @@
+import { createStore, type Store } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FAUNA, FAUNA_BY_ID } from '@/data/catalog'
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
@@ -35,8 +36,19 @@ import {
 } from '@/engine/simulation/telemetry'
 import { syncChildren, tick } from '@/engine/simulation/tick'
 import { createWorld, type EngineWorld, type WorldEntity } from '@/engine/world'
-import { createStudioStore } from '@/store/useStudioStore'
-import { createDefaultTelemetry, useTelemetryStore } from '@/store/useTelemetryStore'
+import {
+  activePourMaterialAtom,
+  activeToolAtom,
+  autoLightSyncAtom,
+  bindStudioStorage,
+  cycleProgressAtom,
+  dayCountAtom,
+  envSeedAtom,
+  lightingAtom,
+  studioStateAtom,
+  timeSpeedAtom,
+} from '@/store/studio'
+import { telemetryAtom } from '@/store/telemetry'
 
 function mulberry32(seed: number) {
   let a = seed
@@ -69,11 +81,12 @@ const st = {
 } as const
 const terrain = { substrates: st.substrates, waterSplit: st.waterSplit }
 
-let store: ReturnType<typeof createStudioStore>
+let store: Store
 beforeEach(() => {
   localStorage.clear()
-  store = createStudioStore()
-  useTelemetryStore.setState({ telemetry: createDefaultTelemetry() })
+  // A fresh store per test: studio atoms bound to localStorage, telemetry at its defaults.
+  store = createStore()
+  bindStudioStorage(store, localStorage)
 })
 
 describe('lightingForHour', () => {
@@ -90,14 +103,14 @@ describe('lightingForHour', () => {
   })
   it('advanceClock only writes on change and honours autoLightSync', () => {
     const noon = new Date(2026, 0, 1, 12, 0)
-    store.getState().setLighting('night')
-    expect(advanceClock(store.getState(), noon)).toBe(true)
-    expect(store.getState().lighting).toBe('sunlight')
-    expect(advanceClock(store.getState(), noon)).toBe(false)
-    store.getState().setAutoLightSync(false)
-    store.getState().setLighting('night')
-    expect(advanceClock(store.getState(), noon)).toBe(false)
-    expect(store.getState().lighting).toBe('night')
+    store.set(lightingAtom, 'night')
+    expect(advanceClock(store, noon)).toBe(true)
+    expect(store.get(studioStateAtom).lighting).toBe('sunlight')
+    expect(advanceClock(store, noon)).toBe(false)
+    store.set(autoLightSyncAtom, false)
+    store.set(lightingAtom, 'night')
+    expect(advanceClock(store, noon)).toBe(false)
+    expect(store.get(studioStateAtom).lighting).toBe('night')
   })
 })
 
@@ -179,7 +192,7 @@ describe('fauna', () => {
       }),
     )
     world.draggingId = 'w'
-    updateFauna(world, store.getState(), FRAME_MS, 0, mulberry32(1))
+    updateFauna(world, store.get(studioStateAtom), FRAME_MS, 0, mulberry32(1))
     expect(world.items[0].x).toBe(0.5)
     expect(world.items[0].aiTimer).toBe(5)
   })
@@ -283,27 +296,28 @@ describe('pouring', () => {
     const rng = mulberry32(11)
     const world = createWorld()
     world.pointerNorm = { x: 0.5, y: 0.3 }
-    const before = store.getState().substrates.soil
+    const before = store.get(studioStateAtom).substrates.soil
     for (let i = 0; i < 100; i++) spawnPourStream(world, 'soil', rng)
     expect(world.fallingStreams.length).toBe(200)
     for (let i = 0; i < 600 && world.fallingStreams.length; i++)
-      stepPourParticles(world, store.getState(), FRAME_MS, rng)
+      stepPourParticles(world, store.get(studioStateAtom), FRAME_MS, rng)
     expect(world.fallingStreams.length).toBe(0)
     expect(world.surfaceGrains.length).toBe(200)
     expect(world.terrainContour[10]).toBeGreaterThan(0)
     expect(world.terrainContour[10]).toBe(Math.max(...world.terrainContour))
     expect(Math.max(...world.terrainContour)).toBeLessThanOrEqual(18)
-    pushTelemetry(world, store.getState(), 1000)
-    expect(store.getState().substrates.soil).toBeGreaterThan(before)
-    expect(store.getState().substrates.soil).toBeLessThanOrEqual(60)
+    pushTelemetry(world, store, 1000)
+    expect(store.get(studioStateAtom).substrates.soil).toBeGreaterThan(before)
+    expect(store.get(studioStateAtom).substrates.soil).toBeLessThanOrEqual(60)
   })
   it('water landings raise water and the mist boost (capped at 20)', () => {
     const rng = mulberry32(2)
     const world = createWorld()
     for (let i = 0; i < 40; i++) spawnPourStream(world, 'water', rng)
-    for (let i = 0; i < 600; i++) stepPourParticles(world, store.getState(), FRAME_MS, rng)
-    pushTelemetry(world, store.getState(), 1000)
-    expect(store.getState().substrates.water).toBeGreaterThan(24)
+    for (let i = 0; i < 600; i++)
+      stepPourParticles(world, store.get(studioStateAtom), FRAME_MS, rng)
+    pushTelemetry(world, store, 1000)
+    expect(store.get(studioStateAtom).substrates.water).toBeGreaterThan(24)
     expect(world.env.mistBoost).toBeGreaterThan(0)
     expect(world.env.mistBoost).toBeLessThanOrEqual(20)
   })
@@ -314,28 +328,29 @@ describe('pouring', () => {
     world.isPouring = true
     spawnPourStream(world, 'soil', rng)
     for (let i = 0; i < 600 && world.fallingStreams.length; i++)
-      stepPourParticles(world, store.getState(), FRAME_MS, rng)
+      stepPourParticles(world, store.get(studioStateAtom), FRAME_MS, rng)
     expect(world.pourSettled).toBe(false) // still pouring
     spawnPourStream(world, 'soil', rng)
     world.isPouring = false
-    stepPourParticles(world, store.getState(), FRAME_MS, rng)
+    stepPourParticles(world, store.get(studioStateAtom), FRAME_MS, rng)
     expect(world.pourSettled).toBe(false) // in flight
     for (let i = 0; i < 600 && world.fallingStreams.length; i++)
-      stepPourParticles(world, store.getState(), FRAME_MS, rng)
+      stepPourParticles(world, store.get(studioStateAtom), FRAME_MS, rng)
     expect(world.pourSettled).toBe(true)
   })
   it('caps surface grains at 220', () => {
     const rng = mulberry32(5)
     const world = createWorld()
     for (let i = 0; i < 150; i++) spawnPourStream(world, 'sand', rng)
-    for (let i = 0; i < 600; i++) stepPourParticles(world, store.getState(), FRAME_MS, rng)
+    for (let i = 0; i < 600; i++)
+      stepPourParticles(world, store.get(studioStateAtom), FRAME_MS, rng)
     expect(world.surfaceGrains.length).toBe(220)
   })
   it('siphonStep never drops anything below 0', () => {
     const world = createWorld()
-    for (let i = 0; i < 3000; i++) siphonStep(world, store.getState())
-    pushTelemetry(world, store.getState(), 1000)
-    const s = store.getState().substrates
+    for (let i = 0; i < 3000; i++) siphonStep(world, store.get(studioStateAtom))
+    pushTelemetry(world, store, 1000)
+    const s = store.get(studioStateAtom).substrates
     for (const v of Object.values(s)) expect(v).toBeGreaterThanOrEqual(0)
     expect(s.water).toBe(0)
   })
@@ -450,17 +465,16 @@ describe('pouring', () => {
 })
 
 describe('pushTelemetry', () => {
-  const telemetry = () => useTelemetryStore.getState().telemetry
+  const telemetry = () => store.get(telemetryAtom)
   it('writes at most 4x per simulated second and skips unchanged values', () => {
     const world = createWorld()
     world.moldPatches.push({ x: 0.3, size: 12 })
     let writes = 0
-    const unsub = useTelemetryStore.subscribe(() => writes++)
+    const unsub = store.sub(telemetryAtom, () => writes++)
     let studioWrites = 0
-    const unsubStudio = store.subscribe(() => studioWrites++)
+    const unsubStudio = store.sub(studioStateAtom, () => studioWrites++)
     let flushes = 0
-    for (let t = 1000; t < 2000; t += FRAME_MS)
-      if (pushTelemetry(world, store.getState(), t)) flushes++
+    for (let t = 1000; t < 2000; t += FRAME_MS) if (pushTelemetry(world, store, t)) flushes++
     unsub()
     unsubStudio()
     expect(flushes).toBeLessThanOrEqual(1000 / TELEMETRY_INTERVAL_MS)
@@ -475,17 +489,17 @@ describe('pushTelemetry', () => {
     w.env.temperature = 30
     w.env.cycleProgress = 0.3
     w.pendingWaterSplit = 0.3
-    pushTelemetry(w, store.getState(), 1000)
+    pushTelemetry(w, store, 1000)
     expect(telemetry().temperature).toBe(30)
-    expect(store.getState().cycleProgress).toBe(0.3)
-    expect(store.getState().waterSplit).toBe(0.3)
+    expect(store.get(studioStateAtom).cycleProgress).toBe(0.3)
+    expect(store.get(studioStateAtom).waterSplit).toBe(0.3)
     expect(w.pendingWaterSplit).toBeUndefined()
   })
   it('50 flushes of moving gauges write no storage when no persisted field changed', () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem')
     const w = createWorld()
     w.env.cycleProgress = 100.5 / 210 // mid-bucket, so the drift below never crosses a 1/210 step
-    store.getState().setCycleProgress(Math.floor(w.env.cycleProgress * 210) / 210)
+    store.set(cycleProgressAtom, Math.floor(w.env.cycleProgress * 210) / 210)
     setItem.mockClear()
     let t = 1000
     w.lastEnvSeedPush = t
@@ -499,7 +513,7 @@ describe('pushTelemetry', () => {
       w.env.condensation = (i % 7) / 10
       w.env.cycleProgress += 0.00001
       t += TELEMETRY_INTERVAL_MS
-      expect(pushTelemetry(w, store.getState(), t)).toBe(true)
+      expect(pushTelemetry(w, store, t)).toBe(true)
     }
     expect(telemetry().o2Balance).toBeCloseTo(96 - 49 * 0.37, 6)
     expect(setItem).not.toHaveBeenCalled()
@@ -508,79 +522,69 @@ describe('pushTelemetry', () => {
   it('quantises cycle progress to 1/210 before writing it', () => {
     const w = createWorld()
     w.env.cycleProgress = 0.31
-    pushTelemetry(w, store.getState(), 1000)
-    expect(store.getState().cycleProgress).toBe(Math.floor(0.31 * 210) / 210)
+    pushTelemetry(w, store, 1000)
+    expect(store.get(studioStateAtom).cycleProgress).toBe(Math.floor(0.31 * 210) / 210)
     let writes = 0
-    const unsub = store.subscribe(() => writes++)
+    const unsub = store.sub(studioStateAtom, () => writes++)
     w.env.cycleProgress = 0.3101
-    pushTelemetry(w, store.getState(), 2000)
+    pushTelemetry(w, store, 2000)
     expect(writes).toBe(0)
     w.env.cycleProgress = 0.32
-    pushTelemetry(w, store.getState(), 3000)
+    pushTelemetry(w, store, 3000)
     unsub()
     expect(writes).toBe(1)
-    expect(store.getState().cycleProgress).toBe(Math.floor(0.32 * 210) / 210)
+    expect(store.get(studioStateAtom).cycleProgress).toBe(Math.floor(0.32 * 210) / 210)
   })
   it('flushTelemetry sets dayCount to floor(ecoTime)+1 once', () => {
     const w = createWorld()
     let writes = 0
-    const unsub = store.subscribe((s, prev) => {
-      if (s.dayCount !== prev.dayCount) writes++
-    })
+    // sub only fires when dayCount actually changes.
+    const unsub = store.sub(dayCountAtom, () => writes++)
     w.ecoTime = 2.4
-    flushTelemetry(w, store.getState())
-    flushTelemetry(w, store.getState())
-    expect(store.getState().dayCount).toBe(3)
+    flushTelemetry(w, store)
+    flushTelemetry(w, store)
+    expect(store.get(studioStateAtom).dayCount).toBe(3)
     expect(writes).toBe(1)
     w.ecoTime = 2.99
-    flushTelemetry(w, store.getState())
+    flushTelemetry(w, store)
     expect(writes).toBe(1)
     w.ecoTime = 3
-    flushTelemetry(w, store.getState())
+    flushTelemetry(w, store)
     unsub()
-    expect(store.getState().dayCount).toBe(4)
+    expect(store.get(studioStateAtom).dayCount).toBe(4)
     expect(writes).toBe(2)
   })
   it('pushTelemetry commits a snapshot and lastSimulatedAt once per minute', () => {
     const w = createWorld()
     const commit = vi.fn()
     vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000)
-    pushTelemetry(w, store.getState(), 1000, store.getState(), commit)
+    pushTelemetry(w, store, 1000, undefined, commit)
     expect(commit).not.toHaveBeenCalled()
-    expect(store.getState().lastSimulatedAt).toBeNull()
+    expect(store.get(studioStateAtom).lastSimulatedAt).toBeNull()
     let t = 1000
-    while (t < SNAPSHOT_INTERVAL_MS)
-      pushTelemetry(w, store.getState(), (t += 250), store.getState(), commit)
+    while (t < SNAPSHOT_INTERVAL_MS) pushTelemetry(w, store, (t += 250), undefined, commit)
     expect(commit).toHaveBeenCalledTimes(1)
-    expect(store.getState().lastSimulatedAt).toBe(1_700_000_000_000)
+    expect(store.get(studioStateAtom).lastSimulatedAt).toBe(1_700_000_000_000)
     expect(w.lastSnapshotCommit).toBe(t)
-    for (let i = 0; i < 100; i++)
-      pushTelemetry(w, store.getState(), (t += 250), store.getState(), commit)
+    for (let i = 0; i < 100; i++) pushTelemetry(w, store, (t += 250), undefined, commit)
     expect(commit).toHaveBeenCalledTimes(1)
-    pushTelemetry(
-      w,
-      store.getState(),
-      w.lastSnapshotCommit + SNAPSHOT_INTERVAL_MS,
-      store.getState(),
-      commit,
-    )
+    pushTelemetry(w, store, w.lastSnapshotCommit + SNAPSHOT_INTERVAL_MS, undefined, commit)
     expect(commit).toHaveBeenCalledTimes(2)
     vi.restoreAllMocks()
   })
   it('writes the env seed at most once every 5 s, rounded to 1 decimal', () => {
     const w = createWorld()
     let seedWrites = 0
-    const unsub = store.subscribe((s, prev) => {
-      if (s.envSeed !== prev.envSeed) seedWrites++
-    })
+    // sub only fires when the envSeed object is replaced.
+    const unsub = store.sub(envSeedAtom, () => seedWrites++)
     w.lastEnvSeedPush = 0
     for (let t = 250; t <= 12_500; t += TELEMETRY_INTERVAL_MS) {
       w.env.nutrients = 88 - t / 1000 // drops 0.25 per flush
-      pushTelemetry(w, store.getState(), t)
+      pushTelemetry(w, store, t)
     }
     unsub()
     expect(seedWrites).toBe(2) // at 5 s and 10 s
-    expect(store.getState().envSeed.nutrients).toBe(78)
+    expect(store.get(studioStateAtom).envSeed.nutrients).toBe(78)
     expect(w.lastEnvSeedPush).toBe(10_000)
   })
 })
@@ -620,20 +624,19 @@ describe('tick', () => {
         growthProgress: 0.2,
       }),
     )
-    store.getState().setTimeSpeed(0)
+    store.set(timeSpeedAtom, 0)
     const rng = mulberry32(9)
-    tick(world, FRAME_MS, 1000, { store: store.getState(), rng })
+    tick(world, FRAME_MS, 1000, { store, rng })
     const y0 = world.ambientMotes[0].y
-    tick(world, FRAME_MS, 1016, { store: store.getState(), rng })
+    tick(world, FRAME_MS, 1016, { store, rng })
     expect(world.items[0].growthProgress).toBe(0.2)
     expect(world.ambientMotes[0].y).toBe(y0)
 
-    store.getState().setTimeSpeed(1)
-    store.getState().setActiveTool('pour')
-    store.getState().setActivePourMaterial('soil')
+    store.set(timeSpeedAtom, 1)
+    store.set(activeToolAtom, 'pour')
+    store.set(activePourMaterialAtom, 'soil')
     world.isPouring = true
-    for (let i = 0; i < 120; i++)
-      tick(world, FRAME_MS, 2000 + i * FRAME_MS, { store: store.getState(), rng })
+    for (let i = 0; i < 120; i++) tick(world, FRAME_MS, 2000 + i * FRAME_MS, { store, rng })
     expect(world.fallingStreams.length + world.surfaceGrains.length).toBeGreaterThan(0)
     expect(world.items[0].growthProgress as number).toBeGreaterThan(0.2)
     expect(world.ambientMotes[0].y).not.toBe(y0)
@@ -644,10 +647,10 @@ describe('tick living time', () => {
   it('toasts that the pool has cycled when a tank day pushes it past 1', () => {
     const w = createWorld()
     w.env.cycleProgress = 1 - 1e-9
-    store.getState().setTimeSpeed(5)
+    store.set(timeSpeedAtom, 5)
     const toasts: string[] = []
     tick(w, 250, 1000, {
-      store: store.getState(),
+      store,
       rng: mulberry32(1),
       onToast: (m) => toasts.push(m),
     })
@@ -671,10 +674,10 @@ describe('tick living time', () => {
       growthProgress: 1 - 1e-9,
     })
     w.items.push(fern, sprout)
-    store.getState().setTimeSpeed(5)
+    store.set(timeSpeedAtom, 5)
     const toasts: string[] = []
     const deps = {
-      store: store.getState(),
+      store,
       rng: mulberry32(1),
       onToast: (m: string) => toasts.push(m),
     }
@@ -693,7 +696,7 @@ describe('tick living time', () => {
   it('hands the snapshot hook to pushTelemetry', () => {
     const w = createWorld()
     const commit = vi.fn()
-    tick(w, 16, SNAPSHOT_INTERVAL_MS + 1000, { store: store.getState(), commit })
+    tick(w, 16, SNAPSHOT_INTERVAL_MS + 1000, { store, commit })
     expect(commit).toHaveBeenCalledTimes(1)
   })
 })
@@ -703,7 +706,7 @@ describe('care report in the tick', () => {
     const w = createWorld()
     w.env.humidity = 95
     w.items = [item({ uid: 'tree_frog', id: 'tree_frog', category: 'fauna' })]
-    for (let i = 0; i < 30; i++) tick(w, 1000 / 60, i * 16, { store: store.getState() })
+    for (let i = 0; i < 30; i++) tick(w, 1000 / 60, i * 16, { store })
     expect(w.careIssues.some((c) => c.text.startsWith('Red-Eyed Tree Frog prefers'))).toBe(true)
   })
 })

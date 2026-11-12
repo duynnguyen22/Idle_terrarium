@@ -1,8 +1,8 @@
-import { useToastStore } from '@/store/toastStore'
+import { useAtomValue } from 'jotai'
+import { toastAtom } from '@/store/toast'
 
 export function Toast() {
-  const message = useToastStore((s) => s.message)
-  const visible = useToastStore((s) => s.visible)
+  const { message, visible } = useAtomValue(toastAtom)
   return (
     <div
       role="status"

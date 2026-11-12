@@ -1,5 +1,7 @@
+import { useAtomValue, useStore } from 'jotai'
 import type { FormEvent } from 'react'
-import { useAccount, useAuthEnv } from './authEnv'
+import { useAuthEnv } from './authEnv'
+import { busyAtom, viewDataAtom } from '@/store/account'
 import {
   AuthHeader,
   Banner,
@@ -13,17 +15,18 @@ import { OtpInput } from './OtpInput'
 
 /** The 6-digit email confirmation after sign-up; success starts onboarding (spec Screens.verify). */
 export function VerifyScreen() {
-  const { store, auth } = useAuthEnv()
-  const email = useAccount((s) => s.viewData.email ?? '')
-  const notice = useAccount((s) => s.viewData.notice)
+  const { account, auth } = useAuthEnv()
+  const store = useStore()
+  const email = useAtomValue(viewDataAtom).email ?? ''
+  const notice = useAtomValue(viewDataAtom).notice
 
   const submit = (code?: string) =>
-    void store.getState().run(async () => {
-      const typed = code ?? store.getState().viewData.code ?? ''
+    void account.run(async () => {
+      const typed = code ?? store.get(viewDataAtom).code ?? ''
       const r = await auth.verifyEmail({ email, code: typed.replace(/\s/g, '') })
       // The form is done: the button should not read "Please wait…" while the session loads.
-      store.setState({ busy: false })
-      await store.getState().beginSession(r.user, r.session, { isNew: true })
+      store.set(busyAtom, false)
+      await account.beginSession(r.user, r.session, { isNew: true })
     })
 
   const onSubmit = (e: FormEvent) => {
@@ -47,7 +50,7 @@ export function VerifyScreen() {
       </form>
       <ResendRow email={email} purpose="verify" />
       <p className="auth-foot">
-        <LinkButton onClick={() => store.getState().goView('signup', { banner: null })}>
+        <LinkButton onClick={() => account.goView('signup', { banner: null })}>
           Use a different email
         </LinkButton>
       </p>

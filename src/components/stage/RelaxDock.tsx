@@ -1,3 +1,4 @@
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { RadioGroup } from 'radix-ui'
 import { useEffect, useId, useRef, useState } from 'react'
 import { LineIcon, type IconName } from '@/components/ui/LineIcon'
@@ -5,13 +6,12 @@ import { Slider } from '@/components/ui/Slider'
 import { SOUND_PRESETS, type SoundPreset } from '@/data/soundPresets'
 import type { LightingId } from '@/data/types'
 import {
-  selectAutoLightSync,
-  selectLighting,
-  selectMusicVolume,
-  selectRelaxMode,
-  selectSoundPreset,
-} from '@/store/selectors'
-import { useStudioStore } from '@/store/useStudioStore'
+  autoLightSyncAtom,
+  lightingAtom,
+  musicVolumeAtom,
+  relaxModeAtom,
+  soundPresetAtom,
+} from '@/store/studio'
 
 const LIGHTS: { id: LightingId; icon: IconName; label: string }[] = [
   { id: 'dawn', icon: 'sunrise', label: 'Misty dawn' },
@@ -60,20 +60,18 @@ function VolumeSlider({
 
 /** The relax-mode control bar. Mounted only while relaxing, so the sound menu starts closed on every entry. */
 export function RelaxDock() {
-  const relaxMode = useStudioStore(selectRelaxMode)
+  const relaxMode = useAtomValue(relaxModeAtom)
   return relaxMode ? <Dock /> : null
 }
 
 function Dock() {
-  const soundPreset = useStudioStore(selectSoundPreset)
-  const lighting = useStudioStore(selectLighting)
-  const autoLight = useStudioStore(selectAutoLightSync)
-  const musicVolume = useStudioStore(selectMusicVolume)
-  const setSoundPreset = useStudioStore((s) => s.setSoundPreset)
-  const setMusicVolume = useStudioStore((s) => s.setMusicVolume)
-  const setLighting = useStudioStore((s) => s.setLighting)
-  const setAutoLightSync = useStudioStore((s) => s.setAutoLightSync)
-  const setRelaxMode = useStudioStore((s) => s.setRelaxMode)
+  const [soundPreset, setSoundPreset] = useAtom(soundPresetAtom)
+  const lighting = useAtomValue(lightingAtom)
+  const autoLight = useAtomValue(autoLightSyncAtom)
+  const [musicVolume, setMusicVolume] = useAtom(musicVolumeAtom)
+  const setLighting = useSetAtom(lightingAtom)
+  const setAutoLightSync = useSetAtom(autoLightSyncAtom)
+  const setRelaxMode = useSetAtom(relaxModeAtom)
 
   const [menuOpen, setMenuOpen] = useState(false)
   const lastVolume = useRef(musicVolume > 0 ? musicVolume : 0.5)

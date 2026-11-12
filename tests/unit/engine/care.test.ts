@@ -1,3 +1,4 @@
+import { createStore } from 'jotai'
 import { describe, expect, it } from 'vitest'
 import { findCatalogDef } from '@/data/catalog'
 import { DEFAULT_ROOM, envModel } from '@/engine/room'
@@ -14,7 +15,15 @@ import {
   type CareInputs,
 } from '@/engine/care'
 import { createWorld } from '@/engine/world'
-import { createStudioStore } from '@/store/useStudioStore'
+import {
+  bindStudioStorage,
+  mineralSpotsAtom,
+  pumpFlowAtom,
+  roomAtom,
+  setSubstrateAtom,
+  studioStateAtom,
+  waterSplitAtom,
+} from '@/store/studio'
 
 function makeMemoryStorage(): Storage {
   const m = new Map<string, string>()
@@ -30,6 +39,13 @@ function makeMemoryStorage(): Storage {
   }
 }
 const memoryStorage = makeMemoryStorage()
+
+/** A jotai store with its studio atoms bound to the shared in-memory save. */
+function makeStudioStore() {
+  const store = createStore()
+  bindStudioStorage(store, memoryStorage)
+  return store
+}
 
 const item = (id: string) => ({ uid: id, id, category: findCatalogDef(id)!.category }) as PlacedItem
 const inputs = (over: Partial<CareInputs>): CareInputs => ({
@@ -205,7 +221,7 @@ describe('care report', () => {
   })
 
   it("runCareAction('mist') wakes resting plants and appends the woke toast", () => {
-    const store = createStudioStore(memoryStorage)
+    const store = makeStudioStore()
     const w = createWorld()
     w.items = [
       {
@@ -222,7 +238,7 @@ describe('care report', () => {
         resting: true,
       },
     ]
-    expect(runCareAction(w, store.getState(), 'mist')).toBe(
+    expect(runCareAction(w, store, 'mist')).toBe(
       'Misted the plants. The Pink Fittonia woke up and perked up.',
     )
     expect(w.items[0].resting).toBe(false)
@@ -230,30 +246,30 @@ describe('care report', () => {
   })
 
   it('runCareAction mutates world env and store and returns the toast', () => {
-    const store = createStudioStore(memoryStorage)
+    const store = makeStudioStore()
     const w = createWorld()
     w.env.mistBoost = 20
-    expect(runCareAction(w, store.getState(), 'mist')).toBe('Misted the plants')
+    expect(runCareAction(w, store, 'mist')).toBe('Misted the plants')
     expect(w.env.mistBoost).toBe(25)
     expect(w.env.soilMoisture).toBe(78)
-    expect(runCareAction(w, store.getState(), 'openLid')).toBe('Lid cracked open to vent moisture')
-    expect(store.getState().hasLid).toBe(false)
-    expect(runCareAction(w, store.getState(), 'closeLid')).toBe('Lid sealed; humidity will rise')
-    expect(store.getState().hasLid).toBe(true)
-    expect(runCareAction(w, store.getState(), 'fogOff')).toBe('Fogger off')
-    expect(store.getState().hasFogger).toBe(false)
-    store.getState().setPumpFlow('strong')
-    expect(runCareAction(w, store.getState(), 'pumpGentle')).toBe('Pump set to gentle flow')
-    expect(store.getState().pumpFlow).toBe('gentle')
+    expect(runCareAction(w, store, 'openLid')).toBe('Lid cracked open to vent moisture')
+    expect(store.get(studioStateAtom).hasLid).toBe(false)
+    expect(runCareAction(w, store, 'closeLid')).toBe('Lid sealed; humidity will rise')
+    expect(store.get(studioStateAtom).hasLid).toBe(true)
+    expect(runCareAction(w, store, 'fogOff')).toBe('Fogger off')
+    expect(store.get(studioStateAtom).hasFogger).toBe(false)
+    store.set(pumpFlowAtom, 'strong')
+    expect(runCareAction(w, store, 'pumpGentle')).toBe('Pump set to gentle flow')
+    expect(store.get(studioStateAtom).pumpFlow).toBe('gentle')
     w.env.nutrients = 90
-    expect(runCareAction(w, store.getState(), 'feed')).toBe('Added organic bio-feed')
+    expect(runCareAction(w, store, 'feed')).toBe('Added organic bio-feed')
     expect(w.env.nutrients).toBe(100)
-    store.getState().setWaterSplit(0)
-    store.getState().setSubstrate('water', 10)
-    expect(runCareAction(w, store.getState(), 'widenPool')).toBe(
+    store.set(waterSplitAtom, 0)
+    store.set(setSubstrateAtom, 'water', 10)
+    expect(runCareAction(w, store, 'widenPool')).toBe(
       'Added a pool. New water cycles for about 3 weeks.',
     )
-    expect(store.getState()).toMatchObject({
+    expect(store.get(studioStateAtom)).toMatchObject({
       waterSplit: 0.3,
       substrates: expect.objectContaining({ water: 40 }),
       cycleProgress: 0,
@@ -383,24 +399,22 @@ describe('room care issues', () => {
   })
 
   it('runCareAction room branches write through the store and return the toasts', () => {
-    const store = createStudioStore(memoryStorage)
+    const store = makeStudioStore()
     const w = createWorld()
-    store.getState().setRoom({ water: 'tap' })
-    expect(runCareAction(w, store.getState(), 'waterTreat')).toBe('Water is now dechlorinated')
-    expect(store.getState().room.water).toBe('tap_treated')
-    expect(runCareAction(w, store.getState(), 'waterRO')).toBe('Misting with RO water now')
-    expect(store.getState().room.water).toBe('ro')
-    store.getState().setRoom({ air: 'aerosol' })
-    expect(runCareAction(w, store.getState(), 'airClean')).toBe(
-      'Tank moved to a room with clean air',
-    )
-    expect(store.getState().room.air).toBe('clean')
-    expect(runCareAction(w, store.getState(), 'purifierOn')).toBe('Air purifier on')
-    expect(store.getState().room.purifier).toBe(true)
-    store.getState().setMineralSpots(0.6)
+    store.set(roomAtom, { water: 'tap' })
+    expect(runCareAction(w, store, 'waterTreat')).toBe('Water is now dechlorinated')
+    expect(store.get(studioStateAtom).room.water).toBe('tap_treated')
+    expect(runCareAction(w, store, 'waterRO')).toBe('Misting with RO water now')
+    expect(store.get(studioStateAtom).room.water).toBe('ro')
+    store.set(roomAtom, { air: 'aerosol' })
+    expect(runCareAction(w, store, 'airClean')).toBe('Tank moved to a room with clean air')
+    expect(store.get(studioStateAtom).room.air).toBe('clean')
+    expect(runCareAction(w, store, 'purifierOn')).toBe('Air purifier on')
+    expect(store.get(studioStateAtom).room.purifier).toBe(true)
+    store.set(mineralSpotsAtom, 0.6)
     w.mineralSpots = 0.6
-    expect(runCareAction(w, store.getState(), 'wipeGlass')).toBe('Glass wiped clean')
-    expect(store.getState().mineralSpots).toBe(0)
+    expect(runCareAction(w, store, 'wipeGlass')).toBe('Glass wiped clean')
+    expect(store.get(studioStateAtom).mineralSpots).toBe(0)
     expect(w.mineralSpots).toBe(0)
   })
 })

@@ -1,3 +1,4 @@
+import type { Store } from 'jotai'
 import type { GardenSummary } from '@/auth/backend'
 import type { PlacedItem } from '@/data/types'
 import { commitWorld, notifyWorldRestored, tryGetWorld } from '@/engine/engineBridge'
@@ -14,18 +15,18 @@ import {
 } from './migrations'
 import {
   partialize,
+  patchStudioAtom,
   STUDIO_VERSION,
+  studioStateAtom,
   type PersistedStudio,
   type StudioState,
-  type StudioStore,
-  type StudioStoreHook,
-} from './useStudioStore'
+} from './studio'
 
 /** One saved terrarium: the persisted studio slice, stamped with the version it was written at. */
 export type GardenSnapshot = PersistedStudio & { version?: number }
 
 /** The persisted slice with a fresh world snapshot when a world is live (spec getSnapshot). */
-export function getGardenSnapshot(store: StudioStore, world: EngineWorld | null): GardenSnapshot {
+export function getGardenSnapshot(store: StudioState, world: EngineWorld | null): GardenSnapshot {
   return {
     ...partialize(store),
     worldSnapshot: world ? snapshotWorld(world) : store.worldSnapshot,
@@ -39,11 +40,11 @@ export function getGardenSnapshot(store: StudioStore, world: EngineWorld | null)
  * gauges, cycle and glass residue. Mold and pending pour deltas belong to the previous build. Finally it tells
  * the engine the world was restored, so a gap since the garden's last save is caught up.
  */
-export function applyGardenSnapshot(snapshot: GardenSnapshot, store: StudioStoreHook): void {
+export function applyGardenSnapshot(snapshot: GardenSnapshot, store: Store): void {
   const migrated = migrate(snapshot, snapshot.version ?? STUDIO_VERSION)
   const patch: Record<string, unknown> = {}
   // Only persisted keys: a stored snapshot must never overwrite an action or transient field.
-  for (const k of Object.keys(partialize(store.getState())))
+  for (const k of Object.keys(partialize(store.get(studioStateAtom))))
     if (Object.hasOwn(migrated, k)) patch[k] = migrated[k]
   if (Object.hasOwn(patch, 'backdropHaze'))
     patch.backdropHaze = sanitizeBackdropHaze(patch.backdropHaze)
@@ -53,11 +54,11 @@ export function applyGardenSnapshot(snapshot: GardenSnapshot, store: StudioStore
     patch.soundPreset = sanitizeSoundPreset(patch.soundPreset)
   if (Object.hasOwn(patch, 'pace')) patch.pace = sanitizePace(patch.pace)
   if (Object.hasOwn(patch, 'awayLog')) patch.awayLog = sanitizeAwayLog(patch.awayLog)
-  store.setState({ ...(patch as Partial<StudioState>), selectedId: null })
+  store.set(patchStudioAtom, { ...(patch as Partial<StudioState>), selectedId: null })
 
   const world = tryGetWorld()
   if (!world) return
-  const s = store.getState()
+  const s = store.get(studioStateAtom)
   if (s.worldSnapshot) restoreWorld(world, s.worldSnapshot, s.dayCount)
   else {
     world.ecoTime = ecoTimeFromDayCount(s.dayCount)

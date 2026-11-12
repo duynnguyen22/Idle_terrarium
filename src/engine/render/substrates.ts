@@ -1,6 +1,6 @@
 import type { Rect } from '@/data/types'
 import { LAND_LAYER_IDS, SUBSTRATE_LAYERS } from '@/data/substrates'
-import type { StudioState } from '@/store/useStudioStore'
+import type { StudioState } from '@/store/studio'
 import type { EngineWorld } from '../world'
 import {
   getLandSurfaceNormY,

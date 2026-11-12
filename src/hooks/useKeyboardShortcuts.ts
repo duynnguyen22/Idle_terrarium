@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { startAudioFromGesture } from '@/hooks/useAudio'
-import { useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import { relaxModeAtom, selectedIdAtom } from '@/store/studio'
 
 function isEditable(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -17,13 +18,14 @@ export function useKeyboardShortcuts(): void {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (isEditable(e.target) || e.ctrlKey || e.metaKey || e.altKey) return
-      const s = useStudioStore.getState()
+      // Read once, before the write: entering relax (it was off) also starts audio.
+      const relaxMode = appStore.get(relaxModeAtom)
       if (e.key === 'r' || e.key === 'R') {
-        s.setRelaxMode(!s.relaxMode)
-        if (!s.relaxMode) startAudioFromGesture()
+        appStore.set(relaxModeAtom, !relaxMode)
+        if (!relaxMode) startAudioFromGesture()
       } else if (e.key === 'Escape') {
-        if (s.relaxMode) s.setRelaxMode(false)
-        else if (s.selectedId !== null) s.selectItem(null)
+        if (relaxMode) appStore.set(relaxModeAtom, false)
+        else if (appStore.get(selectedIdAtom) !== null) appStore.set(selectedIdAtom, null)
       }
     }
     window.addEventListener('keydown', onKeyDown)

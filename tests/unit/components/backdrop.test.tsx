@@ -4,12 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BackdropSection } from '@/components/catalog/BackdropSection'
 import { VesselTab } from '@/components/catalog/VesselTab'
 import { clearCustomBackdrop, setCustomBackdropFromFile } from '@/lib/backdropPhoto'
-import { useToastStore } from '@/store/toastStore'
-import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
 import { setSlider } from '../helpers/slider'
+import { appStore } from '@/store/appStore'
+import { backdropAtom, backdropHazeAtom, createDefaultState, patchStudioAtom } from '@/store/studio'
+import { toastAtom } from '@/store/toast'
 
 beforeEach(() => {
-  useStudioStore.setState(createDefaultState())
+  appStore.set(patchStudioAtom, createDefaultState())
   // jsdom has no canvas: thumbnails must cope with a missing 2D context
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
 })
@@ -60,7 +61,7 @@ describe('BackdropSection', () => {
     render(<BackdropSection />)
     expect(screen.queryByLabelText('Depth haze')).toBeNull()
     await user.click(screen.getByRole('radio', { name: 'Ha Long karst' }))
-    expect(useStudioStore.getState().backdrop).toBe('karst')
+    expect(appStore.get(backdropAtom)).toBe('karst')
     expect(screen.getByRole('slider', { name: 'Depth haze' })).toHaveAttribute(
       'aria-valuenow',
       '35',
@@ -76,13 +77,13 @@ describe('BackdropSection', () => {
   })
 
   it('the haze slider writes through the store', () => {
-    useStudioStore.setState({ backdrop: 'pines' })
+    appStore.set(patchStudioAtom, { backdrop: 'pines' })
     render(<BackdropSection />)
     const slider = screen.getByRole('slider', { name: 'Depth haze' })
     expect(slider).toHaveAttribute('aria-valuemin', '0')
     expect(slider).toHaveAttribute('aria-valuemax', '80')
     setSlider(slider, 60)
-    expect(useStudioStore.getState().backdropHaze).toBe(60)
+    expect(appStore.get(backdropHazeAtom)).toBe(60)
     expect(screen.getByText('60%')).toBeInTheDocument()
   })
 
@@ -94,18 +95,18 @@ describe('BackdropSection', () => {
     const click = vi.spyOn(input, 'click').mockImplementation(() => undefined)
     await user.click(screen.getByRole('radio', { name: 'Your photo' }))
     expect(click).toHaveBeenCalledTimes(1)
-    expect(useStudioStore.getState().backdrop).toBe('none')
+    expect(appStore.get(backdropAtom)).toBe('none')
   })
 
   it('Remove photo forgets the photo, falls back to Clear glass and says so', async () => {
     await uploadPhoto()
-    useStudioStore.setState({ backdrop: 'custom' })
+    appStore.set(patchStudioAtom, { backdrop: 'custom' })
     const user = userEvent.setup()
     render(<BackdropSection />)
     expect(screen.getByRole('button', { name: 'Change photo' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Remove photo' }))
-    expect(useStudioStore.getState().backdrop).toBe('none')
-    expect(useToastStore.getState().message).toBe('Photo removed')
+    expect(appStore.get(backdropAtom)).toBe('none')
+    expect(appStore.get(toastAtom).message).toBe('Photo removed')
     expect(localStorage.getItem('botanica_backdrop_photo_v1')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Remove photo' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Change photo' })).toBeNull()
@@ -116,11 +117,11 @@ describe('BackdropSection', () => {
 
   it('Remove photo keeps a painted scene that is already selected', async () => {
     await uploadPhoto()
-    useStudioStore.setState({ backdrop: 'karst' })
+    appStore.set(patchStudioAtom, { backdrop: 'karst' })
     const user = userEvent.setup()
     render(<BackdropSection />)
     await user.click(screen.getByRole('button', { name: 'Remove photo' }))
-    expect(useStudioStore.getState().backdrop).toBe('karst')
+    expect(appStore.get(backdropAtom)).toBe('karst')
   })
 
   it('a non-image upload shows the rejection toast and keeps the backdrop', async () => {
@@ -129,9 +130,9 @@ describe('BackdropSection', () => {
     const input = container.querySelector<HTMLInputElement>('input[type="file"]')!
     await user.upload(input, new File(['x'], 'notes.txt', { type: 'text/plain' }))
     await vi.waitFor(() =>
-      expect(useToastStore.getState().message).toBe('Choose an image file (JPG, PNG or WebP)'),
+      expect(appStore.get(toastAtom).message).toBe('Choose an image file (JPG, PNG or WebP)'),
     )
-    expect(useStudioStore.getState().backdrop).toBe('none')
+    expect(appStore.get(backdropAtom)).toBe('none')
   })
 })
 

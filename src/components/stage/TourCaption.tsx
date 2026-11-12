@@ -1,10 +1,10 @@
+import { useAtom } from 'jotai'
 import { isEvening } from '@/hooks/useTour'
-import { useOverlayStore } from '@/store/useOverlayStore'
+import { tourAtom } from '@/store/overlay'
 
 /** Caption for the evening visit: where we are in the tour, the line for this item, and a Skip button. */
 export function TourCaption() {
-  const tour = useOverlayStore((s) => s.tour)
-  const endTour = useOverlayStore((s) => s.endTour)
+  const [tour, setTour] = useAtom(tourAtom)
   if (!tour) return null
 
   const step = tour.steps[tour.i]
@@ -31,7 +31,7 @@ export function TourCaption() {
       </div>
       <button
         type="button"
-        onClick={endTour}
+        onClick={() => setTour(null)}
         className="pointer-events-auto inline-flex h-8 shrink-0 items-center rounded-full bg-white/10 px-3 text-xs font-semibold text-white transition hover:bg-white/20"
       >
         Skip

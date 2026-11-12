@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { AUTH_SESSION_KEY, AUTH_USERS_KEY } from '@/auth'
-import { useAccountStore } from '@/store/useAccountStore'
-import { partialize, useStudioStore, type PersistedStudio } from '@/store/useStudioStore'
+import { account, phaseAtom } from '@/store/account'
+import { appStore } from '@/store/appStore'
+import { persistedStudioAtom, type PersistedStudio } from '@/store/studio'
 
 const WATCH_MS = 60_000
 const AUTOSAVE_MS = 120_000
@@ -28,10 +29,10 @@ export function useAccountLifecycle(): void {
     // The ref survives StrictMode's simulated remount, so the session is read once.
     if (!started.current) {
       started.current = true
-      void useAccountStore.getState().initAccount()
+      void account.initAccount()
     }
 
-    const watch = () => useAccountStore.getState().watchSession()
+    const watch = () => account.watchSession()
     const onStorage = (e: StorageEvent) => {
       if (e.key === AUTH_USERS_KEY || e.key === AUTH_SESSION_KEY) watch()
     }
@@ -39,19 +40,21 @@ export function useAccountLifecycle(): void {
     window.addEventListener('storage', onStorage)
 
     const saveId = setInterval(() => {
-      const { phase, scheduleCloudSave } = useAccountStore.getState()
-      if (document.visibilityState === 'visible' && phase === 'cloud') scheduleCloudSave()
+      if (document.visibilityState === 'visible' && appStore.get(phaseAtom) === 'cloud')
+        account.scheduleCloudSave()
     }, AUTOSAVE_MS)
 
     // A persisted key changed by reference -> debounced cloud save. Transient state and the
-    // simulation's own writes do not.
-    const unsubscribe = useStudioStore.subscribe((state, prev) => {
-      const next = partialize(state)
-      const before = partialize(prev)
+    // simulation's own writes do not. The persisted slice only notifies when one of its keys changed.
+    let before = appStore.get(persistedStudioAtom)
+    const unsubscribe = appStore.sub(persistedStudioAtom, () => {
+      const next = appStore.get(persistedStudioAtom)
+      const prev = before
+      before = next
       const changed = (Object.keys(next) as (keyof typeof next)[]).some(
-        (k) => !SIMULATION_KEYS.has(k) && next[k] !== before[k],
+        (k) => !SIMULATION_KEYS.has(k) && next[k] !== prev[k],
       )
-      if (changed) useAccountStore.getState().scheduleCloudSave()
+      if (changed) account.scheduleCloudSave()
     })
 
     return () => {

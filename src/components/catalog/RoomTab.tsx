@@ -1,3 +1,4 @@
+import { useAtomValue, useSetAtom } from 'jotai'
 import { EnvOptionList } from '@/components/catalog/EnvOptionList'
 import { Glyph, ICON_OFF, ICON_ON, SwitchRow } from '@/components/catalog/HardwarePanel'
 import type { AirSourceId, WaterSourceId } from '@/data/types'
@@ -10,7 +11,7 @@ import {
   qualityTier,
   qualityWord,
 } from '@/engine/room'
-import { useStudioStore } from '@/store/useStudioStore'
+import { hasLidAtom, roomAtom } from '@/store/studio'
 import { Slider } from '@/components/ui/Slider'
 
 const WATER_OPTIONS = (Object.keys(WATER_SOURCES) as WaterSourceId[]).map((id) => ({
@@ -54,9 +55,9 @@ function waterNote(chlorine: number, tds: number): string {
 
 /** Room tab: the water and air around the tank and what they do to its quality scores. */
 export function RoomTab() {
-  const room = useStudioStore((s) => s.room)
-  const hasLid = useStudioStore((s) => s.hasLid)
-  const setRoom = useStudioStore((s) => s.setRoom)
+  const room = useAtomValue(roomAtom)
+  const hasLid = useAtomValue(hasLidAtom)
+  const setRoom = useSetAtom(roomAtom)
   const env = envModel(room, hasLid)
   const fixed = room.water === 'ro' || room.water === 'rain'
   const tdsText = `${env.tds} ppm${env.tds > 350 ? ' · hard' : env.tds < 80 ? ' · very soft' : ''}`

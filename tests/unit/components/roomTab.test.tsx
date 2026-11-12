@@ -3,13 +3,14 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { RoomTab } from '@/components/catalog/RoomTab'
 import { LeftSidebar } from '@/components/layout/LeftSidebar'
-import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
 import { setSlider } from '../helpers/slider'
+import { appStore } from '@/store/appStore'
+import { createDefaultState, patchStudioAtom, roomAtom } from '@/store/studio'
 
-const room = () => useStudioStore.getState().room
+const room = () => appStore.get(roomAtom)
 
 beforeEach(() => {
-  useStudioStore.setState(createDefaultState())
+  appStore.set(patchStudioAtom, createDefaultState())
 })
 
 describe('RoomTab', () => {
@@ -88,7 +89,7 @@ describe('RoomTab', () => {
 
   it('notes the open top when the lid is off, and chlorine for tap water', async () => {
     const user = userEvent.setup()
-    useStudioStore.setState({ hasLid: false })
+    appStore.set(patchStudioAtom, { hasLid: false })
     render(<RoomTab />)
     expect(screen.getByText('Open top: the tank breathes room air')).toBeInTheDocument()
     await user.click(screen.getByRole('radio', { name: /Tap water/ }))

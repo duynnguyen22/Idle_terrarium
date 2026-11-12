@@ -24,7 +24,7 @@ describe('SignInScreen', () => {
     const busyAtLoad: boolean[] = []
     const getProfile = env.backend.getProfile.bind(env.backend)
     vi.spyOn(env.backend, 'getProfile').mockImplementation(() => {
-      busyAtLoad.push(env.store.getState().busy)
+      busyAtLoad.push(env.state().busy)
       return getProfile()
     })
     const u = userEvent.setup()
@@ -37,13 +37,13 @@ describe('SignInScreen', () => {
     await u.type(screen.getByLabelText('Email'), 'demo@botanica.app')
     await u.type(screen.getByLabelText('Password'), 'terrarium1')
     await u.click(screen.getByRole('button', { name: 'Sign in' }))
-    await vi.waitFor(() => expect(env.store.getState().panelOpen).toBe(false))
+    await vi.waitFor(() => expect(env.state().panelOpen).toBe(false))
     expect(signIn).toHaveBeenCalledWith({
       email: 'demo@botanica.app',
       password: 'terrarium1',
       remember: true,
     })
-    expect(env.store.getState().phase).toBe('cloud')
+    expect(env.state().phase).toBe('cloud')
     expect(env.toast).toHaveBeenCalledWith('Welcome back, Demo')
     expect(busyAtLoad).toEqual([false])
   })
@@ -89,6 +89,6 @@ describe('SignInScreen', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Too many attempts. Try again in 59 s.')
     await act(() => vi.advanceTimersByTimeAsync(59_000))
     expect(screen.queryByRole('alert')).toBeNull()
-    expect(env.store.getState().viewData.lockedUntil).toBe(0)
+    expect(env.state().viewData.lockedUntil).toBe(0)
   })
 })

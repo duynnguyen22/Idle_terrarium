@@ -43,7 +43,7 @@ describe('SignUpScreen', () => {
       email: 'linh@example.com',
       password: 'garden123',
     })
-    const s = env.store.getState()
+    const s = env.state()
     expect(s.view).toBe('verify')
     expect(s.viewData.email).toBe('linh@example.com')
     expect(s.viewData.code).toBe('')

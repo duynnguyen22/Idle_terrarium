@@ -1,7 +1,7 @@
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
-import { selectRelaxMode } from '@/store/selectors'
-import { useOverlayStore } from '@/store/useOverlayStore'
-import { useStudioStore } from '@/store/useStudioStore'
+import { tourAtom } from '@/store/overlay'
+import { audioEnabledAtom, relaxModeAtom } from '@/store/studio'
 
 export const RELAX_IDLE_MS = 2600
 
@@ -12,21 +12,23 @@ export const RELAX_IDLE_MS = 2600
  * useKeyboardShortcuts.
  */
 export function useRelaxMode(): void {
-  const relaxMode = useStudioStore(selectRelaxMode)
+  const relaxMode = useAtomValue(relaxModeAtom)
+  const setTour = useSetAtom(tourAtom)
+  const setAudioEnabled = useSetAtom(audioEnabledAtom)
 
   // Leaving relax mode (R, Escape, the dock's exit) ends any evening-visit tour.
   const wasRelaxing = useRef(relaxMode)
   useEffect(() => {
-    if (wasRelaxing.current && !relaxMode) useOverlayStore.getState().endTour()
+    if (wasRelaxing.current && !relaxMode) setTour(null)
     wasRelaxing.current = relaxMode
-  }, [relaxMode])
+  }, [relaxMode, setTour])
 
   useEffect(() => {
     if (!relaxMode) return
     const body = document.body
     let timer: ReturnType<typeof setTimeout> | undefined
     body.classList.add('relax-active')
-    useStudioStore.getState().setAudioEnabled(true)
+    setAudioEnabled(true)
 
     const onMove = () => {
       body.classList.remove('relax-idle')
@@ -39,5 +41,5 @@ export function useRelaxMode(): void {
       clearTimeout(timer)
       body.classList.remove('relax-active', 'relax-idle')
     }
-  }, [relaxMode])
+  }, [relaxMode, setAudioEnabled])
 }

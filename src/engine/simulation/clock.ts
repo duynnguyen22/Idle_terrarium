@@ -1,5 +1,6 @@
 import type { LightingId } from '@/data/types'
-import type { StudioState, StudioStore } from '@/store/useStudioStore'
+import type { Store } from 'jotai'
+import { autoLightSyncAtom, lightingAtom, type StudioState } from '@/store/studio'
 
 /** Prototype autoLightSync thresholds: dawn 5.5-8.5, day 8.5-17.5, twilight 17.5-20, otherwise night. */
 export function lightingForHour(hour: number): LightingId {
@@ -15,14 +16,14 @@ export function hourOfDay(now: Date): number {
 
 /**
  * Auto lighting sync. The prototype always keys it off the real clock hour (which is what
- * `realTimeMode` means); `timeSpeed` does not affect the clock. The store setter is only called when the
+ * `realTimeMode` means); `timeSpeed` does not affect the clock. The lighting atom is only written when the
  * phase actually changes. Returns true when it wrote.
  */
-export function advanceClock(store: StudioStore, now: Date = new Date()): boolean {
-  if (!store.autoLightSync) return false
+export function advanceClock(store: Store, now: Date = new Date()): boolean {
+  if (!store.get(autoLightSyncAtom)) return false
   const next = lightingForHour(hourOfDay(now))
-  if (next === store.lighting) return false
-  store.setLighting(next)
+  if (next === store.get(lightingAtom)) return false
+  store.set(lightingAtom, next)
   return true
 }
 

@@ -1,10 +1,12 @@
+import { useAtomValue } from 'jotai'
 import { passwordStrength } from '@/auth'
-import { useAccount, type TextKey } from './authEnv'
+import { type TextKey } from './authEnv'
+import { viewDataAtom } from '@/store/account'
 import { CheckIcon } from './AuthPieces'
 
 /** The live strength meter and rule list under a new-password field (spec strengthBlock). */
 export function StrengthBlock({ name }: { name: TextKey }) {
-  const pw = useAccount((s) => s.viewData[name] ?? '')
+  const pw = useAtomValue(viewDataAtom)[name] ?? ''
   const s = passwordStrength(pw)
   const rules = [
     [s.checks.length, 'At least 8 characters'],

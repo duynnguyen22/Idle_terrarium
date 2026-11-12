@@ -1,5 +1,5 @@
+import { createStore, type Store } from 'jotai'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { StoreApi, UseBoundStore } from 'zustand'
 import { BackendError, createLocalBackend, type GardenBackend } from '@/auth/backend'
 import { AuthError, type AuthService, type PublicUser, type Session } from '@/auth'
 import type { PlacedItem } from '@/data/types'
@@ -9,16 +9,24 @@ import { envModel } from '@/engine/room'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { getGardenSnapshot, gardenSummary } from '@/store/gardenSnapshot'
 import {
+  accountStateAtom,
   avatarColor,
   chipStatus,
-  createAccountStore,
+  createAccount,
   initialsOf,
+  patchAccountAtom,
   timeAgo,
-  type AccountActions,
-  type AccountState,
-} from '@/store/useAccountStore'
-import { createStudioStore, type StudioStoreHook } from '@/store/useStudioStore'
-import { createDefaultTelemetry, useTelemetryStore } from '@/store/useTelemetryStore'
+  type Account,
+} from '@/store/account'
+import {
+  bindStudioStorage,
+  patchStudioAtom,
+  roomAtom,
+  studioStateAtom,
+  vesselAtom,
+  type StudioState,
+} from '@/store/studio'
+import { telemetryAtom } from '@/store/telemetry'
 
 class MemoryStorage implements Storage {
   private map = new Map<string, string>()
@@ -41,8 +49,6 @@ class MemoryStorage implements Storage {
     this.map.set(key, String(value))
   }
 }
-
-type AccountStore = UseBoundStore<StoreApi<AccountState & AccountActions>>
 
 const NOW = Date.UTC(2026, 10, 8, 12, 0, 0)
 const WELCOME =
@@ -82,21 +88,37 @@ const item = (uid: string, category: PlacedItem['category']): PlacedItem => ({
 
 let auth: AuthService
 let backend: GardenBackend
-let studio: StudioStoreHook
 let world: EngineWorld
 let welcome: MemoryStorage
 let toast: ReturnType<typeof vi.fn<(m: string) => void>>
-let store: AccountStore
+/** The jotai store holding both the account atoms and the studio atoms the account saves. */
+let store: Store
+let account: Account
 
-function makeStore(): AccountStore {
-  return createAccountStore({
+/** A fresh jotai store with its studio atoms bound to an in-memory save (old createStudioStore). */
+function makeStore(): Store {
+  const s = createStore()
+  bindStudioStorage(s, new MemoryStorage())
+  return s
+}
+
+function makeAccount(s: Store): Account {
+  return createAccount(s, {
     auth,
     createBackend: () => backend,
-    studio,
     getWorld: tryGetWorld,
     toast,
     welcomeStorage: welcome,
   })
+}
+
+const state = () => store.get(accountStateAtom)
+
+/** Builds a studio state in its own store (not the account's) from a raw patch. */
+function studioState(patch: Partial<StudioState>): StudioState {
+  const s = makeStore()
+  s.set(patchStudioAtom, patch)
+  return s.get(studioStateAtom)
 }
 
 /** Writes a garden straight to the backend, built from its own studio store and world. */
@@ -107,16 +129,15 @@ async function seedGarden(
   vessel: 'globe' | 'cylinder',
   items: PlacedItem[],
 ) {
-  const s = createStudioStore(new MemoryStorage())
-  s.setState({ vessel, dayCount: 5 })
+  const s = studioState({ vessel, dayCount: 5 })
   const w = createWorld()
   w.items = items
   await backend.saveGarden(id, {
     name,
     createdAt: 1,
     updatedAt,
-    summary: gardenSummary(s.getState(), items),
-    snapshot: getGardenSnapshot(s.getState(), w),
+    summary: gardenSummary(s, items),
+    snapshot: getGardenSnapshot(s, w),
   })
 }
 
@@ -125,20 +146,20 @@ async function signInWithGardens() {
   await seedGarden('g_a', 'Alpha', NOW - 60_000, 'globe', [item('a1', 'flora')])
   await seedGarden('g_b', 'Other', NOW - 30_000, 'cylinder', [item('b1', 'fauna')])
   await backend.setProfile({ activeGardenId: 'g_a' })
-  await store.getState().beginSession(demoUser, demoSession, { isNew: false })
+  await account.beginSession(demoUser, demoSession, { isNew: false })
 }
 
 beforeEach(() => {
   vi.useFakeTimers({ now: NOW })
   auth = { getSession: () => ({ session: null, user: null }) } as unknown as AuthService
   backend = createLocalBackend('u_demo', new MemoryStorage())
-  studio = createStudioStore(new MemoryStorage())
   world = createWorld()
   registerWorld(world)
   welcome = new MemoryStorage()
   toast = vi.fn<(m: string) => void>()
+  // A fresh store per test: default account, studio and telemetry atoms.
   store = makeStore()
-  useTelemetryStore.setState({ telemetry: createDefaultTelemetry() })
+  account = makeAccount(store)
 })
 
 afterEach(() => {
@@ -150,59 +171,62 @@ afterEach(() => {
 
 describe('account store: session', () => {
   it('initAccount with no session opens sign-up once with the welcome banner, then never again', async () => {
-    await store.getState().initAccount()
-    expect(store.getState()).toMatchObject({ phase: 'signedout', panelOpen: true, view: 'signup' })
-    expect(store.getState().viewData.banner).toEqual({ kind: 'info', text: WELCOME })
+    await account.initAccount()
+    expect(state()).toMatchObject({ phase: 'signedout', panelOpen: true, view: 'signup' })
+    expect(state().viewData.banner).toEqual({ kind: 'info', text: WELCOME })
     expect(welcome.getItem('botanica_signin_prompt_seen_v1')).toBe('1')
 
-    const again = makeStore()
-    await again.getState().initAccount()
-    expect(again.getState()).toMatchObject({ phase: 'signedout', panelOpen: false })
+    const againStore = makeStore()
+    await makeAccount(againStore).initAccount()
+    expect(againStore.get(accountStateAtom)).toMatchObject({
+      phase: 'signedout',
+      panelOpen: false,
+    })
   })
 
   it('initAccount after an expiry or a revoke opens sign-in with the matching banner', async () => {
     auth.getSession = () => ({ session: null, user: null, ended: 'expired' })
-    await store.getState().initAccount()
-    expect(store.getState()).toMatchObject({ phase: 'signedout', panelOpen: true, view: 'signin' })
-    expect(store.getState().viewData.banner).toEqual({ kind: 'info', text: EXPIRED })
+    await account.initAccount()
+    expect(state()).toMatchObject({ phase: 'signedout', panelOpen: true, view: 'signin' })
+    expect(state().viewData.banner).toEqual({ kind: 'info', text: EXPIRED })
 
     auth.getSession = () => ({ session: null, user: null, ended: 'revoked' })
-    const other = makeStore()
-    await other.getState().initAccount()
-    expect(other.getState().viewData.banner?.text).toBe(REVOKED)
+    const otherStore = makeStore()
+    await makeAccount(otherStore).initAccount()
+    expect(otherStore.get(accountStateAtom).viewData.banner?.text).toBe(REVOKED)
     expect(welcome.getItem('botanica_signin_prompt_seen_v1')).toBeNull()
   })
 
   it('initAccount with a live session begins it', async () => {
     await seedGarden('g_a', 'Alpha', NOW - 1000, 'globe', [])
     auth.getSession = () => ({ session: demoSession, user: demoUser })
-    await store.getState().initAccount()
-    expect(store.getState()).toMatchObject({ phase: 'cloud', activeId: 'g_a', user: demoUser })
+    await account.initAccount()
+    expect(state()).toMatchObject({ phase: 'cloud', activeId: 'g_a', user: demoUser })
   })
 
   it('demo sign-in with no gardens enters onboarding; createGarden("current") saves and enters cloud', async () => {
-    await store.getState().beginSession(demoUser, demoSession, { isNew: false })
-    expect(store.getState()).toMatchObject({
+    await account.beginSession(demoUser, demoSession, { isNew: false })
+    expect(state()).toMatchObject({
       phase: 'onboarding',
       panelOpen: true,
       view: 'onboarding',
     })
     world.items = [item('keep', 'flora')]
-    const g = await store.getState().createGarden('current', '  Falls  ')
+    const g = await account.createGarden('current', '  Falls  ')
     expect(g.name).toBe('Falls')
-    expect(store.getState()).toMatchObject({ phase: 'cloud', activeId: g.id, lastSaved: NOW })
+    expect(state()).toMatchObject({ phase: 'cloud', activeId: g.id, lastSaved: NOW })
     expect(await backend.listGardens()).toHaveLength(1)
     expect(await backend.getProfile()).toEqual({ activeGardenId: g.id })
-    expect(store.getState().gardens.map((x) => x.id)).toEqual([g.id])
+    expect(state().gardens.map((x) => x.id)).toEqual([g.id])
     expect(g.snapshot?.worldSnapshot?.items.map((i) => i.uid)).toEqual(['keep'])
     expect(g.summary).toMatchObject({ plants: 1, animals: 0 })
   })
 
   it('a new account always enters onboarding, even with gardens', async () => {
     await seedGarden('g_a', 'Alpha', NOW, 'globe', [])
-    await store.getState().beginSession(demoUser, demoSession, { isNew: true })
-    expect(store.getState()).toMatchObject({ phase: 'onboarding', view: 'onboarding' })
-    expect(store.getState().gardens).toHaveLength(1)
+    await account.beginSession(demoUser, demoSession, { isNew: true })
+    expect(state()).toMatchObject({ phase: 'onboarding', view: 'onboarding' })
+    expect(state().gardens).toHaveLength(1)
   })
 
   it('beginSession with gardens opens the profile active garden and applies its snapshot', async () => {
@@ -218,34 +242,33 @@ describe('account store: session', () => {
       summary: { vessel: 'globe', day: 2, plants: 1, animals: 0 },
       issues: [],
     })
-    await store.getState().beginSession(demoUser, demoSession, { isNew: false })
-    expect(store.getState()).toMatchObject({
+    await account.beginSession(demoUser, demoSession, { isNew: false })
+    expect(state()).toMatchObject({
       phase: 'cloud',
       activeId: 'g_a',
       lastSaved: NOW - 60_000,
       user: demoUser,
       session: demoSession,
     })
-    expect(store.getState().gardens.map((g) => g.id)).toEqual(['g_b', 'g_a'])
-    expect(store.getState().journal).toHaveLength(1)
-    expect(studio.getState().vessel).toBe('globe')
+    expect(state().gardens.map((g) => g.id)).toEqual(['g_b', 'g_a'])
+    expect(state().journal).toHaveLength(1)
+    expect(store.get(vesselAtom)).toBe('globe')
     expect(world.items.map((i) => i.uid)).toEqual(['a1'])
   })
 
   it('beginSession is already in the cloud phase when the restored-world catch-up runs', async () => {
-    const s = createStudioStore(new MemoryStorage())
-    s.setState({ vessel: 'globe', dayCount: 5, lastSimulatedAt: NOW - 6 * 3_600_000 })
+    const s = studioState({ vessel: 'globe', dayCount: 5, lastSimulatedAt: NOW - 6 * 3_600_000 })
     await backend.saveGarden('g_a', {
       name: 'Alpha',
       createdAt: 1,
       updatedAt: NOW - 60_000,
-      summary: gardenSummary(s.getState(), []),
-      snapshot: getGardenSnapshot(s.getState(), createWorld()),
+      summary: gardenSummary(s, []),
+      snapshot: getGardenSnapshot(s, createWorld()),
     })
-    store.setState({ phase: 'signedout' })
+    store.set(patchAccountAtom, { phase: 'signedout' })
     const phases: string[] = []
-    const off = onWorldRestored(() => phases.push(store.getState().phase))
-    await store.getState().beginSession(demoUser, demoSession, { isNew: false })
+    const off = onWorldRestored(() => phases.push(state().phase))
+    await account.beginSession(demoUser, demoSession, { isNew: false })
     off()
     expect(phases).toEqual(['cloud'])
   })
@@ -253,43 +276,43 @@ describe('account store: session', () => {
   it('beginSession falls back to the newest garden when the profile has none', async () => {
     await seedGarden('g_a', 'Alpha', NOW - 60_000, 'globe', [])
     await seedGarden('g_b', 'Other', NOW - 30_000, 'cylinder', [])
-    await store.getState().beginSession(demoUser, demoSession, { isNew: false })
-    expect(store.getState().activeId).toBe('g_b')
-    expect(studio.getState().vessel).toBe('cylinder')
+    await account.beginSession(demoUser, demoSession, { isNew: false })
+    expect(state().activeId).toBe('g_b')
+    expect(store.get(vesselAtom)).toBe('cylinder')
   })
 
   it('watchSession ends an expired session', async () => {
     await signInWithGardens()
-    store.getState().scheduleCloudSave()
+    account.scheduleCloudSave()
     auth.getSession = () => ({ session: null, user: null, ended: 'expired' })
-    store.getState().watchSession()
-    expect(store.getState()).toMatchObject({
+    account.watchSession()
+    expect(state()).toMatchObject({
       phase: 'signedout',
       panelOpen: true,
       view: 'signin',
       saveTimer: null,
     })
-    expect(store.getState().viewData.banner?.text).toBe(EXPIRED)
+    expect(state().viewData.banner?.text).toBe(EXPIRED)
   })
 
   it('watchSession ignores a live session and the signed-out phase', async () => {
-    store.getState().watchSession()
-    expect(store.getState().phase).toBe('checking')
+    account.watchSession()
+    expect(state().phase).toBe('checking')
     await signInWithGardens()
     auth.getSession = () => ({ session: demoSession, user: demoUser })
-    store.getState().watchSession()
-    expect(store.getState().phase).toBe('cloud')
+    account.watchSession()
+    expect(state().phase).toBe('cloud')
   })
 
   it('endSession flushes the active garden, clears everything and toasts', async () => {
     await signInWithGardens()
-    studio.getState().setVessel('teardrop')
-    store.getState().scheduleCloudSave()
-    await store.getState().endSession('Signed out')
+    store.set(vesselAtom, 'teardrop')
+    account.scheduleCloudSave()
+    await account.endSession('Signed out')
     expect((await backend.listGardens()).find((g) => g.id === 'g_a')?.snapshot?.vessel).toBe(
       'teardrop',
     )
-    expect(store.getState()).toMatchObject({
+    expect(state()).toMatchObject({
       phase: 'signedout',
       user: null,
       session: null,
@@ -309,15 +332,15 @@ describe('account store: saving', () => {
   it('scheduleCloudSave debounces 2500 ms and writes summary + snapshot', async () => {
     await signInWithGardens()
     const save = vi.spyOn(backend, 'saveGarden')
-    studio.getState().setVessel('teardrop')
+    store.set(vesselAtom, 'teardrop')
     world.items = [item('p1', 'flora'), item('p2', 'flora'), item('f1', 'fauna')]
 
-    store.getState().scheduleCloudSave()
+    account.scheduleCloudSave()
     await vi.advanceTimersByTimeAsync(2000)
-    store.getState().scheduleCloudSave()
+    account.scheduleCloudSave()
     await vi.advanceTimersByTimeAsync(2000)
     expect(save).not.toHaveBeenCalled()
-    expect(store.getState().saveTimer).not.toBeNull()
+    expect(state().saveTimer).not.toBeNull()
     await vi.advanceTimersByTimeAsync(500)
     expect(save).toHaveBeenCalledTimes(1)
 
@@ -330,20 +353,20 @@ describe('account store: saving', () => {
     })
     expect(saved.snapshot?.vessel).toBe('teardrop')
     expect(saved.snapshot?.worldSnapshot?.items.map((i) => i.uid)).toEqual(['p1', 'p2', 'f1'])
-    expect(store.getState()).toMatchObject({
+    expect(state()).toMatchObject({
       saveTimer: null,
       lastSaved: NOW + 4500,
       writing: false,
     })
-    expect(store.getState().gardens.find((g) => g.id === 'g_a')?.updatedAt).toBe(NOW + 4500)
+    expect(state().gardens.find((g) => g.id === 'g_a')?.updatedAt).toBe(NOW + 4500)
   })
 
   it('scheduleCloudSave does nothing outside the cloud phase', async () => {
-    store.getState().scheduleCloudSave()
-    expect(store.getState().saveTimer).toBeNull()
-    await store.getState().beginSession(demoUser, demoSession, { isNew: false })
-    store.getState().scheduleCloudSave()
-    expect(store.getState().saveTimer).toBeNull()
+    account.scheduleCloudSave()
+    expect(state().saveTimer).toBeNull()
+    await account.beginSession(demoUser, demoSession, { isNew: false })
+    account.scheduleCloudSave()
+    expect(state().saveTimer).toBeNull()
   })
 
   it('detachActiveGarden cancels the pending save, waits for a write under way and returns the open id', async () => {
@@ -352,39 +375,36 @@ describe('account store: saving', () => {
     const save = vi
       .spyOn(backend, 'saveGarden')
       .mockImplementationOnce(() => new Promise<void>((r) => (release = r)))
-    const flushing = store.getState().flushCloudSave()
-    expect(store.getState().writing).toBe(true)
+    const flushing = account.flushCloudSave()
+    expect(state().writing).toBe(true)
     // A save requested during the write would normally run once it lands.
-    void store.getState().flushCloudSave()
-    expect(store.getState().pending).toBe(true)
+    void account.flushCloudSave()
+    expect(state().pending).toBe(true)
 
     let detached: string | null | undefined
-    const detaching = store
-      .getState()
-      .detachActiveGarden()
-      .then((id) => (detached = id))
-    expect(store.getState().activeId).toBeNull()
+    const detaching = account.detachActiveGarden().then((id) => (detached = id))
+    expect(state().activeId).toBeNull()
     await vi.advanceTimersByTimeAsync(0)
     expect(detached).toBeUndefined()
     release()
     await flushing
     await detaching
     expect(detached).toBe('g_a')
-    expect(store.getState()).toMatchObject({ writing: false, pending: false, saveTimer: null })
+    expect(state()).toMatchObject({ writing: false, pending: false, saveTimer: null })
 
-    store.getState().scheduleCloudSave()
+    account.scheduleCloudSave()
     await vi.advanceTimersByTimeAsync(10_000)
     expect(save).toHaveBeenCalledTimes(1)
   })
 
   it('attachActiveGarden reopens a terrarium only while signed in', async () => {
     await signInWithGardens()
-    await store.getState().detachActiveGarden()
-    store.getState().attachActiveGarden('g_a')
-    expect(store.getState().activeId).toBe('g_a')
-    await store.getState().endSession()
-    store.getState().attachActiveGarden('g_a')
-    expect(store.getState().activeId).toBeNull()
+    await account.detachActiveGarden()
+    account.attachActiveGarden('g_a')
+    expect(state().activeId).toBe('g_a')
+    await account.endSession()
+    account.attachActiveGarden('g_a')
+    expect(state().activeId).toBeNull()
   })
 
   it('serialises concurrent flushes: a second flush during a write saves again afterwards', async () => {
@@ -395,35 +415,35 @@ describe('account store: saving', () => {
       await new Promise<void>((r) => (release = r))
       return real(id, body)
     })
-    const first = store.getState().flushCloudSave()
-    expect(store.getState().writing).toBe(true)
-    await store.getState().flushCloudSave()
-    expect(store.getState().pending).toBe(true)
+    const first = account.flushCloudSave()
+    expect(state().writing).toBe(true)
+    await account.flushCloudSave()
+    expect(state().pending).toBe(true)
     expect(save).toHaveBeenCalledTimes(1)
     release()
     await first
-    expect(store.getState()).toMatchObject({ writing: false, pending: false })
-    expect(store.getState().saveTimer).not.toBeNull()
+    expect(state()).toMatchObject({ writing: false, pending: false })
+    expect(state().saveTimer).not.toBeNull()
     await vi.advanceTimersByTimeAsync(2500)
     expect(save).toHaveBeenCalledTimes(2)
   })
 
   it('flushes the active garden before opening another', async () => {
     await signInWithGardens()
-    studio.getState().setVessel('teardrop')
+    store.set(vesselAtom, 'teardrop')
     world.items = [item('dirty', 'flora')]
     const calls: string[] = []
     const real = backend.saveGarden.bind(backend)
     backend.saveGarden = async (id, body) => {
-      calls.push(`${id}:${studio.getState().vessel}`)
+      calls.push(`${id}:${store.get(vesselAtom)}`)
       return real(id, body)
     }
-    await store.getState().openGarden('g_b')
+    await account.openGarden('g_b')
     expect(calls[0]).toBe('g_a:teardrop')
     const a = (await backend.listGardens()).find((g) => g.id === 'g_a')!
     expect(a.snapshot?.worldSnapshot?.items.map((i) => i.uid)).toEqual(['dirty'])
-    expect(store.getState().activeId).toBe('g_b')
-    expect(studio.getState().vessel).toBe('cylinder')
+    expect(state().activeId).toBe('g_b')
+    expect(store.get(vesselAtom)).toBe('cylinder')
     expect(world.items.map((i) => i.uid)).toEqual(['b1'])
     expect(await backend.getProfile()).toEqual({ activeGardenId: 'g_b' })
     expect(toast).toHaveBeenCalledWith('Opened Other')
@@ -434,12 +454,12 @@ describe('account store: saving', () => {
     backend.saveGarden = async () => {
       throw new BackendError('quota_exceeded')
     }
-    await store.getState().flushCloudSave()
-    expect(store.getState().lastError).toBe('Storage is full')
+    await account.flushCloudSave()
+    expect(state().lastError).toBe('Storage is full')
     expect(toast).toHaveBeenCalledWith(
       'Your storage is full. Delete an old terrarium or journal entries.',
     )
-    expect(store.getState().writing).toBe(false)
+    expect(state().writing).toBe(false)
   })
 
   it('consecutive quota failures toast once; a new failure after a save toasts again', async () => {
@@ -451,13 +471,13 @@ describe('account store: saving', () => {
       .mockRejectedValueOnce(new BackendError('quota_exceeded'))
       .mockImplementationOnce(real)
       .mockRejectedValueOnce(new BackendError('quota_exceeded'))
-    await store.getState().flushCloudSave()
-    await store.getState().flushCloudSave()
-    expect(store.getState().lastError).toBe('Storage is full')
+    await account.flushCloudSave()
+    await account.flushCloudSave()
+    expect(state().lastError).toBe('Storage is full')
     expect(toast).toHaveBeenCalledTimes(1)
-    await store.getState().flushCloudSave()
-    expect(store.getState().lastError).toBe('')
-    await store.getState().flushCloudSave()
+    await account.flushCloudSave()
+    expect(state().lastError).toBe('')
+    await account.flushCloudSave()
     expect(save).toHaveBeenCalledTimes(4)
     expect(toast).toHaveBeenCalledTimes(2)
   })
@@ -470,24 +490,24 @@ describe('account store: saving', () => {
       .spyOn(backend, 'saveGarden')
       .mockRejectedValueOnce(new BackendError('unavailable'))
       .mockImplementation(real)
-    await store.getState().flushCloudSave()
-    expect(store.getState().lastError).toBe('Not saved yet, retrying')
+    await account.flushCloudSave()
+    expect(state().lastError).toBe('Not saved yet, retrying')
     expect(toast).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(3999)
-    expect(store.getState().saveTimer).toBeNull()
+    expect(state().saveTimer).toBeNull()
     await vi.advanceTimersByTimeAsync(1)
-    expect(store.getState().saveTimer).not.toBeNull()
+    expect(state().saveTimer).not.toBeNull()
     await vi.advanceTimersByTimeAsync(2500)
     expect(save).toHaveBeenCalledTimes(2)
-    expect(store.getState().lastError).toBe('')
+    expect(state().lastError).toBe('')
   })
   it('a flush that fails after sign-out leaves the signed-out state clean', async () => {
     await signInWithGardens()
     backend.saveGarden = async () => {
       throw new BackendError('quota_exceeded')
     }
-    await store.getState().endSession()
-    expect(store.getState()).toMatchObject({ phase: 'signedout', lastError: '' })
+    await account.endSession()
+    expect(state()).toMatchObject({ phase: 'signedout', lastError: '' })
     expect(toast).not.toHaveBeenCalled()
   })
 
@@ -499,15 +519,15 @@ describe('account store: saving', () => {
       .spyOn(backend, 'saveGarden')
       .mockRejectedValueOnce(new BackendError('unavailable'))
       .mockImplementation(real)
-    await store.getState().flushCloudSave()
-    expect(store.getState().lastError).toBe('Not saved yet, retrying')
-    await store.getState().endSession()
+    await account.flushCloudSave()
+    expect(state().lastError).toBe('Not saved yet, retrying')
+    await account.endSession()
     expect(save).toHaveBeenCalledTimes(2) // the failed write and the sign-out flush
 
     // Back in the cloud phase before the retry would have fired: nothing is scheduled by it.
-    await store.getState().beginSession(demoUser, demoSession, { isNew: false })
+    await account.beginSession(demoUser, demoSession, { isNew: false })
     await vi.advanceTimersByTimeAsync(7000)
-    expect(store.getState().saveTimer).toBeNull()
+    expect(state().saveTimer).toBeNull()
     await vi.advanceTimersByTimeAsync(2500)
     expect(save).toHaveBeenCalledTimes(2)
   })
@@ -515,55 +535,59 @@ describe('account store: saving', () => {
 
 describe('account store: gardens and journal', () => {
   it('createGarden("empty") clears the scene and restarts the clock', async () => {
-    await store.getState().beginSession(demoUser, demoSession, { isNew: false })
-    studio.setState({ dayCount: 12, setupDay: 4, cycleProgress: 1, waterSplit: 0.32 })
+    await account.beginSession(demoUser, demoSession, { isNew: false })
+    store.set(patchStudioAtom, { dayCount: 12, setupDay: 4, cycleProgress: 1, waterSplit: 0.32 })
     world.items = [item('x', 'flora')]
     world.moldPatches = [{ x: 0 }]
     world.surfaceGrains = [{ x: 0 }]
     world.ecoTime = 11.4
     world.breed = { springtails: 0.5 }
     world.mossTufts = [{ x: 0.4, r: 3, w: 1, seed: 1 }]
-    const g = await store.getState().createGarden('empty', '')
+    const g = await account.createGarden('empty', '')
     expect(world.ecoTime).toBe(0)
     expect(world.breed).toEqual({})
     expect(world.mossTufts).toHaveLength(0)
     expect(g.snapshot?.worldSnapshot?.mossTufts ?? []).toHaveLength(0)
     expect(g.name).toBe('My terrarium')
     expect(world).toMatchObject({ items: [], moldPatches: [], surfaceGrains: [] })
-    expect(studio.getState()).toMatchObject({ dayCount: 1, setupDay: 1, cycleProgress: 0 })
+    expect(store.get(studioStateAtom)).toMatchObject({ dayCount: 1, setupDay: 1, cycleProgress: 0 })
     expect(world.env.cycleProgress).toBe(0)
     expect(g.summary).toMatchObject({ day: 1, plants: 0, animals: 0 })
 
-    studio.setState({ waterSplit: 0 })
-    await store.getState().createGarden('empty', 'x'.repeat(80))
-    expect(studio.getState().cycleProgress).toBe(1)
-    expect(store.getState().gardens).toHaveLength(2)
-    expect(store.getState().gardens.every((x) => x.name.length <= 60)).toBe(true)
+    store.set(patchStudioAtom, { waterSplit: 0 })
+    await account.createGarden('empty', 'x'.repeat(80))
+    expect(store.get(studioStateAtom).cycleProgress).toBe(1)
+    expect(state().gardens).toHaveLength(2)
+    expect(state().gardens.every((x) => x.name.length <= 60)).toBe(true)
   })
 
   it('createGarden("falls") loads the Falls Lake preset on day 1', async () => {
-    await store.getState().beginSession(demoUser, demoSession, { isNew: false })
-    studio.setState({ dayCount: 9, vessel: 'globe' })
+    await account.beginSession(demoUser, demoSession, { isNew: false })
+    store.set(patchStudioAtom, { dayCount: 9, vessel: 'globe' })
     world.ecoTime = 8.2
     world.breed = { isopod: 0.3 }
     world.mossTufts = [{ x: 0.4, r: 3, w: 1, seed: 1 }]
-    const g = await store.getState().createGarden('falls', 'Falls Lake 1')
+    const g = await account.createGarden('falls', 'Falls Lake 1')
     expect(world.ecoTime).toBe(0)
     expect(world.breed).toEqual({})
     expect(world.mossTufts).toHaveLength(0)
-    expect(studio.getState()).toMatchObject({ dayCount: 1, setupDay: 1, vessel: 'paludarium_tank' })
+    expect(store.get(studioStateAtom)).toMatchObject({
+      dayCount: 1,
+      setupDay: 1,
+      vessel: 'paludarium_tank',
+    })
     expect(world.items.length).toBeGreaterThan(0)
     expect(g.snapshot?.worldSnapshot?.items).toHaveLength(world.items.length)
   })
 
   it('createGarden from the cloud phase flushes the open garden first', async () => {
     await signInWithGardens()
-    studio.getState().setVessel('teardrop')
-    const g = await store.getState().createGarden('current', 'Third')
+    store.set(vesselAtom, 'teardrop')
+    const g = await account.createGarden('current', 'Third')
     const all = await backend.listGardens()
     expect(all.find((x) => x.id === 'g_a')?.snapshot?.vessel).toBe('teardrop')
-    expect(store.getState().activeId).toBe(g.id)
-    expect(store.getState().gardens).toHaveLength(3)
+    expect(state().activeId).toBe(g.id)
+    expect(state().gardens).toHaveLength(3)
   })
 
   it('a failed createGarden restores the open garden and scene, so the next save cannot overwrite it', async () => {
@@ -575,18 +599,18 @@ describe('account store: gardens and journal', () => {
         ? real(id, body)
         : Promise.reject(new BackendError('quota_exceeded')),
     )
-    await store.getState().run(async () => {
-      await store.getState().createGarden('empty', 'New')
+    await account.run(async () => {
+      await account.createGarden('empty', 'New')
     })
-    expect(store.getState().viewData.error).toBe(
+    expect(state().viewData.error).toBe(
       'Your storage is full. Delete an old terrarium or journal entries.',
     )
-    expect(store.getState().activeId).toBe('g_a')
-    expect(studio.getState().vessel).toBe('globe')
+    expect(state().activeId).toBe('g_a')
+    expect(store.get(vesselAtom)).toBe('globe')
     expect(world.items.map((i) => i.uid)).toEqual(['a1'])
 
     // The save the scene change would have scheduled writes the old garden back unchanged.
-    store.getState().scheduleCloudSave()
+    account.scheduleCloudSave()
     await vi.advanceTimersByTimeAsync(2500)
     const all = await backend.listGardens()
     expect(all.map((g) => g.id).sort()).toEqual(['g_a', 'g_b'])
@@ -599,35 +623,35 @@ describe('account store: gardens and journal', () => {
   it('a createGarden whose profile write fails removes the half-made garden', async () => {
     await signInWithGardens()
     vi.spyOn(backend, 'setProfile').mockRejectedValueOnce(new BackendError('unavailable'))
-    await expect(store.getState().createGarden('falls', 'Falls')).rejects.toThrow()
+    await expect(account.createGarden('falls', 'Falls')).rejects.toThrow()
     expect((await backend.listGardens()).map((g) => g.id).sort()).toEqual(['g_a', 'g_b'])
-    expect(store.getState().activeId).toBe('g_a')
-    expect(studio.getState().vessel).toBe('globe')
+    expect(state().activeId).toBe('g_a')
+    expect(store.get(vesselAtom)).toBe('globe')
   })
 
   it('renameGarden trims, ignores blanks and updates the list; deleteGarden keeps the open one', async () => {
     await signInWithGardens()
-    store.getState().setRenaming('g_b')
-    await store.getState().renameGarden('g_b', '  Renamed  ')
-    expect(store.getState().renaming).toBeNull()
-    expect(store.getState().gardens.find((g) => g.id === 'g_b')?.name).toBe('Renamed')
+    account.setRenaming('g_b')
+    await account.renameGarden('g_b', '  Renamed  ')
+    expect(state().renaming).toBeNull()
+    expect(state().gardens.find((g) => g.id === 'g_b')?.name).toBe('Renamed')
     expect((await backend.listGardens()).find((g) => g.id === 'g_b')?.name).toBe('Renamed')
-    await store.getState().renameGarden('g_b', '   ')
-    expect(store.getState().gardens.find((g) => g.id === 'g_b')?.name).toBe('Renamed')
+    await account.renameGarden('g_b', '   ')
+    expect(state().gardens.find((g) => g.id === 'g_b')?.name).toBe('Renamed')
 
-    await store.getState().deleteGarden('g_a')
-    expect(store.getState().gardens).toHaveLength(2)
-    store.getState().setConfirmDelete('g_b')
-    await store.getState().deleteGarden('g_b')
-    expect(store.getState().confirmDelete).toBeNull()
-    expect(store.getState().gardens.map((g) => g.id)).toEqual(['g_a'])
+    await account.deleteGarden('g_a')
+    expect(state().gardens).toHaveLength(2)
+    account.setConfirmDelete('g_b')
+    await account.deleteGarden('g_b')
+    expect(state().confirmDelete).toBeNull()
+    expect(state().gardens.map((g) => g.id)).toEqual(['g_a'])
     expect(toast).toHaveBeenCalledWith('Terrarium deleted')
   })
 
   it('addJournalEntry records metrics, trims to 600 chars and toasts unless auto', async () => {
     await signInWithGardens()
-    studio.getState().setRoom({ water: 'tap', air: 'smoke' })
-    useTelemetryStore.getState().setTelemetry({
+    store.set(roomAtom, { water: 'tap', air: 'smoke' })
+    store.set(telemetryAtom, {
       humidity: 81.6,
       temperature: 24.46,
       soilMoisture: 70.4,
@@ -641,9 +665,9 @@ describe('account store: gardens and journal', () => {
         { level: 'warn', text: 'w5' },
       ],
     })
-    await store.getState().addJournalEntry(`  ${'n'.repeat(700)}  `, false)
-    const [e] = store.getState().journal
-    const m = envModel(studio.getState().room, studio.getState().hasLid)
+    await account.addJournalEntry(`  ${'n'.repeat(700)}  `, false)
+    const [e] = state().journal
+    const m = envModel(store.get(studioStateAtom).room, store.get(studioStateAtom).hasLid)
     expect(m.water).toBeLessThan(100)
     expect(e).toMatchObject({
       at: NOW,
@@ -665,17 +689,17 @@ describe('account store: gardens and journal', () => {
 
     toast.mockClear()
     await vi.advanceTimersByTimeAsync(10)
-    await store.getState().addJournalEntry('', true)
-    expect(store.getState().journal).toHaveLength(2)
+    await account.addJournalEntry('', true)
+    expect(state().journal).toHaveLength(2)
     expect(toast).not.toHaveBeenCalled()
   })
 
   it('addJournalEntry stores events, key and pool', async () => {
     await signInWithGardens()
-    studio.setState({ cycleProgress: 0.5 })
+    store.set(patchStudioAtom, { cycleProgress: 0.5 })
     const events = [{ kind: 'frond' as const, text: 'A fern unfurled a frond.' }]
-    await store.getState().addJournalEntry('Note', true, { events, key: 'day:1:2' })
-    const [e] = store.getState().journal
+    await account.addJournalEntry('Note', true, { events, key: 'day:1:2' })
+    const [e] = state().journal
     expect(e).toMatchObject({
       key: 'day:1:2',
       events,
@@ -684,8 +708,8 @@ describe('account store: gardens and journal', () => {
     expect(Number.isInteger(e?.metrics.pool)).toBe(true)
 
     await vi.advanceTimersByTimeAsync(10)
-    await store.getState().addJournalEntry('', false)
-    const [plain] = store.getState().journal
+    await account.addJournalEntry('', false)
+    const [plain] = state().journal
     expect(plain?.key).toBeUndefined()
     expect(plain?.events).toBeUndefined()
     expect(typeof plain?.metrics.pool).toBe('number')
@@ -693,9 +717,9 @@ describe('account store: gardens and journal', () => {
 
   it('addJournalEntry leaves pool out for a tank without a pool', async () => {
     await signInWithGardens()
-    studio.setState({ waterSplit: 0, cycleProgress: 1 })
-    await store.getState().addJournalEntry('Dry tank', false)
-    const [e] = store.getState().journal
+    store.set(patchStudioAtom, { waterSplit: 0, cycleProgress: 1 })
+    await account.addJournalEntry('Dry tank', false)
+    const [e] = state().journal
     expect(e?.note).toBe('Dry tank')
     expect(e?.metrics).not.toHaveProperty('pool')
   })
@@ -703,67 +727,67 @@ describe('account store: gardens and journal', () => {
   it('skips an auto entry whose key matches the newest entry', async () => {
     await signInWithGardens()
     const add = vi.spyOn(backend, 'addJournal')
-    expect(await store.getState().addJournalEntry('a', true, { key: 'k1' })).toBe(true)
+    expect(await account.addJournalEntry('a', true, { key: 'k1' })).toBe(true)
     await vi.advanceTimersByTimeAsync(10)
-    expect(await store.getState().addJournalEntry('a', true, { key: 'k1' })).toBe(false)
+    expect(await account.addJournalEntry('a', true, { key: 'k1' })).toBe(false)
     expect(add).toHaveBeenCalledTimes(1)
-    expect(await store.getState().addJournalEntry('b', true, { key: 'k2' })).toBe(true)
+    expect(await account.addJournalEntry('b', true, { key: 'k2' })).toBe(true)
     expect(add).toHaveBeenCalledTimes(2)
   })
 
   it('addJournalEntry does nothing outside the cloud phase', async () => {
-    await store.getState().beginSession(demoUser, demoSession, { isNew: false })
+    await account.beginSession(demoUser, demoSession, { isNew: false })
     const add = vi.spyOn(backend, 'addJournal')
-    await store.getState().addJournalEntry('hello', false)
+    await account.addJournalEntry('hello', false)
     expect(add).not.toHaveBeenCalled()
   })
 })
 
 describe('account store: panel and run', () => {
   it('run() maps an AuthError with a field to fieldErrors and clears busy', async () => {
-    store.setState({ phase: 'signedout' })
-    store.getState().openAuth('signin', { email: 'a@b.co' })
+    store.set(patchAccountAtom, { phase: 'signedout' })
+    account.openAuth('signin', { email: 'a@b.co' })
     let busyDuring = false
-    await store.getState().run(async () => {
-      busyDuring = store.getState().busy
+    await account.run(async () => {
+      busyDuring = state().busy
       throw new AuthError('wrong_password', 'That password is not right', { field: 'password' })
     })
     expect(busyDuring).toBe(true)
-    expect(store.getState()).toMatchObject({ busy: false, view: 'signin' })
-    expect(store.getState().viewData).toMatchObject({
+    expect(state()).toMatchObject({ busy: false, view: 'signin' })
+    expect(state().viewData).toMatchObject({
       email: 'a@b.co',
       error: null,
       fieldErrors: { password: 'That password is not right' },
     })
 
-    await store.getState().run(async () => {
+    await account.run(async () => {
       throw new AuthError('locked', 'Too many tries', { until: NOW + 60_000 })
     })
-    expect(store.getState().viewData).toMatchObject({
+    expect(state().viewData).toMatchObject({
       error: 'Too many tries',
       fieldErrors: {},
       lockedUntil: NOW + 60_000,
     })
 
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    await store.getState().run(async () => {
+    await account.run(async () => {
       throw new Error('boom')
     })
-    expect(store.getState().viewData.error).toBe('Something went wrong. Try again.')
-    expect(store.getState().busy).toBe(false)
+    expect(state().viewData.error).toBe('Something went wrong. Try again.')
+    expect(state().busy).toBe(false)
   })
 
   it('run() maps an AuthError with code locked to viewData.lockedUntil', async () => {
-    store.setState({ phase: 'signedout' })
-    store.getState().openAuth('signin', { email: 'a@b.co' })
-    await store.getState().run(async () => {
+    store.set(patchAccountAtom, { phase: 'signedout' })
+    account.openAuth('signin', { email: 'a@b.co' })
+    await account.run(async () => {
       throw new AuthError('locked', 'Too many tries. Try again in 5 minutes.', {
         field: 'password',
         until: NOW + 300_000,
       })
     })
-    expect(store.getState().busy).toBe(false)
-    expect(store.getState().viewData).toMatchObject({
+    expect(state().busy).toBe(false)
+    expect(state().viewData).toMatchObject({
       email: 'a@b.co',
       lockedUntil: NOW + 300_000,
       fieldErrors: { password: 'Too many tries. Try again in 5 minutes.' },
@@ -772,24 +796,24 @@ describe('account store: panel and run', () => {
 
   it('run() ignores a call while busy', async () => {
     let release!: () => void
-    const first = store.getState().run(() => new Promise<void>((r) => (release = r)))
+    const first = account.run(() => new Promise<void>((r) => (release = r)))
     const second = vi.fn(async () => {})
-    await store.getState().run(second)
+    await account.run(second)
     expect(second).not.toHaveBeenCalled()
     release()
     await first
-    expect(store.getState().busy).toBe(false)
+    expect(state().busy).toBe(false)
   })
 
   it('run() on not_verified switches to the verify view with the email and a 30 s resend window', async () => {
-    store.getState().openAuth('signin', { email: 'demo@botanica.app' })
-    await store.getState().run(async () => {
+    account.openAuth('signin', { email: 'demo@botanica.app' })
+    await account.run(async () => {
       throw new AuthError('not_verified', 'Confirm your email first', {
         email: 'Demo@Botanica.app',
       })
     })
-    expect(store.getState()).toMatchObject({ view: 'verify', busy: false })
-    expect(store.getState().viewData).toMatchObject({
+    expect(state()).toMatchObject({ view: 'verify', busy: false })
+    expect(state().viewData).toMatchObject({
       email: 'Demo@Botanica.app',
       resendAt: NOW + 30_000,
       notice: 'Confirm your email first',
@@ -799,18 +823,23 @@ describe('account store: panel and run', () => {
   })
 
   it('closePanel is ignored during onboarding', async () => {
-    await store.getState().beginSession(demoUser, demoSession, { isNew: true })
-    store.getState().closePanel()
-    expect(store.getState().panelOpen).toBe(true)
-    await store.getState().createGarden('current', 'Mine')
-    store.getState().closePanel()
-    expect(store.getState().panelOpen).toBe(false)
+    await account.beginSession(demoUser, demoSession, { isNew: true })
+    account.closePanel()
+    expect(state().panelOpen).toBe(true)
+    await account.createGarden('current', 'Mine')
+    account.closePanel()
+    expect(state().panelOpen).toBe(false)
   })
 
   it('closePanel clears an open rename and delete confirmation', () => {
-    store.setState({ phase: 'cloud', panelOpen: true, renaming: 'g_a', confirmDelete: 'g_b' })
-    store.getState().closePanel()
-    expect(store.getState()).toMatchObject({
+    store.set(patchAccountAtom, {
+      phase: 'cloud',
+      panelOpen: true,
+      renaming: 'g_a',
+      confirmDelete: 'g_b',
+    })
+    account.closePanel()
+    expect(state()).toMatchObject({
       panelOpen: false,
       renaming: null,
       confirmDelete: null,
@@ -818,49 +847,49 @@ describe('account store: panel and run', () => {
   })
 
   it('openPanel shows the checking view while checking and sign-in when signed out', () => {
-    store.getState().openPanel()
-    expect(store.getState()).toMatchObject({ panelOpen: true, view: 'checking' })
-    store.setState({ phase: 'signedout', panelOpen: false, view: 'account' })
-    store.getState().openPanel()
-    expect(store.getState()).toMatchObject({ panelOpen: true, view: 'signin' })
+    account.openPanel()
+    expect(state()).toMatchObject({ panelOpen: true, view: 'checking' })
+    store.set(patchAccountAtom, { phase: 'signedout', panelOpen: false, view: 'account' })
+    account.openPanel()
+    expect(state()).toMatchObject({ panelOpen: true, view: 'signin' })
   })
 
   it('goView merges view data and clears errors; openAuth replaces it', () => {
-    store.getState().openAuth('signin', { email: 'a@b.co', error: 'x' })
-    store.getState().goView('forgot', { remember: false })
-    expect(store.getState().view).toBe('forgot')
-    expect(store.getState().viewData).toEqual({
+    account.openAuth('signin', { email: 'a@b.co', error: 'x' })
+    account.goView('forgot', { remember: false })
+    expect(state().view).toBe('forgot')
+    expect(state().viewData).toEqual({
       email: 'a@b.co',
       remember: false,
       error: null,
       fieldErrors: {},
     })
-    store.getState().setViewData({ code: '123' })
-    expect(store.getState().viewData.code).toBe('123')
-    store.getState().openAuth('signup')
-    expect(store.getState().viewData).toEqual({})
-    store.getState().setTab('journal')
-    expect(store.getState().tab).toBe('journal')
+    account.setViewData({ code: '123' })
+    expect(state().viewData.code).toBe('123')
+    account.openAuth('signup')
+    expect(state().viewData).toEqual({})
+    account.setTab('journal')
+    expect(state().tab).toBe('journal')
   })
 
   it('setUser replaces the signed-in user', () => {
-    store.setState({ user: { ...demoUser, name: 'Old' } })
-    expect(store.getState().setUser({ ...demoUser, name: 'New Name' })).toBe(true)
-    expect(store.getState().user?.name).toBe('New Name')
+    store.set(patchAccountAtom, { user: { ...demoUser, name: 'Old' } })
+    expect(account.setUser({ ...demoUser, name: 'New Name' })).toBe(true)
+    expect(state().user?.name).toBe('New Name')
   })
 
   it('setUser ignores a user when nobody or someone else is signed in', () => {
-    expect(store.getState().setUser({ ...demoUser, name: 'Late' })).toBe(false)
-    expect(store.getState().user).toBeNull()
-    store.setState({ user: { ...demoUser, id: 'u_other', name: 'Other' } })
-    expect(store.getState().setUser({ ...demoUser, name: 'Late' })).toBe(false)
-    expect(store.getState().user).toMatchObject({ id: 'u_other', name: 'Other' })
+    expect(account.setUser({ ...demoUser, name: 'Late' })).toBe(false)
+    expect(state().user).toBeNull()
+    store.set(patchAccountAtom, { user: { ...demoUser, id: 'u_other', name: 'Other' } })
+    expect(account.setUser({ ...demoUser, name: 'Late' })).toBe(false)
+    expect(state().user).toMatchObject({ id: 'u_other', name: 'Other' })
   })
 })
 
 describe('account helpers', () => {
   it('chipStatus: checking → "One moment"/"", signedout → "Sign in"/"to save your work", saving → "Saving…", saved → "Saved just now", never saved → "Synced", error → the error text', () => {
-    const base = store.getState()
+    const base = state()
     expect(chipStatus({ ...base, phase: 'checking' }, NOW)).toEqual({
       signedIn: false,
       name: 'One moment',

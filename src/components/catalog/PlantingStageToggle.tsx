@@ -1,11 +1,12 @@
+import { useAtomValue } from 'jotai'
 import { RadioGroup } from 'radix-ui'
 import { StageIcon } from '@/components/ui/StudioIcons'
 import type { GrowthStage } from '@/data/types'
 import { mutateWorld } from '@/engine/engineBridge'
 import { setFloraStage } from '@/engine/items'
-import { selectPlantingStage } from '@/store/selectors'
-import { showToast } from '@/store/toastStore'
-import { useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import { plantingStageAtom, selectedIdAtom } from '@/store/studio'
+import { showToast } from '@/store/toast'
 
 type ToggleStage = Extract<GrowthStage, 'sprout' | 'mature'>
 
@@ -25,16 +26,16 @@ const OPTIONS: { stage: ToggleStage; label: string; hint: string; toast: string 
 ]
 
 export function PlantingStageToggle() {
-  const stage = useStudioStore(selectPlantingStage)
+  const stage = useAtomValue(plantingStageAtom)
   const isSprout = stage === 'sprout'
 
   const choose = (next: ToggleStage, toast: string) => {
-    const { setPlantingStage, selectedId, selectItem } = useStudioStore.getState()
-    setPlantingStage(next)
+    appStore.set(plantingStageAtom, next)
+    const selectedId = appStore.get(selectedIdAtom)
     // A selected flora specimen is converted immediately (prototype 2896-2920).
     if (selectedId) {
       mutateWorld((w) => setFloraStage(w, selectedId, next))
-      selectItem(selectedId)
+      appStore.set(selectedIdAtom, selectedId)
     }
     showToast(toast)
   }

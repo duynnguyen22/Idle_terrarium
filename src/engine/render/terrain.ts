@@ -1,5 +1,5 @@
 import type { Rect } from '@/data/types'
-import type { StudioState } from '@/store/useStudioStore'
+import type { StudioState } from '@/store/studio'
 import type { EngineWorld } from '../world'
 import { BANK_W, getDividerNormX, getLandSurfaceNormY, type TerrainInput } from '../geometry'
 import { normToPx, normToPy, vesselMetrics } from './metrics'

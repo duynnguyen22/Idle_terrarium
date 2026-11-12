@@ -1,14 +1,25 @@
+import { useAtomValue, useSetAtom } from 'jotai'
 import { RadioGroup } from 'radix-ui'
 import { useEffect, useId, useState } from 'react'
-import { useShallow } from 'zustand/react/shallow'
 import { tryGetWorld } from '@/engine/engineBridge'
 import { PING_MS, pingItem } from '@/engine/marks'
 import { breedConditions } from '@/engine/simulation/breed'
 import { lightDose } from '@/engine/simulation/life'
 import { PACE_LABELS, PACE_SUBTITLES, type PaceId } from '@/engine/simulation/pace'
-import { showToast } from '@/store/toastStore'
-import { useOverlayStore } from '@/store/useOverlayStore'
-import { useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import { growthBoardOpenAtom } from '@/store/overlay'
+import {
+  dayCountAtom,
+  hasGrowLampAtom,
+  paceAtom,
+  pumpFlowAtom,
+  relaxModeAtom,
+  selectedIdAtom,
+  substratesAtom,
+  timeSpeedAtom,
+  waterSplitAtom,
+} from '@/store/studio'
+import { showToast } from '@/store/toast'
 import {
   faunaRows,
   floraRow,
@@ -114,21 +125,17 @@ const SectionTitle = ({ children, count }: { children: string; count: number }) 
 /** The Growth board: every plant and animal with its life phase, health and what is coming next. */
 export function GrowthBoard() {
   const titleId = useId()
-  const open = useOverlayStore((s) => s.growthBoardOpen)
-  const closeGrowthBoard = useOverlayStore((s) => s.closeGrowthBoard)
-  const { pace, timeSpeed, dayCount, pumpFlow, waterSplit, hasGrowLamp, substrates } =
-    useStudioStore(
-      useShallow((s) => ({
-        pace: s.pace,
-        timeSpeed: s.timeSpeed,
-        dayCount: s.dayCount,
-        pumpFlow: s.pumpFlow,
-        waterSplit: s.waterSplit,
-        hasGrowLamp: s.hasGrowLamp,
-        substrates: s.substrates,
-      })),
-    )
-  const setPace = useStudioStore((s) => s.setPace)
+  const open = useAtomValue(growthBoardOpenAtom)
+  const setOpen = useSetAtom(growthBoardOpenAtom)
+  const closeGrowthBoard = () => setOpen(false)
+  const pace = useAtomValue(paceAtom)
+  const timeSpeed = useAtomValue(timeSpeedAtom)
+  const dayCount = useAtomValue(dayCountAtom)
+  const pumpFlow = useAtomValue(pumpFlowAtom)
+  const waterSplit = useAtomValue(waterSplitAtom)
+  const hasGrowLamp = useAtomValue(hasGrowLampAtom)
+  const substrates = useAtomValue(substratesAtom)
+  const setPace = useSetAtom(paceAtom)
   // The world mutates outside React, so a timer re-reads it while the board is open.
   const [, setTick] = useState(0)
 
@@ -143,13 +150,13 @@ export function GrowthBoard() {
     // Capture phase + stopPropagation: Escape closes the board only, not relax mode or the selection.
     // Relax mode hides the board, so there Escape is left to leave relax mode.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || useStudioStore.getState().relaxMode) return
+      if (e.key !== 'Escape' || appStore.get(relaxModeAtom)) return
       e.stopPropagation()
-      closeGrowthBoard()
+      setOpen(false)
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [open, closeGrowthBoard])
+  }, [open, setOpen])
 
   if (!open) return null
 
@@ -175,7 +182,7 @@ export function GrowthBoard() {
     if (live) for (const uid of uids) pingItem(live, uid, PING_MS)
   }
   const select = (uid: string | undefined) => {
-    if (uid !== undefined) useStudioStore.getState().selectItem(uid)
+    if (uid !== undefined) appStore.set(selectedIdAtom, uid)
   }
   const choosePace = (id: PaceId) => {
     setPace(id)

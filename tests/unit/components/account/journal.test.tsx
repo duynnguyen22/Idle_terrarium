@@ -1,13 +1,14 @@
 import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useAtomValue } from 'jotai'
+import { patchAccountAtom, viewAtom } from '@/store/account'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BackendError, type JournalEntry } from '@/auth/backend'
-import { useAccount } from '@/components/account/auth/authEnv'
 import { AuthScreen } from '@/components/account/auth/AuthScreen'
 import { demoSession, demoUser, makeEnv, renderIn, type Harness } from '../auth/authHarness'
 
 function CurrentScreen() {
-  const view = useAccount((s) => s.view)
+  const view = useAtomValue(viewAtom)
   return <AuthScreen view={view} />
 }
 
@@ -24,8 +25,8 @@ async function signedIn(): Promise<Harness> {
     snapshot: null,
   })
   await env.backend.setProfile({ activeGardenId: 'g_a' })
-  await act(() => env.store.getState().beginSession(demoUser, demoSession, { isNew: false }))
-  act(() => env.store.setState({ tab: 'journal' }))
+  await act(() => env.account.beginSession(demoUser, demoSession, { isNew: false }))
+  act(() => env.store.set(patchAccountAtom, { tab: 'journal' }))
   renderIn(env, <CurrentScreen />)
   return env
 }
@@ -75,7 +76,7 @@ describe('JournalTab', () => {
         },
       }),
     )
-    await act(() => env.store.getState().refreshJournal())
+    await act(() => env.account.refreshJournal())
     const bullets = screen.getAllByRole('listitem')
     expect(bullets.map((b) => b.textContent)).toEqual(['A fern unfurled a frond.', 'A bud formed.'])
     expect(screen.getByText('Pool 72')).toHaveClass('j-chip')
@@ -123,8 +124,8 @@ describe('JournalTab', () => {
     await u.type(ta, 'Keep me')
 
     // No terrarium open: addJournalEntry stores nothing.
-    act(() => env.store.setState({ activeId: null }))
-    const add = vi.spyOn(env.store.getState(), 'addJournalEntry')
+    act(() => env.store.set(patchAccountAtom, { activeId: null }))
+    const add = vi.spyOn(env.account, 'addJournalEntry')
     await u.click(screen.getByRole('button', { name: 'Log today' }))
     await vi.waitFor(() => expect(add).toHaveBeenCalledTimes(1))
     await expect(add.mock.results[0]?.value).resolves.toBe(false)
@@ -132,7 +133,7 @@ describe('JournalTab', () => {
     expect(sessionStorage.getItem(DRAFT)).toBe('Keep me')
 
     // A failed write keeps it too.
-    act(() => env.store.setState({ activeId: 'g_a' }))
+    act(() => env.store.set(patchAccountAtom, { activeId: 'g_a' }))
     vi.spyOn(env.backend, 'addJournal').mockRejectedValueOnce(new Error('offline'))
     await u.click(screen.getByRole('button', { name: 'Log today' }))
     await vi.waitFor(() => expect(add).toHaveBeenCalledTimes(2))
@@ -144,7 +145,7 @@ describe('JournalTab', () => {
 
   it('a failed Log today shows the storage-full message even when storage was already full', async () => {
     const env = await signedIn()
-    act(() => env.store.setState({ lastError: 'Storage is full' }))
+    act(() => env.store.set(patchAccountAtom, { lastError: 'Storage is full' }))
     vi.spyOn(env.backend, 'addJournal').mockRejectedValue(new BackendError('quota_exceeded'))
     const u = userEvent.setup()
     await u.type(screen.getByRole('textbox', { name: 'Journal note' }), 'No room')
@@ -175,7 +176,7 @@ describe('JournalTab', () => {
       }),
     )
     await env.backend.addJournal('g_a', first)
-    await act(() => env.store.getState().refreshJournal())
+    await act(() => env.account.refreshJournal())
 
     const items = document.querySelectorAll('.journal-item')
     expect(items).toHaveLength(2)

@@ -16,7 +16,7 @@ import { paceMs, type PaceId } from '@/engine/simulation/pace'
 import { PHASES, phaseAt } from '@/engine/simulation/phases'
 import { etaLabel } from '@/engine/simulation/report'
 import type { EngineWorld } from '@/engine/world'
-import type { StudioState } from '@/store/useStudioStore'
+import type { StudioState } from '@/store/studio'
 
 export type HealthChip = { label: string; tone: 'good' | 'fair' | 'bad' | 'rest' }
 

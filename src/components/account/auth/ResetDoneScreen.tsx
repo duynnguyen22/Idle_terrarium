@@ -3,7 +3,7 @@ import { CheckIcon } from './AuthPieces'
 
 /** Confirms the new password and sends the person back to sign in (spec Screens.resetDone). */
 export function ResetDoneScreen() {
-  const { store } = useAuthEnv()
+  const { account } = useAuthEnv()
   return (
     <div className="auth-screen">
       <div className="auth-done">
@@ -19,7 +19,7 @@ export function ResetDoneScreen() {
         type="button"
         className="auth-btn primary"
         data-autofocus="1"
-        onClick={() => store.getState().goView('signin', { password: '', banner: null })}
+        onClick={() => account.goView('signin', { password: '', banner: null })}
       >
         Sign in
       </button>

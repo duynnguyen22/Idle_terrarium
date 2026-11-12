@@ -1,3 +1,5 @@
+// Load the saved studio into the jotai store before any module reads state.
+import '@/store/appStore'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'

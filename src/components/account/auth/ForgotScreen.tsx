@@ -1,18 +1,21 @@
 import type { FormEvent } from 'react'
+import { useStore } from 'jotai'
+import { busyAtom, viewDataAtom } from '@/store/account'
 import { RESEND_WINDOW_MS, useAuthEnv } from './authEnv'
 import { AuthField } from './AuthField'
 import { AuthHeader, FormError, LinkButton, SubmitButton } from './AuthPieces'
 
 /** Asks for the account email and sends a password reset code (spec Screens.forgot). */
 export function ForgotScreen() {
-  const { store, auth } = useAuthEnv()
+  const { account, auth } = useAuthEnv()
+  const store = useStore()
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
-    void store.getState().run(async () => {
-      await auth.requestPasswordReset(store.getState().viewData.email ?? '')
-      store.setState({ busy: false })
-      store.getState().goView('reset', {
+    void account.run(async () => {
+      await auth.requestPasswordReset(store.get(viewDataAtom).email ?? '')
+      store.set(busyAtom, false)
+      account.goView('reset', {
         code: '',
         password: '',
         resendAt: Date.now() + RESEND_WINDOW_MS,
@@ -40,7 +43,7 @@ export function ForgotScreen() {
         <SubmitButton>Send reset code</SubmitButton>
       </form>
       <p className="auth-foot">
-        <LinkButton onClick={() => store.getState().goView('signin')}>Back to sign in</LinkButton>
+        <LinkButton onClick={() => account.goView('signin')}>Back to sign in</LinkButton>
       </p>
     </div>
   )

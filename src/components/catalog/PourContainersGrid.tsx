@@ -1,21 +1,22 @@
+import { useAtomValue } from 'jotai'
 import { POUR_CONTAINERS } from '@/data/substrates'
 import { getContainerVectorSVG } from '@/lib/vesselPreview'
-import { showToast } from '@/store/toastStore'
-import { useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import { activePourMaterialAtom, activeToolAtom } from '@/store/studio'
+import { showToast } from '@/store/toast'
 
 export function PourContainersGrid() {
-  const activeTool = useStudioStore((s) => s.activeTool)
-  const activePourMaterial = useStudioStore((s) => s.activePourMaterial)
+  const activeTool = useAtomValue(activeToolAtom)
+  const activePourMaterial = useAtomValue(activePourMaterialAtom)
 
   const select = (layerId: string) => {
-    const { setActivePourMaterial, setActiveTool } = useStudioStore.getState()
     if (activePourMaterial === layerId && activeTool === 'pour') {
-      setActivePourMaterial(null)
-      setActiveTool('select')
+      appStore.set(activePourMaterialAtom, null)
+      appStore.set(activeToolAtom, 'select')
       return
     }
-    setActivePourMaterial(layerId)
-    setActiveTool('pour')
+    appStore.set(activePourMaterialAtom, layerId)
+    appStore.set(activeToolAtom, 'pour')
     const layer = POUR_CONTAINERS.find((l) => l.id === layerId)
     if (!layer) return
     showToast(

@@ -5,7 +5,7 @@ import { drawMiniatureBackdrop, paintBackdrop, resetBackdropCache } from '@/engi
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
 import { createWorld } from '@/engine/world'
 import { getCustomBackdrop, loadCustomBackdrop } from '@/lib/backdropPhoto'
-import { createDefaultState, type StudioState } from '@/store/useStudioStore'
+import { createDefaultState, type StudioState } from '@/store/studio'
 import { makeRecordingContext, makeTraceContext } from '../helpers/recordingContext'
 
 const PAINTED: BackdropId[] = ['karst', 'terraces', 'pines', 'alpine', 'falls', 'mesa']

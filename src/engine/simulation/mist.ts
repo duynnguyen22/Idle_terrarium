@@ -1,4 +1,4 @@
-import type { StudioState } from '@/store/useStudioStore'
+import type { StudioState } from '@/store/studio'
 import { getSoilSurfaceNormalizedY } from '../geometry'
 import type { EngineWorld } from '../world'
 import { frameScale, type Rng } from './constants'

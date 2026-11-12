@@ -1,22 +1,23 @@
 import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useAtomValue } from 'jotai'
+import { viewAtom } from '@/store/account'
 import { describe, expect, it, vi } from 'vitest'
-import { useAccount } from '@/components/account/auth/authEnv'
 import { AuthScreen } from '@/components/account/auth/AuthScreen'
 import { BackendError } from '@/auth/backend'
 import { demoSession, demoUser, fakeAuth, makeEnv, renderIn } from '../auth/authHarness'
 
 function CurrentScreen() {
-  const view = useAccount((s) => s.view)
+  const view = useAtomValue(viewAtom)
   return <AuthScreen view={view} />
 }
 
 /** A brand-new account straight after email verification: phase onboarding, panel open. */
 async function onboard(user = demoUser) {
   const env = makeEnv('signin')
-  await act(() => env.store.getState().beginSession(user, demoSession, { isNew: true }))
+  await act(() => env.account.beginSession(user, demoSession, { isNew: true }))
   renderIn(env, <CurrentScreen />)
-  const createGarden = vi.spyOn(env.store.getState(), 'createGarden')
+  const createGarden = vi.spyOn(env.account, 'createGarden')
   return { env, createGarden }
 }
 
@@ -64,20 +65,20 @@ describe('OnboardingScreen', () => {
     const u = userEvent.setup()
     await u.type(screen.getByLabelText('Name your terrarium'), 'Fern Hollow')
     await u.click(screen.getByRole('button', { name: 'Start growing' }))
-    await vi.waitFor(() => expect(env.store.getState().phase).toBe('cloud'))
+    await vi.waitFor(() => expect(env.state().phase).toBe('cloud'))
     expect(createGarden).toHaveBeenCalledWith('current', 'Fern Hollow')
-    expect(env.store.getState().panelOpen).toBe(false)
-    expect(env.store.getState().busy).toBe(false)
+    expect(env.state().panelOpen).toBe(false)
+    expect(env.state().busy).toBe(false)
     expect(env.toast).toHaveBeenCalledWith('Fern Hollow is saved to your account')
     const saved = await env.backend.listGardens()
     expect(saved.map((g) => g.name)).toEqual(['Fern Hollow'])
-    expect(env.store.getState().activeId).toBe(saved[0]?.id)
+    expect(env.state().activeId).toBe(saved[0]?.id)
   })
 
   it('onboarding with an empty name saves "My terrarium" and toasts the saved message', async () => {
     const { env, createGarden } = await onboard()
     await userEvent.setup().click(screen.getByRole('button', { name: 'Start growing' }))
-    await vi.waitFor(() => expect(env.store.getState().phase).toBe('cloud'))
+    await vi.waitFor(() => expect(env.state().phase).toBe('cloud'))
     expect(createGarden).toHaveBeenCalledWith('current', 'My terrarium')
     expect(env.toast).toHaveBeenCalledWith('My terrarium is saved to your account')
     expect((await env.backend.listGardens()).map((g) => g.name)).toEqual(['My terrarium'])
@@ -97,14 +98,14 @@ describe('OnboardingScreen', () => {
     )
     await u.type(screen.getByLabelText('Name your terrarium'), 'Bare')
     await u.click(screen.getByRole('button', { name: 'Start growing' }))
-    await vi.waitFor(() => expect(env.store.getState().phase).toBe('cloud'))
+    await vi.waitFor(() => expect(env.state().phase).toBe('cloud'))
     expect(createGarden).toHaveBeenCalledWith('empty', 'Bare')
   })
 
   it('a full storage shows the storage-full message and offers a way out', async () => {
     const signOut = vi.fn(() => Promise.resolve())
     const env = makeEnv('signin', { auth: fakeAuth({ signOut }) })
-    await act(() => env.store.getState().beginSession(demoUser, demoSession, { isNew: true }))
+    await act(() => env.account.beginSession(demoUser, demoSession, { isNew: true }))
     renderIn(env, <CurrentScreen />)
     env.backend.saveGarden = () => Promise.reject(new BackendError('quota_exceeded'))
     const u = userEvent.setup()
@@ -113,20 +114,20 @@ describe('OnboardingScreen', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Your storage is full. Delete an old terrarium or journal entries.',
     )
-    expect(env.store.getState().phase).toBe('onboarding')
+    expect(env.state().phase).toBe('onboarding')
 
     await u.click(screen.getByRole('button', { name: 'Sign out for now' }))
-    await vi.waitFor(() => expect(env.store.getState().phase).toBe('signedout'))
+    await vi.waitFor(() => expect(env.state().phase).toBe('signedout'))
     expect(signOut).toHaveBeenCalledTimes(1)
-    expect(env.store.getState().view).toBe('signin')
-    expect(env.store.getState().viewData).toMatchObject({
+    expect(env.state().view).toBe('signin')
+    expect(env.state().viewData).toMatchObject({
       email: demoUser.email,
       password: '',
       gname: '',
       error: null,
       banner: { kind: 'success', text: 'You’re signed out. Your build stays in this browser.' },
     })
-    expect(env.store.getState().busy).toBe(false)
+    expect(env.state().busy).toBe(false)
     expect(env.toast).toHaveBeenCalledWith('Signed out')
   })
 })

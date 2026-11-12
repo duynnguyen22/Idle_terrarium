@@ -1,5 +1,7 @@
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
-import { textPatch, useAccount, useAuthEnv, type TextKey } from './authEnv'
+import { textPatch, useAuthEnv, type TextKey } from './authEnv'
+import { viewDataAtom } from '@/store/account'
 import { EyeIcon, EyeOffIcon } from './AuthPieces'
 
 export interface AuthFieldProps {
@@ -26,9 +28,9 @@ export function AuthField({
   hint,
   autoFocus,
 }: AuthFieldProps) {
-  const { store } = useAuthEnv()
-  const value = useAccount((s) => s.viewData[name] ?? '')
-  const err = useAccount((s) => s.viewData.fieldErrors?.[name])
+  const { account } = useAuthEnv()
+  const value = useAtomValue(viewDataAtom)[name] ?? ''
+  const err = useAtomValue(viewDataAtom).fieldErrors?.[name]
   const [shown, setShown] = useState(false)
   const id = `auth-${name}`
   const isPassword = type === 'password'
@@ -42,7 +44,7 @@ export function AuthField({
       autoComplete={autoComplete}
       placeholder={placeholder}
       value={value}
-      onChange={(e) => store.getState().setViewData(textPatch(name, e.target.value))}
+      onChange={(e) => account.setViewData(textPatch(name, e.target.value))}
       aria-invalid={err ? true : undefined}
       aria-describedby={err ? `${id}-err` : hint ? `${id}-hint` : undefined}
       data-autofocus={autoFocus ? '1' : undefined}

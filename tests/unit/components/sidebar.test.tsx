@@ -9,16 +9,26 @@ import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { addItem } from '@/engine/items'
 import { configureSpriteCache } from '@/engine/sprites/spriteCache'
 import { createWorld, type EngineWorld } from '@/engine/world'
-import { useToastStore } from '@/store/toastStore'
-import { createDefaultState, useStudioStore, type StudioState } from '@/store/useStudioStore'
 import { setSlider } from '../helpers/slider'
+import { appStore } from '@/store/appStore'
+import {
+  createDefaultState,
+  activePourMaterialAtom,
+  activeToolAtom,
+  cycleProgressAtom,
+  patchStudioAtom,
+  selectedIdAtom,
+  studioStateAtom,
+  type StudioState,
+} from '@/store/studio'
+import { toastAtom } from '@/store/toast'
 
 const TERRAIN = { substrates: DEFAULT_SUBSTRATES, waterSplit: 0.32 }
 let world: EngineWorld
 const click = (el: HTMLElement) => act(() => void fireEvent.click(el))
-const state = () => useStudioStore.getState()
-const set = (partial: Partial<StudioState>) => act(() => useStudioStore.setState(partial))
-const toast = () => useToastStore.getState().message
+const state = () => appStore.get(studioStateAtom)
+const set = (partial: Partial<StudioState>) => act(() => appStore.set(patchStudioAtom, partial))
+const toast = () => appStore.get(toastAtom).message
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -29,8 +39,8 @@ beforeEach(() => {
         toDataURL: () => 'data:image/png;base64,AAAA',
       }) as unknown as HTMLCanvasElement,
   )
-  useStudioStore.setState(createDefaultState())
-  useToastStore.setState({ message: '', visible: false })
+  appStore.set(patchStudioAtom, createDefaultState())
+  appStore.set(toastAtom, { message: '', visible: false })
   world = createWorld()
   registerWorld(world)
 })
@@ -111,7 +121,7 @@ describe('LeftSidebar panels', () => {
     expect(world.env.cycleProgress).toBe(0)
     expect(state().substrates.water).toBe(40)
     expect(toast()).toBe('New pool: it cycles for about 3 weeks before fish and shrimp are safe')
-    act(() => state().setCycleProgress(0.5))
+    act(() => appStore.set(cycleProgressAtom, 0.5))
     setSlider(screen.getByRole('slider', { name: 'Pool width' }), 45)
     expect(state().cycleProgress).toBe(0.5)
   })
@@ -124,7 +134,7 @@ describe('LeftSidebar panels', () => {
     expect(state().substrates.water).toBe(10)
     expect(state().cycleProgress).toBe(0)
     expect(world.env.cycleProgress).toBe(0)
-    act(() => state().setCycleProgress(0.5))
+    act(() => appStore.set(cycleProgressAtom, 0.5))
     world.env.cycleProgress = 0.5
     setSlider(screen.getByRole('slider', { name: 'Pool water' }), 20)
     expect(state().cycleProgress).toBe(0.5)
@@ -200,14 +210,14 @@ describe('LeftSidebar panels', () => {
     click(jar)
     expect(state().activePourMaterial).toBe('pebbles')
     expect(state().activeTool).toBe('pour')
-    expect(useToastStore.getState().message).toBe(
+    expect(appStore.get(toastAtom).message).toBe(
       'Hold and drag inside the tank to scatter Drainage layer (LECA)',
     )
     click(jar)
     expect(state().activePourMaterial).toBeNull()
     expect(state().activeTool).toBe('select')
     click(screen.getByRole('button', { name: /Glass Water Pitcher/ }))
-    expect(useToastStore.getState().message).toBe('Hold and drag inside the tank to pour water')
+    expect(appStore.get(toastAtom).message).toBe('Hold and drag inside the tank to pour water')
   })
 
   it('a slider change writes mm and updates the total', () => {
@@ -225,7 +235,7 @@ describe('LeftSidebar panels', () => {
     click(screen.getByRole('button', { name: /Blue Peacock Fern/ }))
     expect(world.items).toHaveLength(1)
     expect(world.items[0].stage).toBe('mature')
-    expect(state().selectedId).toBe(world.items[0].uid)
+    expect(appStore.get(selectedIdAtom)).toBe(world.items[0].uid)
 
     click(screen.getByRole('radio', { name: /Sprout/ }))
     expect(screen.getByRole('radio', { name: /Sprout/ })).toHaveAttribute('aria-checked', 'true')
@@ -276,16 +286,16 @@ describe('CareToolbar', () => {
     render(<CareToolbar />)
     expect(screen.queryByText(/Scattering|Pouring/)).not.toBeInTheDocument()
     act(() => {
-      state().setActivePourMaterial('leaflitter')
-      state().setActiveTool('pour')
+      appStore.set(activePourMaterialAtom, 'leaflitter')
+      appStore.set(activeToolAtom, 'pour')
     })
     const ind = screen.getByRole('button', { name: /Scattering: Leaf litter/ })
     click(ind)
     expect(state().activeTool).toBe('select')
     expect(state().activePourMaterial).toBeNull()
     act(() => {
-      state().setActivePourMaterial('water')
-      state().setActiveTool('pour')
+      appStore.set(activePourMaterialAtom, 'water')
+      appStore.set(activeToolAtom, 'pour')
     })
     expect(screen.getByRole('button', { name: /Pouring: Lake Water/ })).toBeInTheDocument()
     click(screen.getByRole('button', { name: /Prune/ }))
@@ -300,7 +310,7 @@ describe('ItemInspector', () => {
   })
 
   it('renders nothing (no throw) when an item is selected but no world is registered', () => {
-    act(() => state().selectItem('ghost'))
+    act(() => appStore.set(selectedIdAtom, 'ghost'))
     unregisterWorld()
     expect(() => render(<ItemInspector />)).not.toThrow()
     expect(screen.queryByTestId('insp-name')).not.toBeInTheDocument()
@@ -308,7 +318,7 @@ describe('ItemInspector', () => {
 
   const select = () => {
     const it = addItem(world, 'peacock_fern', 'mature', { terrain: TERRAIN })!
-    act(() => state().selectItem(it.uid))
+    act(() => appStore.set(selectedIdAtom, it.uid))
     return it
   }
 
@@ -345,7 +355,7 @@ describe('ItemInspector', () => {
     ]
     for (const [id, meta] of cases) {
       const item = addItem(world, id, 'mature', { terrain })!
-      act(() => state().selectItem(item.uid))
+      act(() => appStore.set(selectedIdAtom, item.uid))
       const { unmount } = render(<ItemInspector />)
       expect(screen.getByTestId('insp-meta')).toHaveTextContent(meta)
       unmount()
@@ -354,7 +364,7 @@ describe('ItemInspector', () => {
 
   it('hides the grow button for non-flora', () => {
     const it = addItem(world, 'dragon_peak', 'mature', { terrain: TERRAIN })!
-    act(() => state().selectItem(it.uid))
+    act(() => appStore.set(selectedIdAtom, it.uid))
     render(<ItemInspector />)
     expect(screen.queryByRole('button', { name: 'Advance Growth Stage' })).not.toBeInTheDocument()
   })
@@ -365,7 +375,7 @@ describe('ItemInspector', () => {
     click(screen.getByRole('button', { name: 'Duplicate Specimen' }))
     expect(world.items).toHaveLength(2)
     expect(world.items[1].x).toBeCloseTo(it.x + 0.05)
-    expect(state().selectedId).toBe(world.items[1].uid)
+    expect(appStore.get(selectedIdAtom)).toBe(world.items[1].uid)
   })
 
   it('delete removes the item and clears the selection', () => {
@@ -373,7 +383,7 @@ describe('ItemInspector', () => {
     render(<ItemInspector />)
     click(screen.getByRole('button', { name: 'Remove Specimen' }))
     expect(world.items).toHaveLength(0)
-    expect(state().selectedId).toBeNull()
+    expect(appStore.get(selectedIdAtom)).toBeNull()
     expect(screen.queryByTestId('insp-name')).not.toBeInTheDocument()
   })
 })

@@ -1,6 +1,7 @@
 import { snapshotWorld, type WorldSnapshot } from '@/engine/persistence'
 import type { EngineWorld } from '@/engine/world'
-import { useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import { worldSnapshotAtom } from '@/store/studio'
 
 let current: EngineWorld | null = null
 let lastCommitted: WorldSnapshot | null = null
@@ -56,7 +57,7 @@ export function isOwnSnapshot(snap: WorldSnapshot | null): boolean {
 export function commitWorld(): void {
   const snap = snapshotWorld(getWorld())
   lastCommitted = snap
-  useStudioStore.getState().setWorldSnapshot(snap)
+  appStore.set(worldSnapshotAtom, snap)
 }
 
 /** Runs a UI-driven mutation against the live world, then publishes a snapshot to the store. */

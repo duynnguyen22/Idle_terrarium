@@ -1,5 +1,5 @@
 import { findCatalogDef } from '@/data/catalog'
-import type { StudioState } from '@/store/useStudioStore'
+import type { StudioState } from '@/store/studio'
 import type { EngineWorld } from '../world'
 import { LIFE, lifePace, lightDose, type EventKind, type LifeEvent } from './life'
 import { phaseAt } from './phases'

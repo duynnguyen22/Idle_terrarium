@@ -1,17 +1,22 @@
 import { render } from '@testing-library/react'
+import { createStore, Provider, useAtomValue, type Store } from 'jotai'
 import { createElement, type ReactNode } from 'react'
 import { vi } from 'vitest'
 import type { AuthService, PublicUser, Session } from '@/auth'
 import { createLocalBackend, type GardenBackend } from '@/auth/backend'
-import { AuthEnvContext, useAccount } from '@/components/account/auth/authEnv'
+import { AuthEnvContext } from '@/components/account/auth/authEnv'
 import { AuthScreen } from '@/components/account/auth/AuthScreen'
 import {
-  createAccountStore,
-  type AccountStoreHook,
+  accountStateAtom,
+  createAccount,
+  patchAccountAtom,
+  viewAtom,
+  type Account,
+  type AccountState,
   type AuthView,
   type ViewData,
-} from '@/store/useAccountStore'
-import { createStudioStore } from '@/store/useStudioStore'
+} from '@/store/account'
+import { bindStudioStorage } from '@/store/studio'
 
 export class MemoryStorage implements Storage {
   private map = new Map<string, string>()
@@ -79,14 +84,17 @@ export function fakeAuth(over: Partial<AuthService> = {}): AuthService {
 }
 
 export interface Harness {
-  store: AccountStoreHook
+  store: Store
+  account: Account
+  /** The current account state (snapshot of every account atom). */
+  state: () => AccountState
   auth: AuthService
   backend: GardenBackend
   toast: ReturnType<typeof vi.fn<(m: string) => void>>
 }
 
 function CurrentScreen() {
-  const view = useAccount((s) => s.view)
+  const view = useAtomValue(viewAtom)
   return createElement(AuthScreen, { view })
 }
 
@@ -97,22 +105,29 @@ export function makeEnv(
 ): Harness {
   const backend = createLocalBackend('u_demo', new MemoryStorage())
   const toast = vi.fn<(m: string) => void>()
-  const store = createAccountStore({
+  const store = createStore()
+  bindStudioStorage(store, new MemoryStorage())
+  const account = createAccount(store, {
     auth,
     createBackend: () => backend,
-    studio: createStudioStore(new MemoryStorage()),
     getWorld: () => null,
     toast,
     welcomeStorage: new MemoryStorage(),
   })
-  store.setState({ phase: 'signedout', panelOpen: true, view, viewData })
-  return { store, auth, backend, toast }
+  store.set(patchAccountAtom, { phase: 'signedout', panelOpen: true, view, viewData })
+  return { store, account, state: () => store.get(accountStateAtom), auth, backend, toast }
 }
 
 /** Renders `ui` inside the env's context. */
 export function renderIn(env: Harness, ui: ReactNode) {
-  const { store, auth, toast } = env
-  return render(createElement(AuthEnvContext.Provider, { value: { store, auth, toast } }, ui))
+  const { store, account, auth, toast } = env
+  return render(
+    createElement(
+      Provider,
+      { store },
+      createElement(AuthEnvContext.Provider, { value: { account, auth, toast } }, ui),
+    ),
+  )
 }
 
 /** Renders the current auth screen of an isolated env. */

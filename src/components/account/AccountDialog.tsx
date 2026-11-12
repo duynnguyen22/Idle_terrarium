@@ -1,18 +1,19 @@
 import { Dialog } from 'radix-ui'
 import { useEffect, useRef } from 'react'
-import { useAccount } from '@/components/account/auth/authEnv'
+import { atom, useAtomValue } from 'jotai'
+import { useAccountActions } from '@/components/account/auth/authEnv'
 import { AuthScreen } from '@/components/account/auth/AuthScreen'
-import type { AuthView } from '@/store/useAccountStore'
+import { panelOpenAtom, phaseAtom, viewAtom, type AuthView } from '@/store/account'
 
 /** Which screen shows for the current phase and requested view (spec renderAuth, 5121-5122). */
-function useResolvedView(): AuthView {
-  return useAccount((s): AuthView => {
-    if (s.phase === 'checking') return 'checking'
-    if (s.phase === 'onboarding') return 'onboarding'
-    if (s.phase === 'cloud') return 'account'
-    return s.view === 'account' || s.view === 'onboarding' ? 'signin' : s.view
-  })
-}
+const resolvedViewAtom = atom((get): AuthView => {
+  const phase = get(phaseAtom)
+  const view = get(viewAtom)
+  if (phase === 'checking') return 'checking'
+  if (phase === 'onboarding') return 'onboarding'
+  if (phase === 'cloud') return 'account'
+  return view === 'account' || view === 'onboarding' ? 'signin' : view
+})
 
 const focusAutofocus = (panel: HTMLElement | null) => {
   const target = panel?.querySelector<HTMLElement>('[data-autofocus]') ?? panel
@@ -24,10 +25,10 @@ const focusAutofocus = (panel: HTMLElement | null) => {
  * focus trapping. Onboarding cannot be dismissed: `closePanel` does nothing in that phase.
  */
 export function AccountDialog() {
-  const panelOpen = useAccount((s) => s.panelOpen)
-  const onboarding = useAccount((s) => s.phase === 'onboarding')
-  const closePanel = useAccount((s) => s.closePanel)
-  const view = useResolvedView()
+  const panelOpen = useAtomValue(panelOpenAtom)
+  const onboarding = useAtomValue(phaseAtom) === 'onboarding'
+  const closePanel = useAccountActions().closePanel
+  const view = useAtomValue(resolvedViewAtom)
   const panelRef = useRef<HTMLDivElement>(null)
   const shownView = useRef<AuthView | null>(null)
 

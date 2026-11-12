@@ -6,8 +6,9 @@ import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { PING_MS } from '@/engine/marks'
 import type { AwayReport } from '@/engine/simulation/report'
 import { createWorld, type EngineWorld } from '@/engine/world'
-import { useOverlayStore } from '@/store/useOverlayStore'
-import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import { createDefaultState, patchStudioAtom, relaxModeAtom, selectedIdAtom } from '@/store/studio'
+import { awayIndexAtom, openAwayAtom, resetOverlayAtom, tourAtom } from '@/store/overlay'
 
 const placed = (uid: string): PlacedItem => ({
   uid,
@@ -50,8 +51,8 @@ let world: EngineWorld
 const click = (el: HTMLElement) => act(() => void fireEvent.click(el))
 
 beforeEach(() => {
-  useStudioStore.setState(createDefaultState())
-  useOverlayStore.setState({ growthBoardOpen: false, awayIndex: null, tour: null })
+  appStore.set(patchStudioAtom, createDefaultState())
+  appStore.set(resetOverlayAtom)
   world = createWorld()
   world.items.push(placed('a'), placed('b'))
   registerWorld(world)
@@ -62,15 +63,15 @@ afterEach(() => {
 })
 
 const open = (reports: AwayReport[], index = 0) => {
-  useStudioStore.setState({ awayLog: reports })
-  useOverlayStore.setState({ awayIndex: index })
+  appStore.set(patchStudioAtom, { awayLog: reports })
+  appStore.set(awayIndexAtom, index)
 }
 
 describe('AwayCard', () => {
   it('renders nothing when closed or when the log is empty', () => {
     const { container, rerender } = render(<AwayCard />)
     expect(container).toBeEmptyDOMElement()
-    useOverlayStore.setState({ awayIndex: 0 })
+    appStore.set(awayIndexAtom, 0)
     rerender(<AwayCard />)
     expect(container).toBeEmptyDOMElement()
   })
@@ -127,12 +128,12 @@ describe('AwayCard', () => {
     expect(later).toBeDisabled()
     expect(earlier).toBeEnabled()
     click(earlier)
-    expect(useOverlayStore.getState().awayIndex).toBe(1)
+    expect(appStore.get(awayIndexAtom)).toBe(1)
     expect(screen.getByText('2 of 2')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Earlier/ })).toBeDisabled()
     expect(screen.getByRole('dialog')).toHaveAccessibleName(/^Resting since /)
     click(screen.getByRole('button', { name: /Later/ }))
-    expect(useOverlayStore.getState().awayIndex).toBe(0)
+    expect(appStore.get(awayIndexAtom)).toBe(0)
     expect(screen.getByText('Latest')).toBeInTheDocument()
   })
 
@@ -141,17 +142,17 @@ describe('AwayCard', () => {
     const { unmount } = render(<AwayCard />)
     expect(world.marks.rings).toEqual(['a', 'b'])
     click(screen.getByRole('button', { name: 'Got it' }))
-    expect(useOverlayStore.getState().awayIndex).toBeNull()
+    expect(appStore.get(awayIndexAtom)).toBeNull()
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(world.marks.rings).toEqual([])
 
-    act(() => useOverlayStore.getState().openAway(0))
+    act(() => appStore.set(openAwayAtom, 0))
     expect(world.marks.rings).toEqual(['a', 'b'])
     act(() => void fireEvent.keyDown(document, { key: 'Escape' }))
-    expect(useOverlayStore.getState().awayIndex).toBeNull()
+    expect(appStore.get(awayIndexAtom)).toBeNull()
     expect(world.marks.rings).toEqual([])
 
-    act(() => useOverlayStore.getState().openAway(0))
+    act(() => appStore.set(openAwayAtom, 0))
     expect(world.marks.rings).toEqual(['a', 'b'])
     unmount()
     expect(world.marks.rings).toEqual([])
@@ -160,29 +161,29 @@ describe('AwayCard', () => {
   it('Escape closes the card without touching the selection or other Escape handlers', () => {
     const other = vi.fn()
     window.addEventListener('keydown', other)
-    useStudioStore.setState({ selectedId: 'a' })
+    appStore.set(patchStudioAtom, { selectedId: 'a' })
     open([full()])
     render(<AwayCard />)
     act(() => void fireEvent.keyDown(document.body, { key: 'Escape' }))
     window.removeEventListener('keydown', other)
-    expect(useOverlayStore.getState().awayIndex).toBeNull()
-    expect(useStudioStore.getState().selectedId).toBe('a')
+    expect(appStore.get(awayIndexAtom)).toBeNull()
+    expect(appStore.get(selectedIdAtom)).toBe('a')
     expect(other).not.toHaveBeenCalled()
   })
 
   it('leaves Escape to relax mode while relax hides the card', () => {
     const other = vi.fn()
     window.addEventListener('keydown', other)
-    useStudioStore.setState({ relaxMode: true })
+    appStore.set(patchStudioAtom, { relaxMode: true })
     try {
       open([full()])
       render(<AwayCard />)
       act(() => void fireEvent.keyDown(document.body, { key: 'Escape' }))
-      expect(useOverlayStore.getState().awayIndex).toBe(0)
+      expect(appStore.get(awayIndexAtom)).toBe(0)
       expect(other).toHaveBeenCalledTimes(1)
     } finally {
       window.removeEventListener('keydown', other)
-      useStudioStore.setState({ relaxMode: false })
+      appStore.set(patchStudioAtom, { relaxMode: false })
     }
   })
 
@@ -206,7 +207,7 @@ describe('AwayCard', () => {
     act(() => void fireEvent.mouseEnter(line))
     expect(world.marks.pings.get('a')).toBe(1000 + PING_MS)
     click(line)
-    expect(useStudioStore.getState().selectedId).toBe('a')
+    expect(appStore.get(selectedIdAtom)).toBe('a')
     spy.mockRestore()
   })
 
@@ -217,7 +218,7 @@ describe('AwayCard', () => {
     const line = screen.getByText('The rose opened pink flowers.')
     act(() => void fireEvent.mouseEnter(line))
     click(line)
-    expect(useStudioStore.getState().selectedId).toBe('a')
+    expect(appStore.get(selectedIdAtom)).toBe('a')
   })
 
   it('marks (capped) and the preview/day eyebrows', () => {
@@ -272,15 +273,14 @@ describe('AwayCard', () => {
     ])
     render(<AwayCard />)
     click(screen.getByRole('button', { name: 'Start the evening visit' }))
-    const o = useOverlayStore.getState()
-    expect(o.awayIndex).toBeNull()
-    expect(o.tour).toEqual({
+    expect(appStore.get(awayIndexAtom)).toBeNull()
+    expect(appStore.get(tourAtom)).toEqual({
       steps: [
         { uid: 'a', text: 'The rose opened.' },
         { uid: 'b', text: 'A fern seedling came up.' },
       ],
       i: 0,
     })
-    expect(useStudioStore.getState().relaxMode).toBe(true)
+    expect(appStore.get(relaxModeAtom)).toBe(true)
   })
 })

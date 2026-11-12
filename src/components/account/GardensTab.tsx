@@ -1,26 +1,35 @@
+import { useAtomValue, useStore } from 'jotai'
 import { useEffect, useRef, type KeyboardEvent } from 'react'
-import { useAccount, useAuthEnv } from '@/components/account/auth/authEnv'
+import { useAuthEnv } from '@/components/account/auth/authEnv'
 import type { GardenRecord } from '@/auth/backend'
 import { VESSELS_BY_ID } from '@/data/vessels'
-import { timeAgo, type GardenStart } from '@/store/useAccountStore'
+import {
+  activeIdAtom,
+  busyAtom,
+  confirmDeleteAtom,
+  gardensAtom,
+  type GardenStart,
+  renamingAtom,
+  timeAgo,
+} from '@/store/account'
 
 /** The inline name editor: Enter or leaving the field saves, Escape cancels. */
 function RenameInput({ garden }: { garden: GardenRecord }) {
-  const { store } = useAuthEnv()
+  const { account } = useAuthEnv()
+  const store = useStore()
   const ref = useRef<HTMLInputElement>(null)
   useEffect(() => ref.current?.focus(), [])
 
   const done = () => {
-    const s = store.getState()
     // Enter already saved and closed the editor; the blur that follows must not save again.
-    if (s.renaming !== garden.id) return
-    void s.renameGarden(garden.id, ref.current?.value ?? '')
+    if (store.get(renamingAtom) !== garden.id) return
+    void account.renameGarden(garden.id, ref.current?.value ?? '')
   }
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') done()
     // Inside the dialog, Escape never gets here: the dialog's capture listener closes the panel and
     // closePanel() clears the rename. This covers the editor rendered outside the dialog.
-    if (e.key === 'Escape') store.getState().setRenaming(null)
+    if (e.key === 'Escape') account.setRenaming(null)
   }
 
   return (
@@ -38,13 +47,13 @@ function RenameInput({ garden }: { garden: GardenRecord }) {
 }
 
 function GardenRow({ garden, active }: { garden: GardenRecord; active: boolean }) {
-  const { store } = useAuthEnv()
-  const renaming = useAccount((s) => s.renaming === garden.id)
-  const confirming = useAccount((s) => s.confirmDelete === garden.id)
+  const { account } = useAuthEnv()
+  const renaming = useAtomValue(renamingAtom) === garden.id
+  const confirming = useAtomValue(confirmDeleteAtom) === garden.id
   const s = garden.summary
   const vessel = VESSELS_BY_ID[s.vessel]?.name ?? 'Terrarium'
   const meta = `${vessel} · day ${s.day || 1} · ${s.plants || 0} plants, ${s.animals || 0} animals · ${timeAgo(garden.updatedAt)}`
-  const actions = store.getState()
+  const actions = account
 
   return (
     <li className={`garden-row${active ? ' is-active' : ''}`}>
@@ -100,23 +109,24 @@ function GardenRow({ garden, active }: { garden: GardenRecord; active: boolean }
 
 /** The Terrariums tab: every saved terrarium with open, rename and delete, plus two ways to start one (spec gardensTab). */
 export function GardensTab() {
-  const { store, toast } = useAuthEnv()
-  const gardens = useAccount((s) => s.gardens)
-  const activeId = useAccount((s) => s.activeId)
-  const busy = useAccount((s) => s.busy)
+  const { account, toast } = useAuthEnv()
+  const store = useStore()
+  const gardens = useAtomValue(gardensAtom)
+  const activeId = useAtomValue(activeIdAtom)
+  const busy = useAtomValue(busyAtom)
   const n = gardens.length
 
   const startNew = async (kind: GardenStart, name: string) => {
     // A second click while the first create is under way must not start another terrarium.
-    if (store.getState().busy) return
-    store.setState({ busy: true })
+    if (store.get(busyAtom)) return
+    store.set(busyAtom, true)
     try {
-      await store.getState().createGarden(kind, name)
+      await account.createGarden(kind, name)
       toast('New terrarium started')
     } catch (e) {
-      store.getState().handleCloudError(e, { user: true })
+      account.handleCloudError(e, { user: true })
     } finally {
-      store.setState({ busy: false })
+      store.set(busyAtom, false)
     }
   }
 

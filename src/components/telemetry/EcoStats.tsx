@@ -1,16 +1,12 @@
+import { useAtomValue } from 'jotai'
 import { CYCLE_DAYS, cycleChemistry, cycleDay } from '@/engine/care'
 import { mutateWorld } from '@/engine/engineBridge'
 import { hasPool } from '@/engine/geometry'
 import { addSporePatch } from '@/engine/simulation/mold'
-import {
-  selectCycleProgress,
-  selectPumpFlow,
-  selectTelemetry,
-  selectWaterSplit,
-} from '@/store/selectors'
-import { showToast } from '@/store/toastStore'
-import { useStudioStore } from '@/store/useStudioStore'
-import { useTelemetryStore } from '@/store/useTelemetryStore'
+import { appStore } from '@/store/appStore'
+import { cycleProgressAtom, pumpFlowAtom, studioStateAtom, waterSplitAtom } from '@/store/studio'
+import { telemetryAtom } from '@/store/telemetry'
+import { showToast } from '@/store/toast'
 import type { PumpFlow } from '@/data/types'
 
 function glassText(c: number): string {
@@ -29,13 +25,13 @@ function waterCycleText(pool: boolean, p: number, pumpFlow: PumpFlow): string {
 
 /** Glass, pool water cycle, mold and cleanup crew readouts (prototype stat-* rows). */
 export function EcoStats() {
-  const { condensation, moldCount, cleanupCrewCount } = useTelemetryStore(selectTelemetry)
-  const pool = hasPool(useStudioStore(selectWaterSplit))
-  const cycleProgress = useStudioStore(selectCycleProgress)
-  const pumpFlow = useStudioStore(selectPumpFlow)
+  const { condensation, moldCount, cleanupCrewCount } = useAtomValue(telemetryAtom)
+  const pool = hasPool(useAtomValue(waterSplitAtom))
+  const cycleProgress = useAtomValue(cycleProgressAtom)
+  const pumpFlow = useAtomValue(pumpFlowAtom)
 
   const spawnSpore = () => {
-    mutateWorld((w) => addSporePatch(w, useStudioStore.getState()))
+    mutateWorld((w) => addSporePatch(w, appStore.get(studioStateAtom)))
     showToast('Mold spore added. Scrub it, or let the isopods clean it up')
   }
 

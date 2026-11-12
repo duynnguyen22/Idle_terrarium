@@ -1,7 +1,14 @@
+import { useAtomValue, useStore } from 'jotai'
 import type { FormEvent } from 'react'
 import { EnvOptionList, type EnvOption } from '@/components/catalog/EnvOptionList'
-import { CLEARED_ACCOUNT_FORM, type GardenStart } from '@/store/useAccountStore'
-import { useAccount, useAuthEnv } from './authEnv'
+import {
+  busyAtom,
+  CLEARED_ACCOUNT_FORM,
+  type GardenStart,
+  userAtom,
+  viewDataAtom,
+} from '@/store/account'
+import { useAuthEnv } from './authEnv'
 import { AuthField } from './AuthField'
 import { AuthHeader, FormError, LinkButton, SubmitButton } from './AuthPieces'
 
@@ -19,20 +26,21 @@ const SIGNED_OUT_TEXT = 'You’re signed out. Your build stays in this browser.'
 
 /** The first terrarium after sign-up; it must finish before the dialog can close (spec Screens.onboarding). */
 export function OnboardingScreen() {
-  const { store, auth, toast } = useAuthEnv()
-  const first = useAccount((s) => (s.user?.name ?? '').split(' ')[0] || 'there')
-  const start = useAccount((s) => s.viewData.start ?? 'current')
-  const failed = useAccount((s) => !!s.viewData.error && !s.busy)
+  const { account, auth, toast } = useAuthEnv()
+  const store = useStore()
+  const first = (useAtomValue(userAtom)?.name ?? '').split(' ')[0] || 'there'
+  const viewData = useAtomValue(viewDataAtom)
+  const busy = useAtomValue(busyAtom)
+  const start = viewData.start ?? 'current'
+  const failed = !!viewData.error && !busy
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
-    void store.getState().run(async () => {
-      const v = store.getState().viewData
-      const garden = await store
-        .getState()
-        .createGarden(v.start ?? 'current', v.gname || 'My terrarium')
-      store.setState({ busy: false })
-      store.getState().closePanel()
+    void account.run(async () => {
+      const v = store.get(viewDataAtom)
+      const garden = await account.createGarden(v.start ?? 'current', v.gname || 'My terrarium')
+      store.set(busyAtom, false)
+      account.closePanel()
       toast(`${garden.name} is saved to your account`)
     })
   }
@@ -40,12 +48,12 @@ export function OnboardingScreen() {
   // The dialog cannot close during onboarding, so a create that keeps failing (storage full) needs
   // a way out: signing out keeps the build on screen and offers onboarding again at the next sign in.
   const signOut = () =>
-    void store.getState().run(async () => {
-      const email = store.getState().user?.email
+    void account.run(async () => {
+      const email = store.get(userAtom)?.email
       await auth.signOut()
       // Same order as Sign out: clear busy and move to sign in before ending the session.
-      store.setState({ busy: false })
-      store.getState().goView('signin', {
+      store.set(busyAtom, false)
+      account.goView('signin', {
         ...CLEARED_ACCOUNT_FORM,
         gname: '',
         start: undefined,
@@ -53,7 +61,7 @@ export function OnboardingScreen() {
         password: '',
         banner: { kind: 'success', text: SIGNED_OUT_TEXT },
       })
-      await store.getState().endSession('Signed out')
+      await account.endSession('Signed out')
     })
 
   return (
@@ -70,7 +78,7 @@ export function OnboardingScreen() {
             label="Start from"
             options={START_OPTIONS}
             value={start}
-            onChange={(id) => store.getState().setViewData({ start: id })}
+            onChange={(id) => account.setViewData({ start: id })}
           />
         </div>
         <FormError />

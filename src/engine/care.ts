@@ -1,7 +1,18 @@
 /** The v6 care report, ideal ranges and one-click care actions (prototype 2907-3020). */
 import { findCatalogDef } from '@/data/catalog'
 import type { CatalogDef, PlacedItem, RoomEnv } from '@/data/types'
-import type { StudioState, StudioStore } from '@/store/useStudioStore'
+import type { Store } from 'jotai'
+import {
+  cycleProgressAtom,
+  hardwareAtoms,
+  mineralSpotsAtom,
+  pumpFlowAtom,
+  roomAtom,
+  setSubstrateAtom,
+  substratesAtom,
+  waterSplitAtom,
+  type StudioState,
+} from '@/store/studio'
 import { poolHasWater } from './geometry'
 import { wakeResting, wokeToast } from './simulation/ecology'
 import { envModel, type EnvModel } from './room'
@@ -341,9 +352,9 @@ export function computeCareReport(s: CareInputs): CareIssue[] {
 
 /**
  * Applies a one-click care action and returns the toast text. Engine gauges live on `world.env`;
- * hardware and build settings go through store actions. The UI caller plays the feed chime.
+ * hardware and build settings are written to the studio atoms in `store`. The UI caller plays the feed chime.
  */
-export function runCareAction(world: EngineWorld, store: StudioStore, id: CareActionId): string {
+export function runCareAction(world: EngineWorld, store: Store, id: CareActionId): string {
   const env = world.env
   switch (id) {
     case 'mist': {
@@ -353,42 +364,45 @@ export function runCareAction(world: EngineWorld, store: StudioStore, id: CareAc
       return woke.length ? `Misted the plants. ${wokeToast(woke)}` : 'Misted the plants'
     }
     case 'openLid':
-      store.setHardware('hasLid', false)
+      store.set(hardwareAtoms.hasLid, false)
       return 'Lid cracked open to vent moisture'
     case 'closeLid':
-      store.setHardware('hasLid', true)
+      store.set(hardwareAtoms.hasLid, true)
       return 'Lid sealed; humidity will rise'
     case 'fogOff':
-      store.setHardware('hasFogger', false)
+      store.set(hardwareAtoms.hasFogger, false)
       return 'Fogger off'
     case 'pumpGentle':
-      store.setPumpFlow('gentle')
+      store.set(pumpFlowAtom, 'gentle')
       return 'Pump set to gentle flow'
     case 'feed':
       env.nutrients = Math.min(100, env.nutrients + 15)
       return 'Added organic bio-feed'
-    case 'widenPool':
-      store.setWaterSplit(0.3)
-      store.setSubstrate('water', Math.max(store.substrates.water || 0, 40))
-      store.setCycleProgress(0)
+    case 'widenPool': {
+      // Substrates are read before the writes (the old store snapshot); setWaterSplit does not touch them.
+      const water = store.get(substratesAtom).water
+      store.set(waterSplitAtom, 0.3)
+      store.set(setSubstrateAtom, 'water', Math.max(water || 0, 40))
+      store.set(cycleProgressAtom, 0)
       env.cycleProgress = 0
       return 'Added a pool. New water cycles for about 3 weeks.'
+    }
     case 'waterTreat':
-      store.setRoom({ water: 'tap_treated' })
+      store.set(roomAtom, { water: 'tap_treated' })
       return 'Water is now dechlorinated'
     case 'waterRO':
-      store.setRoom({ water: 'ro' })
+      store.set(roomAtom, { water: 'ro' })
       return 'Misting with RO water now'
     case 'airClean':
-      store.setRoom({ air: 'clean' })
+      store.set(roomAtom, { air: 'clean' })
       return 'Tank moved to a room with clean air'
     case 'purifierOn':
-      store.setRoom({ purifier: true })
+      store.set(roomAtom, { purifier: true })
       return 'Air purifier on'
     case 'wipeGlass':
       // The engine owns the live value; zero both so the next flush does not restore the old spots.
       world.mineralSpots = 0
-      store.setMineralSpots(0)
+      store.set(mineralSpotsAtom, 0)
       return 'Glass wiped clean'
   }
 }

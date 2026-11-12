@@ -1,10 +1,17 @@
 import { useId, type ReactNode } from 'react'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { RadioGroup, Switch } from 'radix-ui'
-import { useShallow } from 'zustand/react/shallow'
 import type { PumpFlow } from '@/data/types'
 import { hasPool } from '@/engine/geometry'
 import { isLampOn } from '@/engine/simulation/clock'
-import { useStudioStore } from '@/store/useStudioStore'
+import {
+  autoLightSyncAtom,
+  hasFoggerAtom,
+  hasGrowLampAtom,
+  lightingAtom,
+  pumpFlowAtom,
+  waterSplitAtom,
+} from '@/store/studio'
 
 const PUMP_COPY: Record<PumpFlow, string> = {
   gentle: 'Gentle cascade into the pool',
@@ -91,18 +98,15 @@ export function SwitchRow({
 
 /** Grow lamp, fogger and waterfall pump (prototype `syncHardwareButtons`). */
 export function HardwarePanel() {
-  const { hasGrowLamp, hasFogger, lighting, autoLightSync, pumpFlow, waterSplit } = useStudioStore(
-    useShallow((s) => ({
-      hasGrowLamp: s.hasGrowLamp,
-      hasFogger: s.hasFogger,
-      lighting: s.lighting,
-      autoLightSync: s.autoLightSync,
-      pumpFlow: s.pumpFlow,
-      waterSplit: s.waterSplit,
-    })),
-  )
-  const setHardware = useStudioStore((s) => s.setHardware)
-  const setPumpFlow = useStudioStore((s) => s.setPumpFlow)
+  const hasGrowLamp = useAtomValue(hasGrowLampAtom)
+  const hasFogger = useAtomValue(hasFoggerAtom)
+  const lighting = useAtomValue(lightingAtom)
+  const autoLightSync = useAtomValue(autoLightSyncAtom)
+  const pumpFlow = useAtomValue(pumpFlowAtom)
+  const waterSplit = useAtomValue(waterSplitAtom)
+  const setHasGrowLamp = useSetAtom(hasGrowLampAtom)
+  const setHasFogger = useSetAtom(hasFoggerAtom)
+  const setPumpFlow = useSetAtom(pumpFlowAtom)
 
   const lampOn = isLampOn({ hasGrowLamp, lighting })
   const lampSub = !hasGrowLamp
@@ -131,7 +135,7 @@ export function HardwarePanel() {
         icon={
           <Glyph d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z" />
         }
-        onToggle={() => setHardware('hasGrowLamp', !hasGrowLamp)}
+        onToggle={() => setHasGrowLamp(!hasGrowLamp)}
       />
       <SwitchRow
         label="Mist fogger"
@@ -141,7 +145,7 @@ export function HardwarePanel() {
         icon={
           <Glyph d="M7 15a4 4 0 0 1 .5-8A5.5 5.5 0 0 1 18 8a3.5 3.5 0 0 1-.5 7zM4 19h16M7 22h10" />
         }
-        onToggle={() => setHardware('hasFogger', !hasFogger)}
+        onToggle={() => setHasFogger(!hasFogger)}
       />
       <div className="mt-0.5 flex w-full items-center gap-2.5 px-2.5 pb-1.5 pt-[9px]">
         <span className={`${ICON_BASE} ${pool && pumpFlow !== 'off' ? ICON_ON : ICON_OFF}`}>

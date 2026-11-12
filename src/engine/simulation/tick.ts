@@ -1,5 +1,7 @@
 import { vesselKX } from '@/data/vessels'
-import { useStudioStore, type StudioStore } from '@/store/useStudioStore'
+import type { Store } from 'jotai'
+import { appStore } from '@/store/appStore'
+import { studioStateAtom, type StudioState } from '@/store/studio'
 import { computeCareReport } from '../care'
 import { envModel } from '../room'
 import type { AsmrCue } from '../interaction'
@@ -19,7 +21,8 @@ import { eventText, NOTABLE } from './report'
 import { pushTelemetry } from './telemetry'
 
 export interface TickDeps {
-  store?: StudioStore
+  /** The jotai store holding the studio atoms; defaults to the app store. */
+  store?: Store
   rng?: Rng
   now?: Date
   /** Optional audio hook; the engine stays free of audio imports. */
@@ -54,10 +57,10 @@ export function syncChildren(world: EngineWorld, kx = 1): void {
   }
 }
 
-/** Recomputes the care report from the store and the live world into `world.careIssues` (a fresh array). */
-export function refreshCareReport(world: EngineWorld, store: StudioStore): void {
+/** Recomputes the care report from the studio state and the live world into `world.careIssues` (a fresh array). */
+export function refreshCareReport(world: EngineWorld, state: StudioState): void {
   world.careIssues = computeCareReport({
-    ...store,
+    ...state,
     ...world.env,
     items: world.items,
     mineralSpots: world.mineralSpots,
@@ -70,7 +73,7 @@ export function refreshCareReport(world: EngineWorld, store: StudioStore): void 
  * the tank-day step (ecology, life cycles, breeding, sprouts, pool cycle, nutrients; paced by wall-clock time) and
  * the mold bloom (all skipped at timeSpeed 0, ambient motes included, as the prototype early-returns), then the draw-phase mutations
  * (child sync, firefly drift, stream integration), the care report refresh and the throttled store flush
- * (live gauges to the telemetry store, persisted fields to the studio store).
+ * (live gauges to the telemetry atom, persisted fields to the studio atoms).
  */
 export function tick(
   world: EngineWorld,
@@ -78,38 +81,41 @@ export function tick(
   timestamp: number,
   deps: TickDeps = {},
 ): void {
-  const store = deps.store ?? useStudioStore.getState()
+  const store = deps.store ?? appStore
+  // One read per frame: `s` is a snapshot, so writes made during the frame (e.g. advanceClock's lighting)
+  // are seen from the next frame on.
+  const s = store.get(studioStateAtom)
   const rng = deps.rng ?? Math.random
   world.frame++
   if (world.ambientMotes.length === 0 && world.fireflies.length === 0)
     initWorldParticles(world, rng)
 
-  if (store.timeSpeed !== 0) {
-    if (world.isPouring && store.activeTool === 'pour' && store.activePourMaterial) {
-      if (store.activePourMaterial === 'siphon') siphonStep(world, store)
+  if (s.timeSpeed !== 0) {
+    if (world.isPouring && s.activeTool === 'pour' && s.activePourMaterial) {
+      if (s.activePourMaterial === 'siphon') siphonStep(world, s)
       else {
-        spawnPourStream(world, store.activePourMaterial, rng)
+        spawnPourStream(world, s.activePourMaterial, rng)
         // prototype 2575-2577: ~45% of spawn frames emit a scatter / water cue
         if (deps.onCue && rng() > 0.55) {
-          deps.onCue(store.activePourMaterial === 'water' ? 'pour_water' : 'scatter')
+          deps.onCue(s.activePourMaterial === 'water' ? 'pour_water' : 'scatter')
         }
       }
     }
     advanceClock(store, deps.now)
-    const em = envModel(store.room, store.hasLid)
-    updateEnvironment(world, { ...store, airEff: em.airEff, tds: em.tds }, dtMs)
-    updateFauna(world, store, dtMs, timestamp, rng)
-    if (!store.reducedMotion) updateAmbientMotes(world, dtMs)
+    const em = envModel(s.room, s.hasLid)
+    updateEnvironment(world, { ...s, airEff: em.airEff, tds: em.tds }, dtMs)
+    updateFauna(world, s, dtMs, timestamp, rng)
+    if (!s.reducedMotion) updateAmbientMotes(world, dtMs)
     const liveEmit = (e: LifeEvent): void => {
       if (!isLiveToastKind(e.kind) || !deps.onToast) return
       if (timestamp - world.lastLiveToast < LIVE_TOAST_GAP_MS && world.lastLiveToast > 0) return
       world.lastLiveToast = timestamp
       deps.onToast(eventText(e.kind, e.id))
     }
-    dayTick(world, store, dtMs, rng, liveEmit, () =>
+    dayTick(world, s, dtMs, rng, liveEmit, () =>
       deps.onToast?.('The pool has cycled. Ammonia and nitrite read 0.'),
     )
-    updateMold(world, store, dtMs, rng, deps.onToast)
+    updateMold(world, s, dtMs, rng, deps.onToast)
   }
 
   // Care wakes resting plants on the frame misting or pouring begins, at any time speed.
@@ -121,23 +127,18 @@ export function tick(
   world.wasPouring = world.isPouring
 
   // Hold-to-mist runs at any time speed, like the artifact's draw-phase spray.
-  if (
-    world.isMisting &&
-    store.activeTool === 'mist' &&
-    !store.relaxMode &&
-    pointerInsideGlass(world)
-  ) {
+  if (world.isMisting && s.activeTool === 'mist' && !s.relaxMode && pointerInsideGlass(world)) {
     spraySpawn(world, dtMs, rng)
     if (deps.onCue && rng() < 0.06) deps.onCue('pour_water')
   }
-  stepMistParticles(world, store, dtMs, rng)
+  stepMistParticles(world, s, dtMs, rng)
 
-  syncChildren(world, vesselKX(store.vessel))
-  if (!store.reducedMotion && (store.lighting === 'night' || store.lighting === 'twilight'))
+  syncChildren(world, vesselKX(s.vessel))
+  if (!s.reducedMotion && (s.lighting === 'night' || s.lighting === 'twilight'))
     updateFireflies(world, dtMs)
-  stepPourParticles(world, store, dtMs, rng, deps.onToast)
+  stepPourParticles(world, s, dtMs, rng, deps.onToast)
   // Care report every 30 frames (prototype 3138, 3307); every frame while paused so edits show at once.
-  // Assign a fresh array; the throttled flush copies it into the telemetry store (compared by content).
-  if (world.frame % 30 === 0 || store.timeSpeed === 0) refreshCareReport(world, store)
-  pushTelemetry(world, store, timestamp, store, deps.commit)
+  // Assign a fresh array; the throttled flush copies it into the telemetry atom (compared by content).
+  if (world.frame % 30 === 0 || s.timeSpeed === 0) refreshCareReport(world, s)
+  pushTelemetry(world, store, timestamp, s, deps.commit)
 }

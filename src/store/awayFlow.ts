@@ -7,9 +7,17 @@ import { durationLabel, type AwayReport } from '@/engine/simulation/report'
 import { flushTelemetry } from '@/engine/simulation/telemetry'
 import { refreshCareReport } from '@/engine/simulation/tick'
 import { play } from '@/hooks/useAudio'
-import { useAccountStore } from '@/store/useAccountStore'
-import { useOverlayStore } from '@/store/useOverlayStore'
-import { useStudioStore } from '@/store/useStudioStore'
+import { account, activeIdAtom, phaseAtom } from '@/store/account'
+import { appStore } from '@/store/appStore'
+import { awayIndexAtom, openAwayAtom, startTourAtom } from '@/store/overlay'
+import {
+  awayLogAtom,
+  dayCountAtom,
+  pushAwayReportAtom,
+  relaxModeAtom,
+  studioStateAtom,
+  waterSplitAtom,
+} from '@/store/studio'
 
 /** Days after setup in which "+1 day" may grow a mold patch. */
 const MOLD_DAYS = 3
@@ -33,24 +41,22 @@ export function journalFromReport(r: AwayReport): JournalFromReport {
 }
 
 /**
- * Pushes the simulated world's care report, gauges and day count to the stores, logs the report (unless it is
+ * Pushes the simulated world's care report, gauges and day count to the store, logs the report (unless it is
  * already the newest one), opens the card on it and, when asked and signed in with a terrarium open, adds an
  * automatic journal entry, which therefore carries the post-simulation day and gauges.
  */
 export function recordReport(r: AwayReport, opts: { journal: boolean }): void {
   const world = tryGetWorld()
   if (world) {
-    refreshCareReport(world, useStudioStore.getState())
-    flushTelemetry(world, useStudioStore.getState())
+    refreshCareReport(world, appStore.get(studioStateAtom))
+    flushTelemetry(world, appStore)
   }
-  const studio = useStudioStore.getState()
-  const last = studio.awayLog[0]
+  const last = appStore.get(awayLogAtom)[0]
   if (!last || last.from !== r.from || last.to !== r.to || last.mode !== r.mode) {
-    studio.pushAwayReport(r)
+    appStore.set(pushAwayReportAtom, r)
   }
-  useOverlayStore.getState().openAway(0)
-  const account = useAccountStore.getState()
-  if (opts.journal && account.phase === 'cloud' && account.activeId) {
+  appStore.set(openAwayAtom, 0)
+  if (opts.journal && appStore.get(phaseAtom) === 'cloud' && appStore.get(activeIdAtom)) {
     const { note, events, key } = journalFromReport(r)
     account
       .addJournalEntry(note, true, { events, key })
@@ -60,14 +66,14 @@ export function recordReport(r: AwayReport, opts: { journal: boolean }): void {
 
 /**
  * The "+1 day" button: one whole tank day through the catch-up engine (with the early-days mold roll), the new
- * day's care report and counters flushed to the stores, a day report logged and its card opened. Returns the toast.
+ * day's care report and counters flushed to the store, a day report logged and its card opened. Returns the toast.
  */
 export function plusOneDay(rng: () => number = Math.random, now: number = Date.now()): string {
   play('chime')
   let msg = ''
   let report: AwayReport | null = null
   mutateWorld((w) => {
-    const state = useStudioStore.getState()
+    const state = appStore.get(studioStateAtom)
     const before = w.env.cycleProgress
     report = catchUpSpan(w, state, now - paceMs(state.pace), now, {
       mode: 'day',
@@ -81,15 +87,16 @@ export function plusOneDay(rng: () => number = Math.random, now: number = Date.n
       const terrain = { substrates: state.substrates, waterSplit: state.waterSplit }
       w.moldPatches.push({ x: randomLandX(terrain, rng), size: 9 + rng() * 5 })
     }
-    // The new day's issues, gauges and day count reach the stores now, not at the next throttled push.
-    refreshCareReport(w, useStudioStore.getState())
-    flushTelemetry(w, useStudioStore.getState())
-    const s = useStudioStore.getState()
+    // The new day's issues, gauges and day count reach the store now, not at the next throttled push.
+    refreshCareReport(w, appStore.get(studioStateAtom))
+    flushTelemetry(w, appStore)
+    // Read after the flush: the toast shows the new day.
+    const dayCount = appStore.get(dayCountAtom)
     const after = w.env.cycleProgress
-    if (before < 1 && after >= 1) msg = `Day ${s.dayCount}: plants grew. The pool has cycled.`
+    if (before < 1 && after >= 1) msg = `Day ${dayCount}: plants grew. The pool has cycled.`
     else {
-      const cycling = hasPool(s.waterSplit) && after < 1
-      msg = `Day ${s.dayCount}: plants grew${cycling ? ', pool still cycling' : ''}`
+      const cycling = hasPool(appStore.get(waterSplitAtom)) && after < 1
+      msg = `Day ${dayCount}: plants grew${cycling ? ', pool still cycling' : ''}`
     }
   })
   if (report) recordReport(report, { journal: true })
@@ -102,7 +109,7 @@ export function previewGap(hours: number): void {
   const from = to - hours * 36e5
   let r: AwayReport | null = null
   mutateWorld((w) => {
-    r = catchUpSpan(w, useStudioStore.getState(), from, to, {
+    r = catchUpSpan(w, appStore.get(studioStateAtom), from, to, {
       mode: 'preview',
       reason: 'preview',
       away: true,
@@ -119,8 +126,7 @@ export function previewGap(hours: number): void {
 export function startEveningVisit(r: AwayReport): void {
   const here = new Set(getWorld().items.map((i) => i.uid))
   const steps = r.items.filter((i) => here.has(i.uid)).map(({ uid, text }) => ({ uid, text }))
-  const overlay = useOverlayStore.getState()
-  overlay.closeAway()
-  useStudioStore.getState().setRelaxMode(true)
-  overlay.startTour(steps)
+  appStore.set(awayIndexAtom, null)
+  appStore.set(relaxModeAtom, true)
+  appStore.set(startTourAtom, steps)
 }

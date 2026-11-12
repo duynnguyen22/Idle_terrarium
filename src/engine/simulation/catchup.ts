@@ -1,7 +1,13 @@
 import { findCatalogDef } from '@/data/catalog'
 import type { PlacedItem } from '@/data/types'
 import { hashStr, mulberry32, type Rng } from '@/lib/rng'
-import type { StudioState, StudioStore } from '@/store/useStudioStore'
+import type { Store } from 'jotai'
+import {
+  lastSimulatedAtAtom,
+  pushAwayReportAtom,
+  studioStateAtom,
+  type StudioState,
+} from '@/store/studio'
 import { restoreWorld, snapshotWorld } from '../persistence'
 import type { EngineWorld } from '../world'
 import { breedConditions, breedStep } from './breed'
@@ -172,28 +178,25 @@ export function catchUpSpan(
  * Catches the garden up on a return after at least ten minutes away. No clock, a backwards clock or disabled
  * catch-up only reset the clock; a short gap leaves it alone. Pushes and returns the report when it ran.
  */
-export function runCatchUpIfDue(
-  world: EngineWorld,
-  store: StudioStore,
-  now: number,
-): AwayReport | null {
-  const last = store.lastSimulatedAt
+export function runCatchUpIfDue(world: EngineWorld, store: Store, now: number): AwayReport | null {
+  const state = store.get(studioStateAtom)
+  const last = state.lastSimulatedAt
   if (last === null || now - last < 0) {
-    store.setLastSimulatedAt(now)
+    store.set(lastSimulatedAtAtom, now)
     return null
   }
   if (now - last < CATCHUP_MIN_GAP_MS) return null
-  if (!store.catchupEnabled) {
-    store.setLastSimulatedAt(now)
+  if (!state.catchupEnabled) {
+    store.set(lastSimulatedAtAtom, now)
     return null
   }
-  const report = catchUpSpan(world, store, last, now, {
+  const report = catchUpSpan(world, state, last, now, {
     mode: 'away',
     reason: 'return',
     away: true,
     preview: false,
   })
-  store.pushAwayReport(report)
-  store.setLastSimulatedAt(now)
+  store.set(pushAwayReportAtom, report)
+  store.set(lastSimulatedAtAtom, now)
   return report
 }

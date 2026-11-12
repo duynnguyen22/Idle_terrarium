@@ -7,8 +7,9 @@ import { TOUR_PING_MS } from '@/engine/marks'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { useRelaxMode } from '@/hooks/useRelaxMode'
 import { isEvening, useTour } from '@/hooks/useTour'
-import { useOverlayStore } from '@/store/useOverlayStore'
-import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import { resetOverlayAtom, startTourAtom, tourAtom } from '@/store/overlay'
+import { createDefaultState, patchStudioAtom, relaxModeAtom } from '@/store/studio'
 import * as marks from '@/engine/marks'
 
 vi.mock('@/engine/marks', async (importOriginal) => {
@@ -42,13 +43,13 @@ function Harness() {
   return <TourCaption />
 }
 
-const tour = () => useOverlayStore.getState().tour
+const tour = () => appStore.get(tourAtom)
 
 beforeEach(() => {
   vi.useFakeTimers()
   vi.mocked(marks.pingItem).mockClear()
-  useStudioStore.setState(createDefaultState())
-  useOverlayStore.setState({ growthBoardOpen: false, awayIndex: null, tour: null })
+  appStore.set(patchStudioAtom, createDefaultState())
+  appStore.set(resetOverlayAtom)
   world = createWorld()
   world.items.push(placed('a'), placed('b'), placed('c'))
   registerWorld(world)
@@ -71,7 +72,7 @@ describe('isEvening', () => {
 describe('useTour', () => {
   it('pings each step in order every 4200 ms, then ends', () => {
     render(<Harness />)
-    act(() => useOverlayStore.getState().startTour(steps))
+    act(() => appStore.set(startTourAtom, steps))
     const calls = vi.mocked(marks.pingItem)
     expect(calls).toHaveBeenCalledTimes(1)
     expect(calls).toHaveBeenLastCalledWith(world, 'a', TOUR_PING_MS)
@@ -90,7 +91,7 @@ describe('useTour', () => {
 
   it('shows the quiet caption for an empty tour and ends it after 3200 ms', () => {
     render(<Harness />)
-    act(() => useOverlayStore.getState().startTour([]))
+    act(() => appStore.set(startTourAtom, []))
     expect(screen.getByText('Nothing new to look at yet. Enjoy the quiet.')).toBeInTheDocument()
     expect(marks.pingItem).not.toHaveBeenCalled()
     act(() => void vi.advanceTimersByTime(3199))
@@ -102,11 +103,11 @@ describe('useTour', () => {
 
   it('clears its timer when the tour is ended or the hook unmounts', () => {
     const { unmount } = renderHook(() => useTour())
-    act(() => useOverlayStore.getState().startTour(steps))
-    act(() => useOverlayStore.getState().endTour())
+    act(() => appStore.set(startTourAtom, steps))
+    act(() => appStore.set(tourAtom, null))
     act(() => void vi.advanceTimersByTime(TOUR_PING_MS * 2))
     expect(marks.pingItem).toHaveBeenCalledTimes(1)
-    act(() => useOverlayStore.getState().startTour(steps))
+    act(() => appStore.set(startTourAtom, steps))
     unmount()
     act(() => void vi.advanceTimersByTime(TOUR_PING_MS * 2))
     expect(tour()?.i).toBe(0)
@@ -116,7 +117,7 @@ describe('useTour', () => {
     vi.setSystemTime(new Date(2026, 10, 11, 12, 0))
     render(<Harness />)
     expect(document.getElementById('tour-caption')).toBeNull()
-    act(() => useOverlayStore.getState().startTour(steps))
+    act(() => appStore.set(startTourAtom, steps))
     const caption = document.getElementById('tour-caption')
     expect(caption?.querySelector('.tour-pos')).toHaveTextContent('Since last time · 1 of 3')
     expect(caption?.querySelector('.tour-text')).toHaveTextContent('The rose opened.')
@@ -129,16 +130,16 @@ describe('useTour', () => {
   it('says Tonight in the evening', () => {
     vi.setSystemTime(new Date(2026, 10, 11, 20, 0))
     render(<Harness />)
-    act(() => useOverlayStore.getState().startTour(steps))
+    act(() => appStore.set(startTourAtom, steps))
     expect(document.querySelector('.tour-pos')).toHaveTextContent('Tonight · 1 of 3')
   })
 
   it('ends the tour when relax mode is left', () => {
     render(<Harness />)
-    act(() => useStudioStore.getState().setRelaxMode(true))
-    act(() => useOverlayStore.getState().startTour(steps))
+    act(() => appStore.set(relaxModeAtom, true))
+    act(() => appStore.set(startTourAtom, steps))
     expect(tour()).not.toBeNull()
-    act(() => useStudioStore.getState().setRelaxMode(false))
+    act(() => appStore.set(relaxModeAtom, false))
     expect(tour()).toBeNull()
   })
 })

@@ -1,10 +1,10 @@
+import { atom, useAtomValue, useSetAtom } from 'jotai'
 import { LineIcon, type IconName } from '@/components/ui/LineIcon'
 import type { LightingId } from '@/data/types'
 import { useLocalClock } from '@/hooks/useLocalClock'
 import { plusOneDay } from '@/store/awayFlow'
-import { selectDayCount, selectLighting } from '@/store/selectors'
-import { showToast } from '@/store/toastStore'
-import { useStudioStore } from '@/store/useStudioStore'
+import { dayCountAtom, lightingAtom, realTimeModeAtom, timeSpeedAtom } from '@/store/studio'
+import { showToast } from '@/store/toast'
 
 const PHASE_ICONS: Record<LightingId, IconName> = {
   dawn: 'sunrise',
@@ -24,15 +24,14 @@ const BTN = 'h-8 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 tra
 const ACTIVE = 'bg-forest-deep text-white'
 const IDLE = 'text-ink-brown hover:bg-white/60'
 
-const selectSpeed = (s: { timeSpeed: number; realTimeMode: boolean }) =>
-  `${s.realTimeMode ? 'rt' : 'm'}:${s.timeSpeed}`
+const speedKeyAtom = atom((get) => `${get(realTimeModeAtom) ? 'rt' : 'm'}:${get(timeSpeedAtom)}`)
 
 export function ClockSpeedPill() {
-  const lighting = useStudioStore(selectLighting)
-  const dayCount = useStudioStore(selectDayCount)
-  const speedKey = useStudioStore(selectSpeed)
-  const setTimeSpeed = useStudioStore((s) => s.setTimeSpeed)
-  const setRealTimeMode = useStudioStore((s) => s.setRealTimeMode)
+  const lighting = useAtomValue(lightingAtom)
+  const dayCount = useAtomValue(dayCountAtom)
+  const speedKey = useAtomValue(speedKeyAtom)
+  const setTimeSpeed = useSetAtom(timeSpeedAtom)
+  const setRealTimeMode = useSetAtom(realTimeModeAtom)
   const clock = useLocalClock()
 
   const [mode, speedStr] = speedKey.split(':')

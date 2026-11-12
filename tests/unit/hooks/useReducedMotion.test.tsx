@@ -1,10 +1,17 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
-import { createDefaultState, partialize, useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import {
+  createDefaultState,
+  partialize,
+  patchStudioAtom,
+  reducedMotionAtom,
+  studioStateAtom,
+} from '@/store/studio'
 
 describe('useReducedMotion', () => {
-  beforeEach(() => useStudioStore.setState(createDefaultState()))
+  beforeEach(() => appStore.set(patchStudioAtom, createDefaultState()))
   afterEach(() => vi.unstubAllGlobals())
 
   it('mirrors the media query into the store and follows changes', () => {
@@ -16,13 +23,13 @@ describe('useReducedMotion', () => {
     }
     vi.stubGlobal('matchMedia', () => mql)
     renderHook(() => useReducedMotion())
-    expect(useStudioStore.getState().reducedMotion).toBe(true)
+    expect(appStore.get(reducedMotionAtom)).toBe(true)
     mql.matches = false
     act(() => listener())
-    expect(useStudioStore.getState().reducedMotion).toBe(false)
+    expect(appStore.get(reducedMotionAtom)).toBe(false)
   })
 
   it('is not persisted', () => {
-    expect('reducedMotion' in partialize(useStudioStore.getState())).toBe(false)
+    expect('reducedMotion' in partialize(appStore.get(studioStateAtom))).toBe(false)
   })
 })

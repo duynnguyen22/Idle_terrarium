@@ -1,11 +1,11 @@
+import { useAtom } from 'jotai'
 import { Tabs } from 'radix-ui'
 import { CatalogGrid } from '@/components/catalog/CatalogGrid'
 import { PlantingStageToggle } from '@/components/catalog/PlantingStageToggle'
 import { RoomTab } from '@/components/catalog/RoomTab'
 import { VesselTab } from '@/components/catalog/VesselTab'
 import { TabIcon, type TabIconName } from '@/components/ui/StudioIcons'
-import { selectActiveTab } from '@/store/selectors'
-import { useStudioStore } from '@/store/useStudioStore'
+import { activeTabAtom } from '@/store/studio'
 
 /** Tab bar entries; each uses the artifact's two-tone tab icon of the same name. */
 const TABS = [
@@ -62,8 +62,7 @@ function ActivePanel({ tab }: { tab: string }) {
 
 /** Sidebar: tab bar plus the active tab's panel. */
 export function LeftSidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
-  const activeTab = useStudioStore(selectActiveTab)
-  const setActiveTab = useStudioStore((s) => s.setActiveTab)
+  const [activeTab, setActiveTab] = useAtom(activeTabAtom)
   const select = (id: string) => setActiveTab(id as TabIconName)
   return (
     <Tabs.Root asChild value={activeTab} onValueChange={select}>

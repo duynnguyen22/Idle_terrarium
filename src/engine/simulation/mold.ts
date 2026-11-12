@@ -1,5 +1,5 @@
 import { findCatalogDef } from '@/data/catalog'
-import type { StudioState } from '@/store/useStudioStore'
+import type { StudioState } from '@/store/studio'
 import { randomLandX } from '../geometry'
 import type { EngineWorld } from '../world'
 import { frameScale, simSpeedMult, type Rng } from './constants'

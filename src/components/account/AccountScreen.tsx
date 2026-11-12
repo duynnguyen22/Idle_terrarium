@@ -1,11 +1,17 @@
+import { useAtomValue, useSetAtom } from 'jotai'
 import { Tabs } from 'radix-ui'
-import { useAccount, useAuthEnv } from '@/components/account/auth/authEnv'
+import { useAuthEnv } from '@/components/account/auth/authEnv'
 import {
+  type AccountTab,
   avatarColor,
+  backendAtom,
+  busyAtom,
   CLEARED_ACCOUNT_FORM,
   initialsOf,
-  type AccountTab,
-} from '@/store/useAccountStore'
+  patchAccountAtom,
+  tabAtom,
+  userAtom,
+} from '@/store/account'
 import { GardensTab } from './GardensTab'
 import { JournalTab } from './JournalTab'
 import { ProfileTab } from './ProfileTab'
@@ -20,31 +26,32 @@ const SIGNED_OUT_TEXT = 'You’re signed out. Your terrariums are safe in your a
 
 /** The signed-in account view: who, the three tabs, where saves go and Sign out (spec accountScreen). */
 export function AccountScreen() {
-  const { store, auth } = useAuthEnv()
-  const user = useAccount((s) => s.user)
-  const tab = useAccount((s) => s.tab)
-  const cloud = useAccount((s) => s.backend?.kind === 'cloud')
-  const busy = useAccount((s) => s.busy)
+  const { account, auth } = useAuthEnv()
+  const patchAccount = useSetAtom(patchAccountAtom)
+  const user = useAtomValue(userAtom)
+  const tab = useAtomValue(tabAtom)
+  const cloud = useAtomValue(backendAtom)?.kind === 'cloud'
+  const busy = useAtomValue(busyAtom)
   // Only guards renders outside AccountDialog (test harnesses), which show the account view
   // whatever the phase; the dialog renders this view only while a user is signed in.
   if (!user) return null
 
   const selectTab = (id: AccountTab) => {
-    store.setState({ tab: id, viewData: {} })
+    patchAccount({ tab: id, viewData: {} })
   }
 
   const signOut = () =>
-    void store.getState().run(async () => {
+    void account.run(async () => {
       await auth.signOut()
       // Move to sign in before ending the session: endSession flips the phase at once and then
       // waits on the save flush, and the dialog would otherwise show an empty sign-in screen.
-      store.getState().goView('signin', {
+      account.goView('signin', {
         ...CLEARED_ACCOUNT_FORM,
         email: user.email,
         password: '',
         banner: { kind: 'success', text: SIGNED_OUT_TEXT },
       })
-      await store.getState().endSession('Signed out')
+      await account.endSession('Signed out')
     })
 
   return (

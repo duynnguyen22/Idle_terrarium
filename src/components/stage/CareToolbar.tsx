@@ -1,7 +1,7 @@
+import { useAtom } from 'jotai'
 import { LineIcon, type IconName } from '@/components/ui/LineIcon'
 import { SUBSTRATES_BY_ID, type SubstrateId } from '@/data/substrates'
-import { selectActiveTool } from '@/store/selectors'
-import { useStudioStore } from '@/store/useStudioStore'
+import { activePourMaterialAtom, activeToolAtom } from '@/store/studio'
 
 const TOOLS: readonly { id: string; icon: IconName; label: string }[] = [
   { id: 'select', icon: 'hand', label: 'Move / Mount' },
@@ -22,10 +22,8 @@ function pourLabel(material: string): string {
 }
 
 export function CareToolbar() {
-  const activeTool = useStudioStore(selectActiveTool)
-  const activePourMaterial = useStudioStore((s) => s.activePourMaterial)
-  const setActiveTool = useStudioStore((s) => s.setActiveTool)
-  const setActivePourMaterial = useStudioStore((s) => s.setActivePourMaterial)
+  const [activeTool, setActiveTool] = useAtom(activeToolAtom)
+  const [activePourMaterial, setActivePourMaterial] = useAtom(activePourMaterialAtom)
 
   const pick = (tool: string) => {
     setActiveTool(tool)

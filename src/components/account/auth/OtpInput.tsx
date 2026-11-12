@@ -1,5 +1,7 @@
+import { useAtomValue } from 'jotai'
 import { useRef, type ClipboardEvent, type KeyboardEvent } from 'react'
-import { textPatch, useAccount, useAuthEnv, type TextKey } from './authEnv'
+import { textPatch, useAuthEnv, type TextKey } from './authEnv'
+import { viewDataAtom } from '@/store/account'
 
 const LEN = 6
 
@@ -15,9 +17,9 @@ export function OtpInput({
   name: TextKey
   onComplete?: (code: string) => void
 }) {
-  const { store } = useAuthEnv()
-  const value = useAccount((s) => s.viewData[name] ?? '')
-  const err = useAccount((s) => s.viewData.fieldErrors?.[name])
+  const { account } = useAuthEnv()
+  const value = useAtomValue(viewDataAtom)[name] ?? ''
+  const err = useAtomValue(viewDataAtom).fieldErrors?.[name]
   const boxes = useRef<(HTMLInputElement | null)[]>([])
   // Empty boxes are stored as spaces so each digit keeps its position.
   const digits = Array.from({ length: LEN }, (_, i) => (value[i] ?? '').trim())
@@ -30,7 +32,7 @@ export function OtpInput({
       .map((d) => d || ' ')
       .join('')
       .trimEnd()
-    store.getState().setViewData(textPatch(name, code))
+    account.setViewData(textPatch(name, code))
     if (/^\d{6}$/.test(code)) onComplete?.(code)
   }
 

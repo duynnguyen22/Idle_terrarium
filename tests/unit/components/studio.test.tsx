@@ -8,19 +8,31 @@ import { GaugeBar } from '@/components/telemetry/GaugeBar'
 import { DEFAULT_ROOM } from '@/engine/room'
 import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { createWorld, type EngineWorld } from '@/engine/world'
-import { showToast, useToastStore } from '@/store/toastStore'
-import { useOverlayStore } from '@/store/useOverlayStore'
-import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
-import { useAccountStore } from '@/store/useAccountStore'
 import { createLocalBackend } from '@/auth/backend'
 import { MemoryStorage } from './auth/authHarness'
-import {
-  createDefaultTelemetry,
-  useTelemetryStore,
-  type Telemetry,
-} from '@/store/useTelemetryStore'
 import type { PlacedItem } from '@/data/types'
 import type { CareIssue } from '@/engine/care'
+import { appStore } from '@/store/appStore'
+import {
+  autoLightSyncAtom,
+  awayLogAtom,
+  createDefaultState,
+  dayCountAtom,
+  hasLidAtom,
+  patchStudioAtom,
+  studioStateAtom,
+  substratesAtom,
+  worldSnapshotAtom,
+} from '@/store/studio'
+import { awayIndexAtom, resetOverlayAtom } from '@/store/overlay'
+import { showToast, toastAtom } from '@/store/toast'
+import {
+  createDefaultTelemetry,
+  resetTelemetryAtom,
+  telemetryAtom,
+  type Telemetry,
+} from '@/store/telemetry'
+import { journalAtom, patchAccountAtom, resetAccountAtom } from '@/store/account'
 
 const item = (uid: string, category: PlacedItem['category']): PlacedItem => ({
   uid,
@@ -35,21 +47,20 @@ const item = (uid: string, category: PlacedItem['category']): PlacedItem => ({
 })
 
 let world: EngineWorld
-const initialAccount = useAccountStore.getState()
 const user = () => ({ click: (el: HTMLElement) => act(() => void fireEvent.click(el)) })
 
 beforeEach(() => {
   vi.useFakeTimers()
-  useStudioStore.setState(createDefaultState())
-  useTelemetryStore.setState({ telemetry: createDefaultTelemetry() })
-  useToastStore.setState({ message: '', visible: false })
-  useOverlayStore.setState({ growthBoardOpen: false, awayIndex: null, tour: null })
+  appStore.set(patchStudioAtom, createDefaultState())
+  appStore.set(resetTelemetryAtom, createDefaultTelemetry())
+  appStore.set(toastAtom, { message: '', visible: false })
+  appStore.set(resetOverlayAtom)
   world = createWorld()
   registerWorld(world)
 })
 
 afterEach(() => {
-  useAccountStore.setState(initialAccount, true)
+  appStore.set(resetAccountAtom)
   unregisterWorld()
   vi.useRealTimers()
 })
@@ -63,24 +74,24 @@ describe('TopNav speed controls', () => {
       'true',
     )
     await u.click(screen.getByRole('button', { name: /5×/ }))
-    expect(useStudioStore.getState()).toMatchObject({ timeSpeed: 5, realTimeMode: false })
+    expect(appStore.get(studioStateAtom)).toMatchObject({ timeSpeed: 5, realTimeMode: false })
     expect(screen.getByRole('button', { name: /5×/ })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: /real-time/i })).toHaveAttribute(
       'aria-pressed',
       'false',
     )
     await u.click(screen.getByRole('button', { name: 'Pause' }))
-    expect(useStudioStore.getState()).toMatchObject({ timeSpeed: 0, realTimeMode: false })
+    expect(appStore.get(studioStateAtom)).toMatchObject({ timeSpeed: 0, realTimeMode: false })
     expect(screen.getByRole('button', { name: 'Pause' })).toHaveAttribute('aria-pressed', 'true')
     await u.click(screen.getByRole('button', { name: '1×' }))
-    expect(useStudioStore.getState()).toMatchObject({ timeSpeed: 1, realTimeMode: false })
+    expect(appStore.get(studioStateAtom)).toMatchObject({ timeSpeed: 1, realTimeMode: false })
     await u.click(screen.getByRole('button', { name: /real-time/i }))
-    expect(useStudioStore.getState()).toMatchObject({ timeSpeed: 1, realTimeMode: true })
+    expect(appStore.get(studioStateAtom)).toMatchObject({ timeSpeed: 1, realTimeMode: true })
   })
 
   it('shows the real date and Day N', () => {
     vi.setSystemTime(new Date(2026, 2, 9, 14, 5, 7))
-    useStudioStore.setState({ dayCount: 4 })
+    appStore.set(patchStudioAtom, { dayCount: 4 })
     render(<TopNav />)
     expect(screen.getByText('Mar 9 · Day 4')).toBeInTheDocument()
     expect(screen.getByText('14:05:07')).toBeInTheDocument()
@@ -94,18 +105,18 @@ describe('TopNav speed controls', () => {
     world.items = [{ ...item('f', 'flora'), scale: 1 }]
     render(<TopNav />)
     await user().click(screen.getByRole('button', { name: '+1 day' }))
-    expect(useStudioStore.getState().dayCount).toBe(2)
+    expect(appStore.get(dayCountAtom)).toBe(2)
     expect(world.ecoTime).toBeCloseTo(1, 9)
     // The flat x1.06 bump is gone; size now follows plant vitality inside the ecology step.
     expect(world.items[0].scale).toBe(1)
-    expect(useToastStore.getState().message).toMatch(/^Day 2: plants grew/)
+    expect(appStore.get(toastAtom).message).toMatch(/^Day 2: plants grew/)
   })
 
   it('+1 day logs a day report and opens the away card', async () => {
     render(<TopNav />)
     await user().click(screen.getByRole('button', { name: '+1 day' }))
-    expect(useOverlayStore.getState().awayIndex).toBe(0)
-    expect(useStudioStore.getState().awayLog[0]).toMatchObject({
+    expect(appStore.get(awayIndexAtom)).toBe(0)
+    expect(appStore.get(awayLogAtom)[0]).toMatchObject({
       mode: 'day',
       reason: '+1 day',
       tankHours: 24,
@@ -117,7 +128,7 @@ describe('TopNav speed controls', () => {
     render(<TopNav />)
     await user().click(screen.getByRole('button', { name: '+1 day' }))
     expect(world.env.cycleProgress).toBe(1)
-    expect(useToastStore.getState().message).toBe('Day 2: plants grew. The pool has cycled.')
+    expect(appStore.get(toastAtom).message).toBe('Day 2: plants grew. The pool has cycled.')
   })
 
   it('+Day writes an automatic journal entry when signed in, and nothing when signed out', async () => {
@@ -130,26 +141,26 @@ describe('TopNav speed controls', () => {
     const plusDay = screen.getByRole('button', { name: '+1 day' })
 
     // Signed out: the backend is never touched.
-    useAccountStore.setState({ phase: 'signedout', activeId: 'g_a', backend })
+    appStore.set(patchAccountAtom, { phase: 'signedout', activeId: 'g_a', backend })
     await user().click(plusDay)
     await act(async () => {})
-    expect(useStudioStore.getState().dayCount).toBe(2)
+    expect(appStore.get(dayCountAtom)).toBe(2)
     expect(addJournal).not.toHaveBeenCalled()
 
     // Signed in with an open terrarium: one automatic entry for the new day, no extra toast.
-    useAccountStore.setState({ phase: 'cloud', activeId: 'g_a', backend })
+    appStore.set(patchAccountAtom, { phase: 'cloud', activeId: 'g_a', backend })
     await user().click(plusDay)
-    await vi.waitFor(() => expect(useAccountStore.getState().journal).toHaveLength(1))
+    await vi.waitFor(() => expect(appStore.get(journalAtom)).toHaveLength(1))
     const saved = await backend.listJournal('g_a')
     expect(saved).toHaveLength(1)
     expect(saved[0]).toMatchObject({ day: 3, auto: true })
     expect(saved[0].note).toMatch(/^(One day later: |A quiet stretch\.)/)
     expect(saved[0].key).toMatch(/^day:\d+:\d+$/)
     expect(saved[0].issues).toEqual(['The substrate is drying out and the moss looks pale.'])
-    expect(useToastStore.getState().message).toMatch(/^Day 3: plants grew/)
+    expect(appStore.get(toastAtom).message).toMatch(/^Day 3: plants grew/)
 
     // Signed in but no terrarium open yet: nothing either.
-    useAccountStore.setState({ activeId: null })
+    appStore.set(patchAccountAtom, { activeId: null })
     await user().click(plusDay)
     await act(async () => {})
     expect(addJournal).toHaveBeenCalledTimes(1)
@@ -158,12 +169,10 @@ describe('TopNav speed controls', () => {
   it('+Day refreshes the care report so the automatic entry records the new day', async () => {
     const backend = createLocalBackend('u_demo', new MemoryStorage())
     // The telemetry store still holds the previous day's flush.
-    useTelemetryStore.setState({
-      telemetry: {
-        ...createDefaultTelemetry(),
-        nutrients: 88,
-        careIssues: [{ level: 'warn', text: 'Yesterday’s stale warning.' }],
-      },
+    appStore.set(resetTelemetryAtom, {
+      ...createDefaultTelemetry(),
+      nutrients: 88,
+      careIssues: [{ level: 'warn', text: 'Yesterday’s stale warning.' }],
     })
     world.env.nutrients = 50
     world.env.soilMoisture = 30
@@ -171,14 +180,14 @@ describe('TopNav speed controls', () => {
     world.items = Array.from({ length: 5 }, (_, i) => item(`f${i}`, 'flora'))
     // Inside the throttle window: a throttled push would skip the flush.
     world.lastTelemetryPush = performance.now()
-    useAccountStore.setState({ phase: 'cloud', activeId: 'g_a', backend })
+    appStore.set(patchAccountAtom, { phase: 'cloud', activeId: 'g_a', backend })
     render(<TopNav />)
     await user().click(screen.getByRole('button', { name: '+1 day' }))
-    await vi.waitFor(() => expect(useAccountStore.getState().journal).toHaveLength(1))
+    await vi.waitFor(() => expect(appStore.get(journalAtom)).toHaveLength(1))
     const [saved] = await backend.listJournal('g_a')
     expect(saved.metrics.nutrients).toBe(48)
     expect(saved.issues).toEqual(['The substrate is drying out and the moss looks pale.'])
-    expect(useTelemetryStore.getState().telemetry.nutrients).toBeCloseTo(48, 6)
+    expect(appStore.get(telemetryAtom).nutrients).toBeCloseTo(48, 6)
   })
 })
 
@@ -187,9 +196,9 @@ describe('lighting', () => {
     render(<LightingControls />)
     const u = user()
     await u.click(screen.getByRole('button', { name: 'Night' }))
-    expect(useStudioStore.getState()).toMatchObject({ lighting: 'night', autoLightSync: false })
+    expect(appStore.get(studioStateAtom)).toMatchObject({ lighting: 'night', autoLightSync: false })
     await u.click(screen.getByRole('button', { name: 'Auto' }))
-    expect(useStudioStore.getState().autoLightSync).toBe(true)
+    expect(appStore.get(autoLightSyncAtom)).toBe(true)
   })
 
   it.each([
@@ -198,7 +207,7 @@ describe('lighting', () => {
     ['twilight', 'Dusk · lamp winding down'],
     ['night', 'Night · respiration'],
   ] as const)('cycle badge for %s', (lighting, text) => {
-    useStudioStore.setState({ lighting })
+    appStore.set(patchStudioAtom, { lighting })
     render(<TopNav />)
     expect(screen.getByText(text)).toBeInTheDocument()
   })
@@ -229,8 +238,8 @@ describe('utility actions', () => {
     expect(world.items).toEqual([])
     expect(world.mossTufts).toEqual([])
     expect(world.breed).toEqual({})
-    expect(useStudioStore.getState().worldSnapshot?.items).toEqual([])
-    expect(useToastStore.getState().message).toBe('Cleared all specimens')
+    expect(appStore.get(worldSnapshotAtom)?.items).toEqual([])
+    expect(appStore.get(toastAtom).message).toBe('Cleared all specimens')
   })
 
   it('Rebuild applies Falls Lake to the world and store', async () => {
@@ -252,8 +261,8 @@ describe('utility actions', () => {
       growthProgress: 0.85,
       vitality: 98,
     })
-    expect(useStudioStore.getState().substrates.water).toBe(45)
-    expect(useStudioStore.getState().worldSnapshot?.items.length).toBe(world.items.length)
+    expect(appStore.get(substratesAtom).water).toBe(45)
+    expect(appStore.get(worldSnapshotAtom)?.items.length).toBe(world.items.length)
   })
 })
 
@@ -285,13 +294,13 @@ describe('GaugeBar', () => {
 })
 
 const withTelemetry = (partial: Partial<Telemetry>) =>
-  useTelemetryStore.setState({ telemetry: { ...createDefaultTelemetry(), ...partial } })
+  appStore.set(resetTelemetryAtom, { ...createDefaultTelemetry(), ...partial })
 
 const warn = (text: string): CareIssue => ({ level: 'warn', text })
 
 describe('RightTelemetry', () => {
   it('renders water and air gauges from the room model', () => {
-    useStudioStore.setState({ room: { ...DEFAULT_ROOM, water: 'tap' } })
+    appStore.set(patchStudioAtom, { room: { ...DEFAULT_ROOM, water: 'tap' } })
     render(<RightTelemetry />)
     expect(screen.getByTestId('gauge-water')).toHaveAttribute('data-in-band', 'false')
     expect(screen.getByText('55 · Poor')).toBeInTheDocument()
@@ -312,7 +321,7 @@ describe('RightTelemetry', () => {
   })
 
   it('notes an active purifier on the air gauge', () => {
-    useStudioStore.setState({ room: { ...DEFAULT_ROOM, air: 'traffic', purifier: true } })
+    appStore.set(patchStudioAtom, { room: { ...DEFAULT_ROOM, air: 'traffic', purifier: true } })
     render(<RightTelemetry />)
     expect(screen.getByText('Near a busy road · purifier on')).toBeInTheDocument()
   })
@@ -333,7 +342,7 @@ describe('RightTelemetry', () => {
         { level: 'warn', text: 'Hello note' },
       ],
     })
-    useStudioStore.setState({
+    appStore.set(patchStudioAtom, {
       worldSnapshot: {
         items: [item('a', 'fauna'), item('b', 'fauna'), item('c', 'flora')],
         terrainContour: [],
@@ -383,7 +392,7 @@ describe('RightTelemetry', () => {
 
   it('conflicting ranges hide the band and leave the gauge on', () => {
     withTelemetry({ humidity: 70 })
-    useStudioStore.setState({
+    appStore.set(patchStudioAtom, {
       worldSnapshot: {
         items: [
           { ...item('e', 'flora'), id: 'echeveria' },
@@ -407,7 +416,7 @@ describe('RightTelemetry', () => {
     const { unmount } = render(<RightTelemetry />)
     expect(screen.getByTestId('gauge-o2')).toHaveAttribute('data-in-band', 'false')
     unmount()
-    useStudioStore.setState({ lighting: 'night' })
+    appStore.set(patchStudioAtom, { lighting: 'night' })
     render(<RightTelemetry />)
     expect(screen.getByTestId('gauge-o2')).toHaveAttribute('data-in-band', 'true')
   })
@@ -434,8 +443,8 @@ describe('RightTelemetry', () => {
     })
     render(<RightTelemetry />)
     await user().click(screen.getByRole('button', { name: 'Crack the lid open' }))
-    expect(useStudioStore.getState().hasLid).toBe(false)
-    expect(useToastStore.getState().message).toBe('Lid cracked open to vent moisture')
+    expect(appStore.get(hasLidAtom)).toBe(false)
+    expect(appStore.get(toastAtom).message).toBe('Lid cracked open to vent moisture')
     expect(world.careIssues).not.toContainEqual(expect.objectContaining({ text: 'x' }))
   })
 
@@ -447,7 +456,7 @@ describe('RightTelemetry', () => {
 
   it('eco stats copy', () => {
     withTelemetry({ condensation: 0.6, moldCount: 1, cleanupCrewCount: 0 })
-    useStudioStore.setState({ waterSplit: 0.32, cycleProgress: 0.3 })
+    appStore.set(patchStudioAtom, { waterSplit: 0.32, cycleProgress: 0.3 })
     const first = render(<RightTelemetry />)
     expect(screen.getByText('Heavy fog')).toBeInTheDocument()
     expect(screen.getByText('Cycling, day 7 of ~21 · NH₃ 3.5 · NO₂ 0.0 ppm')).toBeInTheDocument()
@@ -456,12 +465,12 @@ describe('RightTelemetry', () => {
     expect(screen.getByText('None yet')).toBeInTheDocument()
     first.unmount()
 
-    useStudioStore.setState({ cycleProgress: 1, pumpFlow: 'gentle' })
+    appStore.set(patchStudioAtom, { cycleProgress: 1, pumpFlow: 'gentle' })
     const second = render(<RightTelemetry />)
     expect(screen.getByText('Cycled · ammonia 0 ppm · pump gentle')).toBeInTheDocument()
     second.unmount()
 
-    useStudioStore.setState({ waterSplit: 0 })
+    appStore.set(patchStudioAtom, { waterSplit: 0 })
     withTelemetry({ condensation: 0, moldCount: 0, cleanupCrewCount: 3 })
     render(<RightTelemetry />)
     expect(screen.getByText('No pool in this build')).toBeInTheDocument()

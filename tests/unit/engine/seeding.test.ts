@@ -1,3 +1,4 @@
+import { createStore, type Store } from 'jotai'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { applyPreset, seedInitialScene } from '@/engine/presets'
@@ -8,12 +9,14 @@ import {
   getWaterTopNormY,
 } from '@/engine/geometry'
 import { createWorld, type EngineWorld } from '@/engine/world'
+import { appStore } from '@/store/appStore'
 import {
+  bindStudioStorage,
   createDefaultState,
-  createStudioStore,
-  useStudioStore,
-  type StudioStoreHook,
-} from '@/store/useStudioStore'
+  patchStudioAtom,
+  studioStateAtom,
+  worldSnapshotAtom,
+} from '@/store/studio'
 
 function makeMemoryStorage(): Storage {
   const m = new Map<string, string>()
@@ -31,7 +34,7 @@ function makeMemoryStorage(): Storage {
 
 beforeEach(() => {
   unregisterWorld()
-  useStudioStore.setState(createDefaultState())
+  appStore.set(patchStudioAtom, createDefaultState())
 })
 
 describe('seedInitialScene', () => {
@@ -40,32 +43,33 @@ describe('seedInitialScene', () => {
     registerWorld(world)
     expect(seedInitialScene(world)).toBe(true)
     expect(world.items).toHaveLength(17)
-    expect(useStudioStore.getState().worldSnapshot?.items).toHaveLength(17)
+    expect(appStore.get(worldSnapshotAtom)?.items).toHaveLength(17)
   })
 
   it('leaves a populated world untouched', () => {
     const world = createWorld()
     registerWorld(world)
     seedInitialScene(world)
-    const snap = useStudioStore.getState().worldSnapshot
+    const snap = appStore.get(worldSnapshotAtom)
     expect(seedInitialScene(world)).toBe(false)
-    expect(useStudioStore.getState().worldSnapshot).toBe(snap)
+    expect(appStore.get(worldSnapshotAtom)).toBe(snap)
   })
 })
 
 describe('applyPreset', () => {
   let w: EngineWorld
-  let store: StudioStoreHook
+  let store: Store
 
   beforeEach(() => {
     w = createWorld()
-    store = createStudioStore(makeMemoryStorage())
+    store = createStore()
+    bindStudioStorage(store, makeMemoryStorage())
   })
 
   it('falls preset builds the v6 scene', () => {
-    const toast = applyPreset(w, 'falls', store.getState())
+    const toast = applyPreset(w, 'falls', store)
     expect(toast).toBe('Falls Lake: 30% pool, waterfall and moss wall')
-    expect(store.getState()).toMatchObject({
+    expect(store.get(studioStateAtom)).toMatchObject({
       vessel: 'paludarium_tank',
       pumpFlow: 'gentle',
       waterSplit: 0.32,
@@ -85,7 +89,7 @@ describe('applyPreset', () => {
     const frogbit = w.items.find((i) => i.id === 'frogbit_pads')!
     expect(frogbit.y).toBeCloseTo(
       getWaterTopNormY({
-        substrates: store.getState().substrates,
+        substrates: store.get(studioStateAtom).substrates,
         waterSplit: 0.32,
         terrainContour: w.terrainContour,
       }),
@@ -94,7 +98,13 @@ describe('applyPreset', () => {
   })
 
   it('falls resets the build clock, env cycle and per-scene transients', () => {
-    store.setState({ dayCount: 9, setupDay: 1, cycleProgress: 0.2, waterSplit: 0, hasLid: false })
+    store.set(patchStudioAtom, {
+      dayCount: 9,
+      setupDay: 1,
+      cycleProgress: 0.2,
+      waterSplit: 0,
+      hasLid: false,
+    })
     w.env.cycleProgress = 0.2
     w.moldPatches.push({ x: 0.5, size: 10 })
     w.surfaceGrains.push({ x: 0.5 })
@@ -102,10 +112,10 @@ describe('applyPreset', () => {
     w.pendingWaterSplit = 0.1
     w.mossTufts.push({ x: 0.4, r: 3, w: 1, seed: 1 })
     w.breed = { springtails: 0.4 }
-    applyPreset(w, 'falls', store.getState())
+    applyPreset(w, 'falls', store)
     expect(w.mossTufts).toHaveLength(0)
     expect(w.breed).toEqual({})
-    expect(store.getState().setupDay).toBe(9)
+    expect(store.get(studioStateAtom).setupDay).toBe(9)
     expect(w.env.cycleProgress).toBe(1)
     expect(w.moldPatches).toHaveLength(0)
     expect(w.surfaceGrains).toHaveLength(0)
@@ -114,9 +124,9 @@ describe('applyPreset', () => {
   })
 
   it('falls places items by the prototype anchors', () => {
-    applyPreset(w, 'falls', store.getState())
+    applyPreset(w, 'falls', store)
     const t = {
-      substrates: store.getState().substrates,
+      substrates: store.get(studioStateAtom).substrates,
       waterSplit: 0.32,
       terrainContour: w.terrainContour,
     }
@@ -140,12 +150,12 @@ describe('applyPreset', () => {
   })
 
   it('desert recipe clears the pool and the fogger', () => {
-    applyPreset(w, 'falls', store.getState())
+    applyPreset(w, 'falls', store)
     w.surfaceGrains.push({ x: 0.5 })
-    expect(applyPreset(w, 'desert', store.getState())).toBe('Arid: open top, sand, no fogger')
-    expect(store.getState().waterSplit).toBe(0)
-    expect(store.getState().hasFogger).toBe(false)
-    expect(store.getState().hasLid).toBe(false)
+    expect(applyPreset(w, 'desert', store)).toBe('Arid: open top, sand, no fogger')
+    expect(store.get(studioStateAtom).waterSplit).toBe(0)
+    expect(store.get(studioStateAtom).hasFogger).toBe(false)
+    expect(store.get(studioStateAtom).hasLid).toBe(false)
     expect(w.surfaceGrains).toHaveLength(0)
     expect(w.terrainContour.every((v) => v === 0)).toBe(true)
     expect(w.items).toHaveLength(17)
@@ -154,10 +164,12 @@ describe('applyPreset', () => {
   it('lagoon recipe sets the pool and a cycled env without touching the bloom timer', () => {
     w.env.cycleProgress = 0
     w.env.bloomTimer = 0
-    expect(applyPreset(w, 'paludarium', store.getState())).toBe(
-      'Lagoon: 45% pool for fish and shrimp',
-    )
-    expect(store.getState()).toMatchObject({ waterSplit: 0.45, cycleProgress: 1, hasLid: true })
+    expect(applyPreset(w, 'paludarium', store)).toBe('Lagoon: 45% pool for fish and shrimp')
+    expect(store.get(studioStateAtom)).toMatchObject({
+      waterSplit: 0.45,
+      cycleProgress: 1,
+      hasLid: true,
+    })
     expect(w.env.cycleProgress).toBe(1)
     expect(w.env.bloomTimer).toBe(0)
   })

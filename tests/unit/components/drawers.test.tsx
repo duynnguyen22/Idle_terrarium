@@ -1,11 +1,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { StudioLayout } from '@/components/layout/StudioLayout'
-import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
-import { WELCOME_KEY } from '@/store/useAccountStore'
+import { appStore } from '@/store/appStore'
+import { createDefaultState, patchStudioAtom, selectedIdAtom } from '@/store/studio'
+import { WELCOME_KEY } from '@/store/account'
 
 beforeEach(() => {
-  useStudioStore.setState(createDefaultState())
+  appStore.set(patchStudioAtom, createDefaultState())
   // Skip the first-visit sign-up prompt: Radix's modal dialog hides the page behind it.
   localStorage.setItem(WELCOME_KEY, '1')
   vi.stubGlobal('matchMedia', (query: string) => ({
@@ -50,7 +51,7 @@ describe('responsive drawers', () => {
   })
 
   it('Escape closes the drawer only (selection kept) and returns focus to the toggle', () => {
-    useStudioStore.getState().selectItem('some-item')
+    appStore.set(selectedIdAtom, 'some-item')
     render(<StudioLayout>{null}</StudioLayout>)
     const left = screen.getByRole('button', { name: 'Toggle catalog panel' })
     act(() => void fireEvent.click(left))
@@ -60,12 +61,12 @@ describe('responsive drawers', () => {
     )
     act(() => void fireEvent.keyDown(document.body, { key: 'Escape' }))
     expect(document.getElementById('left-sidebar')).toHaveAttribute('data-drawer-open', 'false')
-    expect(useStudioStore.getState().selectedId).toBe('some-item')
+    expect(appStore.get(selectedIdAtom)).toBe('some-item')
     expect(left).toHaveFocus()
 
     // With no drawer open, Escape still clears the selection.
     act(() => void fireEvent.keyDown(document.body, { key: 'Escape' }))
-    expect(useStudioStore.getState().selectedId).toBeNull()
+    expect(appStore.get(selectedIdAtom)).toBeNull()
   })
 
   it('moves focus into the right drawer on open', () => {

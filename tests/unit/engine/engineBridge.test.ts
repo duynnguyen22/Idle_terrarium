@@ -9,11 +9,12 @@ import {
   unregisterWorld,
 } from '@/engine/engineBridge'
 import { createWorld } from '@/engine/world'
-import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import { createDefaultState, patchStudioAtom, worldSnapshotAtom } from '@/store/studio'
 
 beforeEach(() => {
   unregisterWorld()
-  useStudioStore.setState(createDefaultState())
+  appStore.set(patchStudioAtom, createDefaultState())
 })
 
 describe('engineBridge', () => {
@@ -44,7 +45,7 @@ describe('engineBridge', () => {
     mutateWorld((w) => {
       w.terrainContour[0] = 3
     })
-    const snap = useStudioStore.getState().worldSnapshot
+    const snap = appStore.get(worldSnapshotAtom)
     expect(snap?.terrainContour[0]).toBe(3)
     expect(isOwnSnapshot(snap)).toBe(true)
     expect(isOwnSnapshot({ items: [], terrainContour: [] })).toBe(false)

@@ -1,7 +1,8 @@
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect } from 'react'
 import { tryGetWorld } from '@/engine/engineBridge'
 import { pingItem, TOUR_PING_MS } from '@/engine/marks'
-import { useOverlayStore } from '@/store/useOverlayStore'
+import { nextTourAtom, tourAtom } from '@/store/overlay'
 
 /** How long the "nothing to look at" caption stays when a visit has no live items. */
 export const TOUR_QUIET_MS = 3200
@@ -17,11 +18,13 @@ export function isEvening(d: Date = new Date()): boolean {
  * caption for 3.2 s. Timers are cleared whenever the tour changes and on unmount.
  */
 export function useTour(): void {
-  const tour = useOverlayStore((s) => s.tour)
+  const tour = useAtomValue(tourAtom)
+  const setTour = useSetAtom(tourAtom)
+  const nextTour = useSetAtom(nextTourAtom)
 
   useEffect(() => {
     if (!tour) return
-    const { nextTour, endTour } = useOverlayStore.getState()
+    const endTour = () => setTour(null)
     const step = tour.steps[tour.i]
     if (!step) {
       const timer = setTimeout(endTour, TOUR_QUIET_MS)
@@ -31,5 +34,5 @@ export function useTour(): void {
     if (world) pingItem(world, step.uid, TOUR_PING_MS)
     const timer = setTimeout(nextTour, TOUR_PING_MS)
     return () => clearTimeout(timer)
-  }, [tour])
+  }, [tour, setTour, nextTour])
 }

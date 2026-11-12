@@ -5,8 +5,19 @@ import { AUTH_SESSION_KEY, AUTH_USERS_KEY } from '@/auth'
 import { snapshotWorld } from '@/engine/persistence'
 import { createWorld } from '@/engine/world'
 import { useAccountLifecycle } from '@/hooks/useAccountLifecycle'
-import { useAccountStore } from '@/store/useAccountStore'
-import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+import { account, patchAccountAtom, resetAccountAtom } from '@/store/account'
+import { appStore } from '@/store/appStore'
+import {
+  createDefaultState,
+  cycleProgressAtom,
+  dayCountAtom,
+  envSeedAtom,
+  mineralSpotsAtom,
+  patchStudioAtom,
+  studioStateAtom,
+  worldSeedAtom,
+  worldSnapshotAtom,
+} from '@/store/studio'
 
 const initAccount = vi.fn(() => Promise.resolve())
 const watchSession = vi.fn()
@@ -18,20 +29,20 @@ beforeEach(() => {
   watchSession.mockClear()
   scheduleCloudSave.mockClear()
   // createDefaultState draws a fresh worldSeed; keep the live one so the reset is not a persisted change.
-  useStudioStore.setState({
+  appStore.set(patchStudioAtom, {
     ...createDefaultState(),
-    worldSeed: useStudioStore.getState().worldSeed,
+    worldSeed: appStore.get(worldSeedAtom),
   })
-  useAccountStore.setState({
-    ...useAccountStore.getInitialState(),
-    initAccount,
-    watchSession,
-    scheduleCloudSave,
-  })
+  appStore.set(resetAccountAtom)
+  // The hook calls the account singleton's methods, so replace them on the object.
+  vi.spyOn(account, 'initAccount').mockImplementation(initAccount)
+  vi.spyOn(account, 'watchSession').mockImplementation(watchSession)
+  vi.spyOn(account, 'scheduleCloudSave').mockImplementation(scheduleCloudSave)
 })
 afterEach(() => {
   vi.useRealTimers()
-  useAccountStore.setState(useAccountStore.getInitialState(), true)
+  vi.restoreAllMocks()
+  appStore.set(resetAccountAtom)
 })
 
 const storageEvent = (key: string) => window.dispatchEvent(new StorageEvent('storage', { key }))
@@ -71,28 +82,32 @@ describe('useAccountLifecycle', () => {
 
   it('a persisted studio change schedules a cloud save; a transient one does not', () => {
     renderHook(() => useAccountLifecycle())
-    act(() => useStudioStore.setState({ selectedId: 'x' }))
+    act(() => appStore.set(patchStudioAtom, { selectedId: 'x' }))
     expect(scheduleCloudSave).not.toHaveBeenCalled()
-    act(() => useStudioStore.setState({ dayCount: useStudioStore.getState().dayCount + 1 }))
+    act(() => appStore.set(dayCountAtom, appStore.get(dayCountAtom) + 1))
     expect(scheduleCloudSave).toHaveBeenCalledTimes(1)
   })
 
   it('simulation writes (env seed, cycle progress, glass residue) do not schedule a save; an item edit does', () => {
     renderHook(() => useAccountLifecycle())
     act(() => {
-      const s = useStudioStore.getState()
-      s.setEnvSeed({ humidity: 61.3, temperature: 23.4, soilMoisture: 47.2, nutrients: 66.1 })
-      s.setCycleProgress(0.42)
-      s.setMineralSpots(0.25)
+      appStore.set(envSeedAtom, {
+        humidity: 61.3,
+        temperature: 23.4,
+        soilMoisture: 47.2,
+        nutrients: 66.1,
+      })
+      appStore.set(cycleProgressAtom, 0.42)
+      appStore.set(mineralSpotsAtom, 0.25)
     })
-    expect(useStudioStore.getState()).toMatchObject({
+    expect(appStore.get(studioStateAtom)).toMatchObject({
       envSeed: { humidity: 61.3 },
       cycleProgress: 0.42,
       mineralSpots: 0.25,
     })
     expect(scheduleCloudSave).not.toHaveBeenCalled()
     // The engine commits a world snapshot after an item is placed, moved or removed.
-    act(() => useStudioStore.getState().setWorldSnapshot(snapshotWorld(createWorld())))
+    act(() => appStore.set(worldSnapshotAtom, snapshotWorld(createWorld())))
     expect(scheduleCloudSave).toHaveBeenCalledTimes(1)
   })
 
@@ -103,7 +118,7 @@ describe('useAccountLifecycle', () => {
     })
     expect(scheduleCloudSave).not.toHaveBeenCalled()
 
-    useAccountStore.setState({ phase: 'cloud' })
+    appStore.set(patchAccountAtom, { phase: 'cloud' })
     act(() => {
       vi.advanceTimersByTime(120_000)
     })
@@ -124,7 +139,7 @@ describe('useAccountLifecycle', () => {
     expect(vi.getTimerCount()).toBe(0)
     act(() => {
       storageEvent(AUTH_SESSION_KEY)
-      useStudioStore.setState({ dayCount: useStudioStore.getState().dayCount + 1 })
+      appStore.set(dayCountAtom, appStore.get(dayCountAtom) + 1)
       vi.advanceTimersByTime(240_000)
     })
     expect(watchSession).not.toHaveBeenCalled()

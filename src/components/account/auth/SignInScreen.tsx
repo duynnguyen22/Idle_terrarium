@@ -1,5 +1,7 @@
+import { useAtomValue, useStore } from 'jotai'
 import type { FormEvent } from 'react'
-import { RESEND_WINDOW_MS, useAccount, useAuthEnv } from './authEnv'
+import { RESEND_WINDOW_MS, useAuthEnv } from './authEnv'
+import { busyAtom, phaseAtom, viewDataAtom } from '@/store/account'
 import { AuthField } from './AuthField'
 import {
   AuthHeader,
@@ -14,39 +16,40 @@ import {
 
 /** Email and password sign-in (spec Screens.signin). */
 export function SignInScreen() {
-  const { store, auth, toast } = useAuthEnv()
-  const hasEmail = useAccount((s) => !!s.viewData.email)
-  const remember = useAccount((s) => s.viewData.remember ?? true)
+  const { account, auth, toast } = useAuthEnv()
+  const store = useStore()
+  const hasEmail = !!useAtomValue(viewDataAtom).email
+  const remember = useAtomValue(viewDataAtom).remember ?? true
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
-    void store.getState().run(async () => {
-      const v = store.getState().viewData
+    void account.run(async () => {
+      const v = store.get(viewDataAtom)
       const r = await auth.signIn({
         email: v.email ?? '',
         password: v.password ?? '',
         remember: v.remember ?? true,
       })
       // The form is done: the button should not read "Please wait…" while the session loads.
-      store.setState({ busy: false })
-      await store.getState().beginSession(r.user, r.session, { isNew: false })
-      if (store.getState().phase === 'cloud') {
-        store.getState().closePanel()
+      store.set(busyAtom, false)
+      await account.beginSession(r.user, r.session, { isNew: false })
+      if (store.get(phaseAtom) === 'cloud') {
+        account.closePanel()
         toast(`Welcome back, ${r.user.name.split(' ')[0]}`)
       }
     })
   }
 
   const sendLink = () =>
-    void store.getState().run(async () => {
-      await auth.sendMagicLink(store.getState().viewData.email ?? '')
+    void account.run(async () => {
+      await auth.sendMagicLink(store.get(viewDataAtom).email ?? '')
       // Clear busy before the screen changes: the dialog focuses "Open the link" on arrival,
       // and a disabled button cannot take focus.
-      store.setState({ busy: false })
-      store.getState().goView('magicSent', { resendAt: Date.now() + RESEND_WINDOW_MS })
+      store.set(busyAtom, false)
+      account.goView('magicSent', { resendAt: Date.now() + RESEND_WINDOW_MS })
     })
 
-  const go = store.getState().goView
+  const go = account.goView
 
   return (
     <div className="auth-screen">
@@ -76,11 +79,11 @@ export function SignInScreen() {
               type="checkbox"
               id="auth-remember"
               checked={remember}
-              onChange={(e) => store.getState().setViewData({ remember: e.target.checked })}
+              onChange={(e) => account.setViewData({ remember: e.target.checked })}
             />
             Keep me signed in
           </label>
-          <LinkButton onClick={() => go('forgot', { email: store.getState().viewData.email })}>
+          <LinkButton onClick={() => go('forgot', { email: store.get(viewDataAtom).email })}>
             Forgot password?
           </LinkButton>
         </div>

@@ -1,5 +1,5 @@
 import type { Rect } from '@/data/types'
-import type { StudioState } from '@/store/useStudioStore'
+import type { StudioState } from '@/store/studio'
 import { vesselMetrics } from './metrics'
 
 /** Dynamic sky backdrop plus the wooden studio base board. Needs the full canvas size for the sky. */

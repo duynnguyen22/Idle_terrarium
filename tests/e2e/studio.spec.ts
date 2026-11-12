@@ -87,7 +87,7 @@ test('studio journey: biome, 5x, relax, persistence', async ({ page }) => {
       waterSplit: state.waterSplit,
     }
   })
-  // STUDIO_VERSION in src/store/useStudioStore.ts; importing it here would run the store, which needs localStorage.
+  // STUDIO_VERSION in src/store/studio.ts; importing it here would run the store, which needs localStorage.
   expect(persisted).toEqual({ version: 4, items: count, pumpFlow: 'strong', waterSplit: 0.32 })
   await expect.poll(() => liveItemCount(page)).toBe(count)
   await expect(

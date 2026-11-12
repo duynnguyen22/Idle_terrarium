@@ -1,36 +1,44 @@
+import { useAtomValue } from 'jotai'
 import { DropdownMenu } from 'radix-ui'
 import { AccountChip } from '@/components/account/AccountChip'
 import { LineIcon } from '@/components/ui/LineIcon'
 import { startAudioFromGesture, stopAudio } from '@/hooks/useAudio'
 import { mutateWorld } from '@/engine/engineBridge'
 import { applyPreset } from '@/engine/presets'
-import { selectAudioEnabled } from '@/store/selectors'
 import { exportSnapshotPng, snapshotFilename } from '@/lib/snapshot'
 import { getTerrariumCanvas } from '@/lib/terrariumCanvas'
 import { previewGap } from '@/store/awayFlow'
-import { showToast } from '@/store/toastStore'
-import { useOverlayStore } from '@/store/useOverlayStore'
-import { useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import { growthBoardOpenAtom, openAwayAtom, openGrowthBoardAtom } from '@/store/overlay'
+import {
+  audioEnabledAtom,
+  awayLogAtom,
+  catchupEnabledAtom,
+  dayCountAtom,
+  relaxModeAtom,
+  selectedIdAtom,
+} from '@/store/studio'
+import { showToast } from '@/store/toast'
 
 const enterRelax = () => {
-  useStudioStore.getState().setRelaxMode(true)
+  appStore.set(relaxModeAtom, true)
   startAudioFromGesture()
 }
 const toggleAudio = () => {
   // Starting must happen inside this click (gesture); stopping must not create an AudioContext.
-  if (useStudioStore.getState().audioEnabled) stopAudio()
+  if (appStore.get(audioEnabledAtom)) stopAudio()
   else startAudioFromGesture()
 }
 const takeSnapshot = async () => {
   const canvas = getTerrariumCanvas()
   if (!canvas) return
-  const ok = await exportSnapshotPng(canvas, snapshotFilename(useStudioStore.getState().dayCount))
+  const ok = await exportSnapshotPng(canvas, snapshotFilename(appStore.get(dayCountAtom)))
   if (ok) showToast('Snapshot saved')
 }
 const rebuildFalls = () => {
   let message = ''
   mutateWorld((w) => {
-    message = applyPreset(w, 'falls', useStudioStore.getState())
+    message = applyPreset(w, 'falls')
   })
   showToast(message)
 }
@@ -41,14 +49,14 @@ const clearAll = () => {
     w.mossTufts = []
     w.breed = {}
   })
-  useStudioStore.getState().selectItem(null)
+  appStore.set(selectedIdAtom, null)
   showToast('Cleared all specimens')
 }
 
 const showLastSummary = () => {
-  if (useStudioStore.getState().awayLog.length === 0) {
+  if (appStore.get(awayLogAtom).length === 0) {
     showToast('No time away recorded yet. Come back later, or preview a gap below.')
-  } else useOverlayStore.getState().openAway(0)
+  } else appStore.set(openAwayAtom, 0)
 }
 
 const GAPS: { label: string; hours: number }[] = [
@@ -65,11 +73,11 @@ const MENU_ITEM =
 
 /** "⋯" button with the rarely used, destructive actions (prototype #more-menu). */
 function MoreMenu() {
-  const catchupEnabled = useStudioStore((s) => s.catchupEnabled)
+  const catchupEnabled = useAtomValue(catchupEnabledAtom)
 
   const toggleCatchup = () => {
     const next = !catchupEnabled
-    useStudioStore.getState().setCatchupEnabled(next)
+    appStore.set(catchupEnabledAtom, next)
     showToast(
       next
         ? 'The tank will keep growing while you are away'
@@ -165,12 +173,11 @@ function MoreMenu() {
 }
 
 export function UtilityActions() {
-  const audioEnabled = useStudioStore(selectAudioEnabled)
-  const growthOpen = useOverlayStore((s) => s.growthBoardOpen)
+  const audioEnabled = useAtomValue(audioEnabledAtom)
+  const growthOpen = useAtomValue(growthBoardOpenAtom)
   const toggleGrowth = () => {
-    const { growthBoardOpen, openGrowthBoard, closeGrowthBoard } = useOverlayStore.getState()
-    if (growthBoardOpen) closeGrowthBoard()
-    else openGrowthBoard()
+    if (appStore.get(growthBoardOpenAtom)) appStore.set(growthBoardOpenAtom, false)
+    else appStore.set(openGrowthBoardAtom)
   }
 
   return (

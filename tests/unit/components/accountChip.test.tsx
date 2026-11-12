@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TopNav } from '@/components/layout/TopNav'
 import type { PublicUser } from '@/auth'
-import { useAccountStore } from '@/store/useAccountStore'
+import { appStore } from '@/store/appStore'
+import { panelOpenAtom, patchAccountAtom, resetAccountAtom } from '@/store/account'
 
 const user: PublicUser = {
   id: 'u1',
@@ -15,7 +16,7 @@ const user: PublicUser = {
 }
 
 beforeEach(() => {
-  useAccountStore.setState(useAccountStore.getInitialState(), true)
+  appStore.set(resetAccountAtom)
 })
 afterEach(() => {
   vi.useRealTimers()
@@ -23,7 +24,7 @@ afterEach(() => {
 
 describe('AccountChip', () => {
   it('signed out: dark chip reads Sign in / to save your work and opens the dialog', async () => {
-    useAccountStore.setState({ phase: 'signedout' })
+    appStore.set(patchAccountAtom, { phase: 'signedout' })
     const u = userEvent.setup()
     render(<TopNav />)
     const chip = screen.getByRole('button', { name: /Sign in/ })
@@ -35,7 +36,7 @@ describe('AccountChip', () => {
     expect(chip).toHaveTextContent('to save your work')
     expect(screen.getByRole('button', { name: 'Sign in to save your work' })).toBe(chip)
     await u.click(chip)
-    expect(useAccountStore.getState().panelOpen).toBe(true)
+    expect(appStore.get(panelOpenAtom)).toBe(true)
     expect(chip).toHaveAttribute('aria-expanded', 'true')
   })
 
@@ -47,7 +48,7 @@ describe('AccountChip', () => {
   })
 
   it('signed in: shows initials DG, the name and Saved just now', () => {
-    useAccountStore.setState({ phase: 'cloud', user, lastSaved: Date.now() })
+    appStore.set(patchAccountAtom, { phase: 'cloud', user, lastSaved: Date.now() })
     render(<TopNav />)
     const chip = screen.getByRole('button', { name: /Dana Green/ })
     expect(chip).not.toHaveClass('is-signedout')
@@ -63,7 +64,7 @@ describe('AccountChip', () => {
   it('ages the saved label every 30 s', () => {
     vi.useFakeTimers()
     const savedAt = Date.now()
-    useAccountStore.setState({ phase: 'cloud', user, lastSaved: savedAt })
+    appStore.set(patchAccountAtom, { phase: 'cloud', user, lastSaved: savedAt })
     render(<TopNav />)
     expect(screen.getByRole('button', { name: /Dana Green/ })).toHaveTextContent('Saved just now')
     act(() => {

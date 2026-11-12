@@ -15,7 +15,8 @@ import { paceMs } from '@/engine/simulation/pace'
 import { NOTABLE, upcomingHints } from '@/engine/simulation/report'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { mulberry32 } from '@/lib/rng'
-import { useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import { awayLogAtom, lastSimulatedAtAtom, patchStudioAtom } from '@/store/studio'
 
 const state: CatchUpState = {
   timeSpeed: 1,
@@ -323,7 +324,7 @@ describe('nudgeOne', () => {
 
 describe('runCatchUpIfDue', () => {
   beforeEach(() => {
-    useStudioStore.setState({
+    appStore.set(patchStudioAtom, {
       catchupEnabled: true,
       lastSimulatedAt: T0,
       pace: 'garden',
@@ -332,50 +333,50 @@ describe('runCatchUpIfDue', () => {
     })
   })
   afterEach(() => {
-    useStudioStore.setState({ awayLog: [], lastSimulatedAt: null })
+    appStore.set(patchStudioAtom, { awayLog: [], lastSimulatedAt: null })
   })
 
   it('a gap under 10 minutes is quiet', () => {
     const w = gardenWorld()
-    const r = runCatchUpIfDue(w, useStudioStore.getState(), T0 + CATCHUP_MIN_GAP_MS - 1)
+    const r = runCatchUpIfDue(w, appStore, T0 + CATCHUP_MIN_GAP_MS - 1)
     expect(r).toBeNull()
-    expect(useStudioStore.getState().awayLog).toEqual([])
-    expect(useStudioStore.getState().lastSimulatedAt).toBe(T0)
+    expect(appStore.get(awayLogAtom)).toEqual([])
+    expect(appStore.get(lastSimulatedAtAtom)).toBe(T0)
     expect(w.ecoTime).toBe(0)
   })
 
   it('ignores a negative gap and resets the clock', () => {
     const w = gardenWorld()
-    expect(runCatchUpIfDue(w, useStudioStore.getState(), T0 - 5 * HOUR)).toBeNull()
-    expect(useStudioStore.getState().lastSimulatedAt).toBe(T0 - 5 * HOUR)
-    expect(useStudioStore.getState().awayLog).toEqual([])
+    expect(runCatchUpIfDue(w, appStore, T0 - 5 * HOUR)).toBeNull()
+    expect(appStore.get(lastSimulatedAtAtom)).toBe(T0 - 5 * HOUR)
+    expect(appStore.get(awayLogAtom)).toEqual([])
     expect(w.ecoTime).toBe(0)
   })
 
   it('treats a missing clock as no gap', () => {
-    useStudioStore.setState({ lastSimulatedAt: null })
+    appStore.set(patchStudioAtom, { lastSimulatedAt: null })
     const w = gardenWorld()
-    expect(runCatchUpIfDue(w, useStudioStore.getState(), T0)).toBeNull()
-    expect(useStudioStore.getState().lastSimulatedAt).toBe(T0)
+    expect(runCatchUpIfDue(w, appStore, T0)).toBeNull()
+    expect(appStore.get(lastSimulatedAtAtom)).toBe(T0)
   })
 
   it('does nothing but reset the clock when catch-up is off', () => {
-    useStudioStore.setState({ catchupEnabled: false })
+    appStore.set(patchStudioAtom, { catchupEnabled: false })
     const w = gardenWorld()
-    expect(runCatchUpIfDue(w, useStudioStore.getState(), T0 + 5 * HOUR)).toBeNull()
-    expect(useStudioStore.getState().lastSimulatedAt).toBe(T0 + 5 * HOUR)
-    expect(useStudioStore.getState().awayLog).toEqual([])
+    expect(runCatchUpIfDue(w, appStore, T0 + 5 * HOUR)).toBeNull()
+    expect(appStore.get(lastSimulatedAtAtom)).toBe(T0 + 5 * HOUR)
+    expect(appStore.get(awayLogAtom)).toEqual([])
     expect(w.ecoTime).toBe(0)
   })
 
   it('pushes the report to awayLog newest first', () => {
     const w = gardenWorld()
-    const first = runCatchUpIfDue(w, useStudioStore.getState(), T0 + 2 * HOUR)
+    const first = runCatchUpIfDue(w, appStore, T0 + 2 * HOUR)
     expect(first?.mode).toBe('away')
     expect(first?.reason).toBe('return')
-    expect(useStudioStore.getState().lastSimulatedAt).toBe(T0 + 2 * HOUR)
-    const second = runCatchUpIfDue(w, useStudioStore.getState(), T0 + 6 * HOUR)
-    const log = useStudioStore.getState().awayLog
+    expect(appStore.get(lastSimulatedAtAtom)).toBe(T0 + 2 * HOUR)
+    const second = runCatchUpIfDue(w, appStore, T0 + 6 * HOUR)
+    const log = appStore.get(awayLogAtom)
     expect(log).toHaveLength(2)
     expect(log[0]).toBe(second)
     expect(log[1]).toBe(first)

@@ -6,7 +6,17 @@ import { setAudioContextFactory } from '@/engine/audio/audioContext'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { play, stopAudio, useAudio } from '@/hooks/useAudio'
 import { RELAX_IDLE_MS, useRelaxMode } from '@/hooks/useRelaxMode'
-import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import {
+  audioEnabledAtom,
+  autoLightSyncAtom,
+  createDefaultState,
+  lightingAtom,
+  musicVolumeAtom,
+  patchStudioAtom,
+  relaxModeAtom,
+  soundPresetAtom,
+} from '@/store/studio'
 import { createFakeAudio } from '../helpers/fakeAudio'
 import { setSlider } from '../helpers/slider'
 
@@ -21,7 +31,7 @@ const cleanupAmbient = () => stopAudio()
 
 beforeEach(() => {
   vi.useFakeTimers()
-  useStudioStore.setState(createDefaultState())
+  appStore.set(patchStudioAtom, createDefaultState())
 })
 afterEach(() => {
   vi.useRealTimers()
@@ -35,9 +45,9 @@ describe('useRelaxMode', () => {
     expect(document.body.classList.contains('relax-active')).toBe(false)
     expect(screen.queryByLabelText('Exit relax mode')).toBeNull()
 
-    act(() => useStudioStore.getState().setRelaxMode(true))
+    act(() => appStore.set(relaxModeAtom, true))
     expect(document.body.classList.contains('relax-active')).toBe(true)
-    expect(useStudioStore.getState().audioEnabled).toBe(true)
+    expect(appStore.get(audioEnabledAtom)).toBe(true)
     expect(screen.getByLabelText('Exit relax mode')).toBeTruthy()
 
     act(() => void fireEvent.pointerMove(window))
@@ -50,39 +60,39 @@ describe('useRelaxMode', () => {
     expect(document.body.classList.contains('relax-idle')).toBe(false)
 
     act(() => void vi.advanceTimersByTime(RELAX_IDLE_MS))
-    act(() => useStudioStore.getState().setRelaxMode(false))
+    act(() => appStore.set(relaxModeAtom, false))
     expect(document.body.className).toBe('')
     expect(vi.getTimerCount()).toBe(0)
   })
 
   it('dock buttons set sound preset, lighting (auto-sync off) and exit', () => {
     render(<Harness />)
-    act(() => useStudioStore.getState().setRelaxMode(true))
+    act(() => appStore.set(relaxModeAtom, true))
     fireEvent.click(screen.getByRole('button', { name: /Sound/ }))
     fireEvent.click(screen.getByText('Rain on Leaves'))
-    expect(useStudioStore.getState().soundPreset).toBe('rain')
+    expect(appStore.get(soundPresetAtom)).toBe('rain')
     fireEvent.click(screen.getByLabelText('Moonlight'))
-    expect(useStudioStore.getState().lighting).toBe('night')
-    expect(useStudioStore.getState().autoLightSync).toBe(false)
+    expect(appStore.get(lightingAtom)).toBe('night')
+    expect(appStore.get(autoLightSyncAtom)).toBe(false)
     fireEvent.click(screen.getByLabelText('Follow my clock'))
-    expect(useStudioStore.getState().autoLightSync).toBe(true)
+    expect(appStore.get(autoLightSyncAtom)).toBe(true)
     fireEvent.click(screen.getByLabelText('Exit relax mode'))
-    expect(useStudioStore.getState().relaxMode).toBe(false)
+    expect(appStore.get(relaxModeAtom)).toBe(false)
   })
 
   it('offers music presets and a volume slider', () => {
     render(<Harness />)
-    act(() => useStudioStore.getState().setRelaxMode(true))
+    act(() => appStore.set(relaxModeAtom, true))
     fireEvent.click(screen.getByRole('button', { name: /Sound/ }))
     fireEvent.click(screen.getByText('Soft Piano'))
-    expect(useStudioStore.getState().soundPreset).toBe('piano')
+    expect(appStore.get(soundPresetAtom)).toBe('piano')
     const [slider] = screen.getAllByRole('slider', { name: 'Music volume' })
     setSlider(slider!, 80)
-    expect(useStudioStore.getState().musicVolume).toBe(0.8)
+    expect(appStore.get(musicVolumeAtom)).toBe(0.8)
     fireEvent.click(screen.getByLabelText('Mute music'))
-    expect(useStudioStore.getState().musicVolume).toBe(0)
+    expect(appStore.get(musicVolumeAtom)).toBe(0)
     fireEvent.click(screen.getByLabelText('Unmute music'))
-    expect(useStudioStore.getState().musicVolume).toBe(0.8)
+    expect(appStore.get(musicVolumeAtom)).toBe(0.8)
   })
 
   it('Escape closes the open sound menu without leaving relax mode', () => {
@@ -96,26 +106,26 @@ describe('useRelaxMode', () => {
         <Keys />
       </>,
     )
-    act(() => useStudioStore.getState().setRelaxMode(true))
+    act(() => appStore.set(relaxModeAtom, true))
     const trigger = screen.getByRole('button', { name: /Sound/ })
     fireEvent.click(trigger)
     expect(trigger.getAttribute('aria-expanded')).toBe('true')
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(trigger.getAttribute('aria-expanded')).toBe('false')
-    expect(useStudioStore.getState().relaxMode).toBe(true)
+    expect(appStore.get(relaxModeAtom)).toBe(true)
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(useStudioStore.getState().relaxMode).toBe(false)
+    expect(appStore.get(relaxModeAtom)).toBe(false)
   })
 
   it('a volume change reaches the running ambient loop', () => {
     const { ctx, gains } = createFakeAudio()
     setAudioContextFactory(() => ctx)
-    useStudioStore.setState({ audioEnabled: true })
+    appStore.set(patchStudioAtom, { audioEnabled: true })
     render(<Harness />)
     fireEvent.pointerDown(window)
     const values: number[] = []
     gains[0].gain.setValueAtTime = (v: number) => void values.push(v)
-    act(() => useStudioStore.getState().setMusicVolume(0.25))
+    act(() => appStore.set(musicVolumeAtom, 0.25))
     expect(values).toEqual([0.5])
   })
 })
@@ -136,7 +146,7 @@ describe('useAudio', () => {
 
     fireEvent.pointerDown(screen.getByLabelText('Ambient sound'))
     fireEvent.click(screen.getByLabelText('Ambient sound'))
-    expect(useStudioStore.getState().audioEnabled).toBe(true)
+    expect(appStore.get(audioEnabledAtom)).toBe(true)
     expect(factory).toHaveBeenCalledTimes(1)
     act(() => void vi.advanceTimersByTime(520))
     expect(oscs.length).toBeGreaterThanOrEqual(2)
@@ -146,7 +156,7 @@ describe('useAudio', () => {
     expect(oscs.length).toBe(n + 1)
 
     fireEvent.click(screen.getByLabelText('Ambient sound'))
-    expect(useStudioStore.getState().audioEnabled).toBe(false)
+    expect(appStore.get(audioEnabledAtom)).toBe(false)
     const after = oscs.length
     act(() => void vi.advanceTimersByTime(1000))
     expect(oscs.length).toBe(after)
@@ -156,7 +166,7 @@ describe('useAudio', () => {
     const { ctx } = createFakeAudio()
     const factory = vi.fn(() => ctx)
     setAudioContextFactory(factory)
-    useStudioStore.setState({ audioEnabled: true })
+    appStore.set(patchStudioAtom, { audioEnabled: true })
     render(<Harness />)
     expect(factory).not.toHaveBeenCalled()
     fireEvent.pointerDown(window)
@@ -167,10 +177,10 @@ describe('useAudio', () => {
     const { ctx } = createFakeAudio()
     const factory = vi.fn(() => ctx)
     setAudioContextFactory(factory)
-    useStudioStore.setState({ audioEnabled: true })
+    appStore.set(patchStudioAtom, { audioEnabled: true })
     render(<UtilityActions />)
     fireEvent.click(screen.getByLabelText('Ambient sound'))
-    expect(useStudioStore.getState().audioEnabled).toBe(false)
+    expect(appStore.get(audioEnabledAtom)).toBe(false)
     expect(factory).not.toHaveBeenCalled()
   })
 

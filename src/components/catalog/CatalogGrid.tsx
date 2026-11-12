@@ -3,8 +3,9 @@ import { computeCareReport } from '@/engine/care'
 import { mutateWorld } from '@/engine/engineBridge'
 import { addItem } from '@/engine/items'
 import { play } from '@/hooks/useAudio'
-import { showToast } from '@/store/toastStore'
-import { useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import { selectedIdAtom, studioStateAtom } from '@/store/studio'
+import { showToast } from '@/store/toast'
 import { CatalogCard } from './CatalogCard'
 
 export type CatalogCategory = keyof typeof CATALOG
@@ -15,8 +16,8 @@ export type CatalogCategory = keyof typeof CATALOG
  */
 export function CatalogGrid({ category }: { category: CatalogCategory }) {
   const place = (defId: string) => {
-    const store = useStudioStore.getState()
-    const { plantingStage, substrates, waterSplit, selectItem } = store
+    const store = appStore.get(studioStateAtom)
+    const { plantingStage, substrates, waterSplit } = store
     let uid: string | null = null
     let issueText: string | null = null
     mutateWorld((w) => {
@@ -34,7 +35,7 @@ export function CatalogGrid({ category }: { category: CatalogCategory }) {
       issueText = issues.find((i) => i.species?.includes(defId))?.text ?? null
     })
     if (uid) {
-      selectItem(uid)
+      appStore.set(selectedIdAtom, uid)
       play('repot')
     }
     if (issueText) showToast(issueText)

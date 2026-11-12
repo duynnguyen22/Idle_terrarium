@@ -1,15 +1,16 @@
 import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useAtomValue } from 'jotai'
+import { viewAtom } from '@/store/account'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AuthError, type AuthService, type PublicUser } from '@/auth'
 import { AccountChip } from '@/components/account/AccountChip'
 import { AccountDialog } from '@/components/account/AccountDialog'
-import { useAccount } from '@/components/account/auth/authEnv'
 import { AuthScreen } from '@/components/account/auth/AuthScreen'
 import { demoSession, demoUser, fakeAuth, makeEnv, renderIn } from '../auth/authHarness'
 
 function CurrentScreen() {
-  const view = useAccount((s) => s.view)
+  const view = useAtomValue(viewAtom)
   return <AuthScreen view={view} />
 }
 
@@ -39,8 +40,8 @@ async function signedIn({
   })
   await env.backend.setProfile({ activeGardenId: 'g_a' })
   const session = { ...demoSession, remember, createdAt: Date.now() - 5 * MIN }
-  await act(() => env.store.getState().beginSession(user, session, { isNew: false }))
-  act(() => env.store.getState().setTab('profile'))
+  await act(() => env.account.beginSession(user, session, { isNew: false }))
+  act(() => env.account.setTab('profile'))
   renderIn(
     env,
     <>
@@ -122,10 +123,10 @@ describe('ProfileTab', () => {
     await user.click(screen.getByRole('button', { name: 'Save profile' }))
     expect(await screen.findByText('Saved')).toHaveClass('acct-ok')
     expect(updateProfile).toHaveBeenCalledWith('u_demo', { name: 'Fern Keeper ' })
-    expect(env.store.getState().user?.name).toBe('Fern Keeper')
+    expect(env.state().user?.name).toBe('Fern Keeper')
     expect(document.getElementById('acct-name')).toHaveTextContent('Fern Keeper')
     expect(screen.getByRole('heading', { name: 'Fern Keeper' })).toHaveAttribute('id', 'acct-title')
-    expect(env.store.getState().busy).toBe(false)
+    expect(env.state().busy).toBe(false)
   })
 
   it('a profile reply that arrives after the session ended changes nothing', async () => {
@@ -135,13 +136,13 @@ describe('ProfileTab', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'Save profile' }))
     expect(updateProfile).toHaveBeenCalledTimes(1)
     await act(async () => {
-      env.store.getState().goView('signin')
-      await env.store.getState().endSession()
+      env.account.goView('signin')
+      await env.account.endSession()
     })
     await act(async () => reply({ ...demoUser, name: 'Too Late' }))
-    await vi.waitFor(() => expect(env.store.getState().busy).toBe(false))
-    expect(env.store.getState().user).toBeNull()
-    expect(env.store.getState().viewData.saved).toBeUndefined()
+    await vi.waitFor(() => expect(env.state().busy).toBe(false))
+    expect(env.state().user).toBeNull()
+    expect(env.state().viewData.saved).toBeUndefined()
   })
 
   it('an empty name shows the service field error under Display name', async () => {
@@ -188,7 +189,7 @@ describe('ProfileTab', () => {
     expect(await screen.findByText('Password changed')).toHaveClass('acct-ok')
     expect(screen.getByLabelText('Current password')).toHaveValue('')
     expect(screen.getByLabelText('New password')).toHaveValue('')
-    expect(env.store.getState().viewData.saved).toBe('password')
+    expect(env.state().viewData.saved).toBe('password')
   })
 
   it('delete requires the exact email, case-insensitive', async () => {
@@ -213,14 +214,14 @@ describe('ProfileTab', () => {
     await user.clear(confirm)
     await user.type(confirm, '  DEMO@Botanica.app ')
     await user.click(screen.getByRole('button', { name: 'Delete my account' }))
-    await vi.waitFor(() => expect(env.store.getState().view).toBe('signup'))
+    await vi.waitFor(() => expect(env.state().view).toBe('signup'))
     expect(deleteAll).toHaveBeenCalledTimes(1)
     expect(deleteAccount).toHaveBeenCalledWith('u_demo')
     expect(deleteAll.mock.invocationCallOrder[0]).toBeLessThan(
       deleteAccount.mock.invocationCallOrder[0] ?? 0,
     )
     expect(await env.backend.listGardens()).toEqual([])
-    const s = env.store.getState()
+    const s = env.state()
     expect(s.phase).toBe('signedout')
     expect(s.user).toBeNull()
     expect(s.busy).toBe(false)
@@ -243,7 +244,7 @@ describe('ProfileTab', () => {
     await user.type(screen.getByLabelText('Type demo@botanica.app to confirm'), 'demo@botanica.app')
     await user.click(screen.getByRole('button', { name: 'Delete my account' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('We couldn’t find that account.')
-    const s = env.store.getState()
+    const s = env.state()
     expect(s).toMatchObject({ phase: 'cloud', activeId: 'g_a', busy: false })
     expect(s.user?.id).toBe('u_demo')
     // The open terrarium is written back under its own name and the list matches the storage.
@@ -259,16 +260,16 @@ describe('ProfileTab', () => {
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByLabelText('Type demo@botanica.app to confirm')).toBeNull()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Delete account…' }))
-    expect(env.store.getState().phase).toBe('cloud')
+    expect(env.state().phase).toBe('cloud')
   })
 
   it('sign out everywhere ends the session and shows the banner on sign in', async () => {
     const signOutEverywhere = vi.fn(() => Promise.resolve())
     const env = await signedIn({ auth: { signOutEverywhere } })
     await userEvent.setup().click(screen.getByRole('button', { name: 'Sign out of all devices' }))
-    await vi.waitFor(() => expect(env.store.getState().view).toBe('signin'))
+    await vi.waitFor(() => expect(env.state().view).toBe('signin'))
     expect(signOutEverywhere).toHaveBeenCalledWith('u_demo')
-    const s = env.store.getState()
+    const s = env.state()
     expect(s.phase).toBe('signedout')
     expect(s.user).toBeNull()
     expect(s.busy).toBe(false)
@@ -284,8 +285,8 @@ describe('ProfileTab', () => {
     const signOutEverywhere = vi.fn(() => Promise.resolve())
     const env = await signedIn({ auth: { signOutEverywhere }, dialog: true })
     await userEvent.setup().click(screen.getByRole('button', { name: 'Sign out of all devices' }))
-    await vi.waitFor(() => expect(env.store.getState().phase).toBe('signedout'))
-    await vi.waitFor(() => expect(env.store.getState().busy).toBe(false))
+    await vi.waitFor(() => expect(env.state().phase).toBe('signedout'))
+    await vi.waitFor(() => expect(env.state().busy).toBe(false))
     expect(screen.getByRole('dialog')).toHaveAccessibleName('Welcome back')
     expect(screen.queryByText('Please wait…')).toBeNull()
     expect(screen.getByLabelText('Email')).toHaveValue('demo@botanica.app')
@@ -298,7 +299,7 @@ describe('ProfileTab', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     await userEvent.setup().click(screen.getByRole('button', { name: 'Sign out of all devices' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong. Try again.')
-    expect(env.store.getState().phase).toBe('cloud')
-    expect(env.store.getState().busy).toBe(false)
+    expect(env.state().phase).toBe('cloud')
+    expect(env.state().busy).toBe(false)
   })
 })

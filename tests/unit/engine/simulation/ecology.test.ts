@@ -1,3 +1,4 @@
+import { createStore } from 'jotai'
 import { describe, expect, it, vi } from 'vitest'
 import { findCatalogDef } from '@/data/catalog'
 import type { FaunaDef, FloraDef, PlacedItem } from '@/data/types'
@@ -15,7 +16,7 @@ import type { Emit } from '@/engine/simulation/life'
 import { FRAME_MS } from '@/engine/simulation/constants'
 import { tick } from '@/engine/simulation/tick'
 import { createWorld, type EngineWorld } from '@/engine/world'
-import { createStudioStore } from '@/store/useStudioStore'
+import { bindStudioStorage, timeSpeedAtom } from '@/store/studio'
 
 const memoryStorage = {
   getItem: () => null,
@@ -205,10 +206,11 @@ describe('wakeResting', () => {
 
 describe('tick wake-ups', () => {
   it('wakes resting plants once when misting or pouring starts', () => {
-    const store = createStudioStore(memoryStorage)
+    const store = createStore()
+    bindStudioStorage(store, memoryStorage)
     const w = createWorld()
     const onToast = vi.fn()
-    const run = () => tick(w, FRAME_MS, 1000, { store: store.getState(), onToast })
+    const run = () => tick(w, FRAME_MS, 1000, { store, onToast })
     w.items = [plant({ vitality: 60, resting: true })]
     run()
     expect(onToast).not.toHaveBeenCalled()
@@ -228,13 +230,14 @@ describe('tick wake-ups', () => {
   })
 
   it('wakes at time speed 0 too', () => {
-    const store = createStudioStore(memoryStorage)
-    store.getState().setTimeSpeed(0)
+    const store = createStore()
+    bindStudioStorage(store, memoryStorage)
+    store.set(timeSpeedAtom, 0)
     const w = createWorld()
     const onToast = vi.fn()
     w.items = [plant({ vitality: 60, resting: true })]
     w.isMisting = true
-    tick(w, FRAME_MS, 1000, { store: store.getState(), onToast })
+    tick(w, FRAME_MS, 1000, { store, onToast })
     expect(onToast).toHaveBeenCalledWith('The Pink Fittonia woke up and perked up.')
   })
 })

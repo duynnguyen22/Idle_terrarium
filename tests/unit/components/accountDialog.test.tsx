@@ -4,8 +4,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { AccountDialog } from '@/components/account/AccountDialog'
 import { TopNav } from '@/components/layout/TopNav'
 import type { PublicUser } from '@/auth'
-import { useAccountStore } from '@/store/useAccountStore'
 import { makeEnv, renderIn } from './auth/authHarness'
+import { appStore } from '@/store/appStore'
+import { account, panelOpenAtom, patchAccountAtom, resetAccountAtom } from '@/store/account'
 
 const user: PublicUser = {
   id: 'u1',
@@ -24,7 +25,7 @@ const Harness = () => (
 )
 
 beforeEach(() => {
-  useAccountStore.setState(useAccountStore.getInitialState(), true)
+  appStore.set(resetAccountAtom)
 })
 
 describe('AccountDialog', () => {
@@ -44,35 +45,35 @@ describe('AccountDialog', () => {
   })
 
   it('Escape and the scrim close it and return focus to the chip', async () => {
-    useAccountStore.setState({ phase: 'signedout' })
+    appStore.set(patchAccountAtom, { phase: 'signedout' })
     const u = userEvent.setup()
     render(<Harness />)
     const chip = screen.getByRole('button', { name: /Sign in/ })
     await u.click(chip)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     await u.keyboard('{Escape}')
-    expect(useAccountStore.getState().panelOpen).toBe(false)
+    expect(appStore.get(panelOpenAtom)).toBe(false)
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(chip).toHaveFocus()
 
     await u.click(chip)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     await u.click(document.getElementById('acct-scrim') as HTMLElement)
-    expect(useAccountStore.getState().panelOpen).toBe(false)
+    expect(appStore.get(panelOpenAtom)).toBe(false)
     expect(chip).toHaveFocus()
   })
 
   it('the close button closes it', async () => {
-    useAccountStore.setState({ phase: 'signedout' })
+    appStore.set(patchAccountAtom, { phase: 'signedout' })
     const u = userEvent.setup()
     render(<Harness />)
     await u.click(screen.getByRole('button', { name: /Sign in/ }))
     await u.click(screen.getByRole('button', { name: 'Close' }))
-    expect(useAccountStore.getState().panelOpen).toBe(false)
+    expect(appStore.get(panelOpenAtom)).toBe(false)
   })
 
   it('cannot be closed during onboarding and hides the close button', async () => {
-    useAccountStore.setState({
+    appStore.set(patchAccountAtom, {
       phase: 'onboarding',
       user,
       view: 'onboarding',
@@ -83,24 +84,29 @@ describe('AccountDialog', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
     await u.keyboard('{Escape}')
-    expect(useAccountStore.getState().panelOpen).toBe(true)
+    expect(appStore.get(panelOpenAtom)).toBe(true)
     await u.click(document.getElementById('acct-scrim') as HTMLElement)
-    expect(useAccountStore.getState().panelOpen).toBe(true)
+    expect(appStore.get(panelOpenAtom)).toBe(true)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('is wide for the signed-in account view only', () => {
-    useAccountStore.setState({ phase: 'cloud', user, view: 'account', panelOpen: true })
+    appStore.set(patchAccountAtom, { phase: 'cloud', user, view: 'account', panelOpen: true })
     const { unmount } = render(<AccountDialog />)
     expect(screen.getByRole('dialog')).toHaveClass('wide')
     unmount()
-    useAccountStore.setState({ phase: 'signedout', user: null, view: 'account', panelOpen: true })
+    appStore.set(patchAccountAtom, {
+      phase: 'signedout',
+      user: null,
+      view: 'account',
+      panelOpen: true,
+    })
     render(<AccountDialog />)
     expect(screen.getByRole('dialog')).not.toHaveClass('wide')
   })
 
   it('same-view updates leave focus alone; a different screen moves it to its first field', async () => {
-    useAccountStore.setState({ phase: 'signedout' })
+    appStore.set(patchAccountAtom, { phase: 'signedout' })
     const u = userEvent.setup()
     render(<Harness />)
     const chip = screen.getByRole('button', { name: /Sign in/ })
@@ -111,10 +117,10 @@ describe('AccountDialog', () => {
     // Focus is trapped in the dialog, so move it to another field there.
     const password = screen.getByLabelText('Password')
     password.focus()
-    act(() => useAccountStore.getState().setViewData({ email: 'a@b.co' }))
+    act(() => account.setViewData({ email: 'a@b.co' }))
     expect(password).toHaveFocus()
 
-    act(() => useAccountStore.getState().goView('signup'))
+    act(() => account.goView('signup'))
     expect(screen.getByLabelText('Your name')).toHaveFocus()
   })
 
@@ -123,14 +129,14 @@ describe('AccountDialog', () => {
     const u = userEvent.setup()
     renderIn(env, <AccountDialog />)
     expect(screen.getByRole('dialog')).toHaveAccessibleName('Welcome back')
-    expect(useAccountStore.getState().panelOpen).toBe(false)
+    expect(appStore.get(panelOpenAtom)).toBe(false)
 
-    act(() => env.store.getState().goView('signup'))
+    act(() => env.account.goView('signup'))
     expect(screen.getByRole('dialog')).toHaveAccessibleName('Create your account')
     expect(screen.getByLabelText('Your name')).toHaveFocus()
 
     await u.keyboard('{Escape}')
-    expect(env.store.getState().panelOpen).toBe(false)
+    expect(env.state().panelOpen).toBe(false)
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 })

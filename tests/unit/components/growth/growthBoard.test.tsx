@@ -7,9 +7,15 @@ import type { PlacedItem } from '@/data/types'
 import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { PING_MS } from '@/engine/marks'
 import { createWorld, type EngineWorld } from '@/engine/world'
-import { useToastStore } from '@/store/toastStore'
-import { useOverlayStore } from '@/store/useOverlayStore'
-import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import { createDefaultState, paceAtom, patchStudioAtom, selectedIdAtom } from '@/store/studio'
+import {
+  awayIndexAtom,
+  growthBoardOpenAtom,
+  openGrowthBoardAtom,
+  resetOverlayAtom,
+} from '@/store/overlay'
+import { toastAtom } from '@/store/toast'
 
 const item = (uid: string, id: string, over: Partial<PlacedItem> = {}): PlacedItem => ({
   uid,
@@ -29,9 +35,9 @@ const click = (el: HTMLElement) => act(() => void fireEvent.click(el))
 
 beforeEach(() => {
   vi.useFakeTimers()
-  useStudioStore.setState(createDefaultState())
-  useToastStore.setState({ message: '', visible: false })
-  useOverlayStore.setState({ growthBoardOpen: false, awayIndex: null, tour: null })
+  appStore.set(patchStudioAtom, createDefaultState())
+  appStore.set(toastAtom, { message: '', visible: false })
+  appStore.set(resetOverlayAtom)
   world = createWorld()
   registerWorld(world)
 })
@@ -75,37 +81,37 @@ describe('GrowthBoard', () => {
     expect(screen.getByText('Day 1')).toBeInTheDocument()
     expect(screen.getByText('Moss cover')).toBeInTheDocument()
     expect(screen.getByText('Pool cycle')).toBeInTheDocument()
-    act(() => useStudioStore.setState({ waterSplit: 0 }))
+    act(() => appStore.set(patchStudioAtom, { waterSplit: 0 }))
     expect(screen.queryByText('Pool cycle')).toBeNull()
 
-    useStudioStore.setState({ selectedId: 'a' })
+    appStore.set(patchStudioAtom, { selectedId: 'a' })
     const other = vi.fn()
     window.addEventListener('keydown', other)
     act(() => void fireEvent.keyDown(document.body, { key: 'Escape' }))
     window.removeEventListener('keydown', other)
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(other).not.toHaveBeenCalled()
-    expect(useStudioStore.getState().selectedId).toBe('a')
+    expect(appStore.get(selectedIdAtom)).toBe('a')
   })
 
   it('leaves Escape to relax mode while relax hides the board', () => {
-    act(() => useOverlayStore.getState().openGrowthBoard())
-    useStudioStore.setState({ relaxMode: true })
+    act(() => appStore.set(openGrowthBoardAtom))
+    appStore.set(patchStudioAtom, { relaxMode: true })
     const other = vi.fn()
     window.addEventListener('keydown', other)
     try {
       render(<GrowthBoard />)
       act(() => void fireEvent.keyDown(document.body, { key: 'Escape' }))
-      expect(useOverlayStore.getState().growthBoardOpen).toBe(true)
+      expect(appStore.get(growthBoardOpenAtom)).toBe(true)
       expect(other).toHaveBeenCalledTimes(1)
     } finally {
       window.removeEventListener('keydown', other)
-      useStudioStore.setState({ relaxMode: false })
+      appStore.set(patchStudioAtom, { relaxMode: false })
     }
   })
 
   it('shows both empty states', () => {
-    act(() => useOverlayStore.getState().openGrowthBoard())
+    act(() => appStore.set(openGrowthBoardAtom))
     render(<GrowthBoard />)
     expect(screen.getByText('No plants yet. Add some from the Flora tab.')).toBeInTheDocument()
     expect(
@@ -115,23 +121,23 @@ describe('GrowthBoard', () => {
   })
 
   it('subtitle reflects paused / 5× / closed-app copy', () => {
-    act(() => useOverlayStore.getState().openGrowthBoard())
+    act(() => appStore.set(openGrowthBoardAtom))
     render(<GrowthBoard />)
     expect(
       screen.getByText('1 tank day = 2 h. Growth continues while the app is closed.'),
     ).toBeInTheDocument()
-    act(() => useStudioStore.setState({ timeSpeed: 0 }))
+    act(() => appStore.set(patchStudioAtom, { timeSpeed: 0 }))
     expect(screen.getByText('1 tank day = 2 h. Paused while you watch.')).toBeInTheDocument()
-    act(() => useStudioStore.setState({ timeSpeed: 5 }))
+    act(() => appStore.set(patchStudioAtom, { timeSpeed: 5 }))
     expect(screen.getByText('1 tank day = 2 h. Running 5× while you watch.')).toBeInTheDocument()
   })
 
   it('pace radios set the pace and toast the subtitle', () => {
-    act(() => useOverlayStore.getState().openGrowthBoard())
+    act(() => appStore.set(openGrowthBoardAtom))
     render(<GrowthBoard />)
     click(screen.getByRole('radio', { name: 'Brisk' }))
-    expect(useStudioStore.getState().pace).toBe('brisk')
-    expect(useToastStore.getState().message).toBe('Tank pace: 1 tank day = 30 min')
+    expect(appStore.get(paceAtom)).toBe('brisk')
+    expect(appStore.get(toastAtom).message).toBe('Tank pace: 1 tank day = 30 min')
     expect(screen.getByRole('radio', { name: 'Brisk' })).toBeChecked()
   })
 
@@ -146,7 +152,7 @@ describe('GrowthBoard', () => {
       item('f2', 'springtails', { baby: 0.5 }),
     )
     world.mossTufts.push({ x: 0.2, r: 3, w: 0.05, seed: 0.1 })
-    act(() => useOverlayStore.getState().openGrowthBoard())
+    act(() => appStore.set(openGrowthBoardAtom))
     render(<GrowthBoard />)
     const plant = findCatalogDef('cryptanthus_pink')!.name
     expect(screen.getByText('In bud')).toBeInTheDocument()
@@ -174,7 +180,7 @@ describe('GrowthBoard', () => {
       item('f2', 'springtails'),
       item('p1', 'cryptanthus_pink', { stage: 'mature', life: { cyc: 0.2, n: 0, tendrils: 0 } }),
     )
-    act(() => useOverlayStore.getState().openGrowthBoard())
+    act(() => appStore.set(openGrowthBoardAtom))
     render(<GrowthBoard />)
     const faunaRow = screen
       .getByText(`${findCatalogDef('springtails')!.name} ×2`)
@@ -184,22 +190,22 @@ describe('GrowthBoard', () => {
     expect(world.marks.pings.get('f2')).toBe(500 + PING_MS)
     expect(world.marks.pings.has('p1')).toBe(false)
     click(faunaRow)
-    expect(useStudioStore.getState().selectedId).toBe('f1')
+    expect(appStore.get(selectedIdAtom)).toBe('f1')
     const plantRow = screen.getByText('Leafy growth').closest('button')!
     click(plantRow)
-    expect(useStudioStore.getState().selectedId).toBe('p1')
+    expect(appStore.get(selectedIdAtom)).toBe('p1')
     spy.mockRestore()
   })
 
   it('opening the board closes the away card', () => {
-    useOverlayStore.setState({ awayIndex: 0 })
-    act(() => useOverlayStore.getState().openGrowthBoard())
-    expect(useOverlayStore.getState().awayIndex).toBeNull()
+    appStore.set(awayIndexAtom, 0)
+    act(() => appStore.set(openGrowthBoardAtom))
+    expect(appStore.get(awayIndexAtom)).toBeNull()
   })
 
   it('works with no world registered', () => {
     unregisterWorld()
-    act(() => useOverlayStore.getState().openGrowthBoard())
+    act(() => appStore.set(openGrowthBoardAtom))
     render(<GrowthBoard />)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('No plants yet. Add some from the Flora tab.')).toBeInTheDocument()

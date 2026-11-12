@@ -1,30 +1,29 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { authService, type AuthService } from '@/auth'
-import { showToast } from '@/store/toastStore'
-import {
-  useAccountStore,
-  type AccountStore,
-  type AccountStoreHook,
-  type ViewData,
-} from '@/store/useAccountStore'
+import { account, type Account, type ViewData } from '@/store/account'
+import { showToast } from '@/store/toast'
 
 /** How long before another code or link can be requested. */
 export const RESEND_WINDOW_MS = 30_000
 
 /**
  * What the account dialog, chip and auth screens talk to. Production uses the app singletons;
- * tests inject fakes. `auth` and `toast` must be the same objects `store` was created with
- * (its `deps.auth` / `deps.toast`): the screens call them directly while the store's own actions
+ * tests inject fakes. `auth` and `toast` must be the same objects `account` was created with
+ * (its `deps.auth` / `deps.toast`): the screens call them directly while the account's own actions
  * use the deps, and two different services would split the session and the messages.
+ *
+ * The account *state* is read with the atoms in `@/store/account` (`useAtomValue(phaseAtom)`), from
+ * the nearest jotai `<Provider>`'s store: none in the app (the default store, which `account` is
+ * bound to); a test that injects an `account` wraps the tree in `<Provider store={itsStore}>`.
  */
 export interface AuthEnv {
-  store: AccountStoreHook
+  account: Account
   auth: AuthService
   toast: (message: string) => void
 }
 
 export const AuthEnvContext = createContext<AuthEnv>({
-  store: useAccountStore,
+  account,
   auth: authService,
   toast: showToast,
 })
@@ -33,10 +32,9 @@ export function useAuthEnv(): AuthEnv {
   return useContext(AuthEnvContext)
 }
 
-/** Reads the account store from the env with a selector (the module store unless a test injects one). */
-export function useAccount<T>(selector: (s: AccountStore) => T): T {
-  const { store } = useAuthEnv()
-  return store(selector)
+/** The account actions from the env (the app's `account` unless a test injects one). */
+export function useAccountActions(): Account {
+  return useAuthEnv().account
 }
 
 /** The viewData keys that hold free text, so a field can read and write them as strings. */

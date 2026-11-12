@@ -25,7 +25,7 @@ describe('auth pieces', () => {
     expect(boxes()[5]).toHaveFocus()
     expect(onComplete).toHaveBeenCalledTimes(1)
     expect(onComplete).toHaveBeenCalledWith('123456')
-    expect(env.store.getState().viewData.code).toBe('123456')
+    expect(env.state().viewData.code).toBe('123456')
   })
 
   it('OtpInput: Backspace on an empty box focuses and clears the previous one', async () => {

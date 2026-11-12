@@ -1,5 +1,5 @@
 import { LAND_LAYER_IDS, SUBSTRATE_LAYERS } from '@/data/substrates'
-import type { StudioState } from '@/store/useStudioStore'
+import type { StudioState } from '@/store/studio'
 import {
   BANK_W,
   CONTOUR_X_MAX,

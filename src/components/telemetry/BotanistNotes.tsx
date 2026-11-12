@@ -1,10 +1,11 @@
+import { useAtomValue } from 'jotai'
 import { computeCareReport, runCareAction, type CareIssue } from '@/engine/care'
 import { mutateWorld } from '@/engine/engineBridge'
 import { play } from '@/hooks/useAudio'
-import { selectTelemetry } from '@/store/selectors'
-import { showToast } from '@/store/toastStore'
-import { useStudioStore } from '@/store/useStudioStore'
-import { useTelemetryStore } from '@/store/useTelemetryStore'
+import { appStore } from '@/store/appStore'
+import { studioStateAtom } from '@/store/studio'
+import { telemetryAtom } from '@/store/telemetry'
+import { showToast } from '@/store/toast'
 
 /** All-clear note keyed on how fogged the glass is (prototype renderTelemetry). */
 function allClearNote(condensation: number): string {
@@ -24,16 +25,16 @@ const DOT: Record<CareIssue['level'] | 'ok', string> = {
 function runAction(action: NonNullable<CareIssue['action']>) {
   let msg = ''
   mutateWorld((w) => {
-    msg = runCareAction(w, useStudioStore.getState(), action.id)
+    msg = runCareAction(w, appStore, action.id)
     // Recompute now so the fixed issue doesn't linger until the next throttled telemetry push.
-    const store = useStudioStore.getState()
+    const store = appStore.get(studioStateAtom)
     w.careIssues = computeCareReport({
       ...store,
       ...w.env,
       items: w.items,
       mineralSpots: w.mineralSpots,
     })
-    useTelemetryStore.getState().setTelemetry({ careIssues: w.careIssues })
+    appStore.set(telemetryAtom, { careIssues: w.careIssues })
   })
   if (action.id === 'feed') play('chime')
   showToast(msg)
@@ -41,7 +42,7 @@ function runAction(action: NonNullable<CareIssue['action']>) {
 
 /** "Next step" card: the top issue (first warning, else first note) with its one-click fix. */
 export function BotanistNotes() {
-  const { careIssues, condensation } = useTelemetryStore(selectTelemetry)
+  const { careIssues, condensation } = useAtomValue(telemetryAtom)
   const top = careIssues.find((i) => i.level === 'warn') ?? careIssues[0]
   const action = top?.action
   return (
@@ -65,7 +66,7 @@ export function BotanistNotes() {
 
 /** "Inhabitants" list: every care issue, or an all-clear line. */
 export function CareList() {
-  const { careIssues } = useTelemetryStore(selectTelemetry)
+  const { careIssues } = useAtomValue(telemetryAtom)
   return (
     <div className="rounded-2xl border border-card-line bg-white p-3.5">
       <div className="mb-2 text-xs font-semibold text-forest-ink">Inhabitants</div>

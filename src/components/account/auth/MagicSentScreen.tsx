@@ -1,20 +1,23 @@
-import { useAccount, useAuthEnv } from './authEnv'
+import { useAtomValue, useStore } from 'jotai'
+import { useAuthEnv } from './authEnv'
+import { busyAtom, phaseAtom, viewDataAtom } from '@/store/account'
 import { Banner, FormError, LinkButton, MailIcon, ResendRow } from './AuthPieces'
 
 /** The sign-in link was sent; the prototype inbox opens it (spec Screens.magicSent). */
 export function MagicSentScreen() {
-  const { store, auth, toast } = useAuthEnv()
-  const email = useAccount((s) => s.viewData.email ?? '')
-  const busy = useAccount((s) => s.busy)
+  const { account, auth, toast } = useAuthEnv()
+  const store = useStore()
+  const email = useAtomValue(viewDataAtom).email ?? ''
+  const busy = useAtomValue(busyAtom)
 
   const openLink = () =>
-    void store.getState().run(async () => {
+    void account.run(async () => {
       const r = await auth.completeMagicLink(email)
       // The form is done: the button should not read busy while the session loads.
-      store.setState({ busy: false })
-      await store.getState().beginSession(r.user, r.session, { isNew: r.isNew })
-      if (store.getState().phase === 'cloud') {
-        store.getState().closePanel()
+      store.set(busyAtom, false)
+      await account.beginSession(r.user, r.session, { isNew: r.isNew })
+      if (store.get(phaseAtom) === 'cloud') {
+        account.closePanel()
         toast(`Signed in as ${r.user.email}`)
       }
     })
@@ -53,7 +56,7 @@ export function MagicSentScreen() {
       <FormError />
       <ResendRow email={email} purpose="magic" />
       <p className="auth-foot">
-        <LinkButton onClick={() => store.getState().goView('signin')}>Back to sign in</LinkButton>
+        <LinkButton onClick={() => account.goView('signin')}>Back to sign in</LinkButton>
       </p>
     </div>
   )

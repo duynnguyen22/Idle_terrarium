@@ -1,10 +1,11 @@
 import { Fragment } from 'react'
+import { useAtomValue } from 'jotai'
 import { LAND_LAYER_IDS, SUBSTRATES_BY_ID } from '@/data/substrates'
 import { mutateWorld } from '@/engine/engineBridge'
 import { getTotalSubstrateDepth, hasPool } from '@/engine/geometry'
-import { selectSubstrates, selectWaterSplit } from '@/store/selectors'
-import { showToast } from '@/store/toastStore'
-import { useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import { cycleProgressAtom, setSubstrateAtom, substratesAtom, waterSplitAtom } from '@/store/studio'
+import { showToast } from '@/store/toast'
 import { Slider } from '@/components/ui/Slider'
 
 type SliderLayerId = (typeof LAND_LAYER_IDS)[number] | 'rivergravel' | 'water'
@@ -19,7 +20,7 @@ const NEW_POOL_TOAST = 'New pool: it cycles for about 3 weeks before fish and sh
 
 /** Total readout shown in the section header (prototype #total-substrate-depth). */
 export function TotalSubstrateDepth() {
-  const substrates = useStudioStore(selectSubstrates)
+  const substrates = useAtomValue(substratesAtom)
   return (
     <span
       data-testid="total-substrate-depth"
@@ -38,7 +39,7 @@ function splitLabel(waterSplit: number): string {
 
 function SliderRow({ id, max }: { id: SliderLayerId; max: number }) {
   const layer = SUBSTRATES_BY_ID[id]
-  const val = Math.round(useStudioStore((s) => s.substrates[id]) || 0)
+  const val = Math.round(useAtomValue(substratesAtom)[id] || 0)
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-xs">
@@ -63,7 +64,7 @@ function SliderRow({ id, max }: { id: SliderLayerId; max: number }) {
 }
 
 function resetCycle() {
-  useStudioStore.getState().setCycleProgress(0)
+  appStore.set(cycleProgressAtom, 0)
   mutateWorld((w) => {
     w.env.cycleProgress = 0
   })
@@ -71,26 +72,27 @@ function resetCycle() {
 
 /** Writes a layer depth; first water into an existing pool restarts the cycle (prototype 2198–2201). */
 function changeLayer(id: SliderLayerId, mm: number) {
-  const { substrates, waterSplit, setSubstrate } = useStudioStore.getState()
+  const substrates = appStore.get(substratesAtom)
+  const waterSplit = appStore.get(waterSplitAtom)
   const before = substrates[id] || 0
-  setSubstrate(id, mm)
+  appStore.set(setSubstrateAtom, id, mm)
   if (id === 'water' && before < 1 && mm >= 1 && hasPool(waterSplit)) resetCycle()
 }
 
 /** Changing the pool width; opening a new pool restarts the nitrogen cycle (prototype 2189–2196). */
 function changePoolWidth(percent: number) {
-  const { waterSplit: prev, setWaterSplit, setSubstrate } = useStudioStore.getState()
-  setWaterSplit(percent / 100)
-  const next = useStudioStore.getState().waterSplit
+  const prev = appStore.get(waterSplitAtom)
+  appStore.set(waterSplitAtom, percent / 100)
+  const next = appStore.get(waterSplitAtom)
   if (!hasPool(prev) && hasPool(next)) {
     resetCycle()
-    setSubstrate('water', Math.max(useStudioStore.getState().substrates.water || 0, 40))
+    appStore.set(setSubstrateAtom, 'water', Math.max(appStore.get(substratesAtom).water || 0, 40))
     showToast(NEW_POOL_TOAST)
   }
 }
 
 export function SubstrateSliders() {
-  const waterSplit = useStudioStore(selectWaterSplit)
+  const waterSplit = useAtomValue(waterSplitAtom)
   return (
     <div className="space-y-2.5 rounded-2xl border border-card-line bg-white p-3">
       <div className={SUBHEAD}>Land, top to bottom</div>

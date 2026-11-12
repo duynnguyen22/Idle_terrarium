@@ -1,6 +1,8 @@
+import { useAtomValue, useStore } from 'jotai'
 import { useEffect, type ReactNode } from 'react'
 import type { CodePurpose } from '@/auth'
-import { RESEND_WINDOW_MS, useAccount, useAuthEnv, useSecondsLeft } from './authEnv'
+import { RESEND_WINDOW_MS, useAuthEnv, useSecondsLeft } from './authEnv'
+import { busyAtom, viewDataAtom } from '@/store/account'
 
 /** A 24-unit stroked icon in the spec's `.ic` style. */
 function Ic({ children }: { children: ReactNode }) {
@@ -77,7 +79,7 @@ export function AuthHeader({ title, sub }: { title: string; sub?: string }) {
 
 /** The screen's info/success/error banner from viewData.banner. */
 export function Banner() {
-  const banner = useAccount((s) => s.viewData.banner)
+  const banner = useAtomValue(viewDataAtom).banner
   if (!banner) return null
   return (
     <div className={`auth-banner ${banner.kind}`} role="status">
@@ -88,8 +90,8 @@ export function Banner() {
 
 /** The form-level error: a ticking lockout countdown while locked, else viewData.error. */
 export function FormError() {
-  const lockedUntil = useAccount((s) => s.viewData.lockedUntil ?? 0)
-  const error = useAccount((s) => s.viewData.error ?? null)
+  const lockedUntil = useAtomValue(viewDataAtom).lockedUntil ?? 0
+  const error = useAtomValue(viewDataAtom).error ?? null
   if (lockedUntil) return <Lockout key={lockedUntil} until={lockedUntil} error={error} />
   return <ErrorBanner error={error} />
 }
@@ -104,12 +106,12 @@ function ErrorBanner({ error }: { error: string | null }) {
 }
 
 function Lockout({ until, error }: { until: number; error: string | null }) {
-  const { store } = useAuthEnv()
+  const { account } = useAuthEnv()
   const left = useSecondsLeft(until)
   useEffect(() => {
     // The lockout's own "Too many attempts." goes with it.
-    if (left <= 0) store.getState().setViewData({ lockedUntil: 0, error: null })
-  }, [left, store])
+    if (left <= 0) account.setViewData({ lockedUntil: 0, error: null })
+  }, [left, account])
   if (left <= 0) return <ErrorBanner error={error} />
   return (
     <div className="auth-banner error" role="alert">
@@ -121,7 +123,7 @@ function Lockout({ until, error }: { until: number; error: string | null }) {
 
 /** The primary submit button; shows a spinner and "Please wait…" while a request runs. */
 export function SubmitButton({ children }: { children: ReactNode }) {
-  const busy = useAccount((s) => s.busy)
+  const busy = useAtomValue(busyAtom)
   return (
     <button type="submit" className="auth-btn primary" disabled={busy}>
       {busy && <span className="auth-spin" aria-hidden="true" />}
@@ -152,11 +154,11 @@ export function LinkButton({
 
 /** Google and Apple buttons; both open the provider consent screen (spec providers). */
 export function Providers({ mode }: { mode: 'signin' | 'signup' }) {
-  const { store } = useAuthEnv()
+  const store = useStore()
+  const { account } = useAuthEnv()
   const verb = mode === 'signup' ? 'Sign up' : 'Continue'
   const go = (provider: string) => {
-    const s = store.getState()
-    s.goView('provider', { provider, email: s.viewData.email ?? '' })
+    account.goView('provider', { provider, email: store.get(viewDataAtom).email ?? '' })
   }
   return (
     <div className="auth-providers">
@@ -225,12 +227,12 @@ export function ProtoInbox({ email, purpose }: { email: string; purpose: CodePur
 
 /** "Didn’t get it?" with a countdown, then a link that sends another code or link. */
 export function ResendRow({ email, purpose }: { email: string; purpose: CodePurpose }) {
-  const resendAt = useAccount((s) => s.viewData.resendAt ?? 0)
+  const resendAt = useAtomValue(viewDataAtom).resendAt ?? 0
   return <Resend key={resendAt} until={resendAt} email={email} purpose={purpose} />
 }
 
 function Resend({ until, email, purpose }: { until: number; email: string; purpose: CodePurpose }) {
-  const { store, auth } = useAuthEnv()
+  const { account, auth } = useAuthEnv()
   const left = useSecondsLeft(until)
   if (left > 0) {
     return (
@@ -241,9 +243,9 @@ function Resend({ until, email, purpose }: { until: number; email: string; purpo
     )
   }
   const resend = () =>
-    void store.getState().run(async () => {
+    void account.run(async () => {
       await auth.resendCode(email, purpose)
-      store.getState().setViewData({
+      account.setViewData({
         resendAt: Date.now() + RESEND_WINDOW_MS,
         banner: {
           kind: 'success',

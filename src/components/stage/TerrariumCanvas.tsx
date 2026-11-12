@@ -1,3 +1,4 @@
+import { useAtomValue } from 'jotai'
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { vesselKX } from '@/data/vessels'
 import { commitWorld, getWorld, tryGetWorld } from '@/engine/engineBridge'
@@ -8,8 +9,16 @@ import { endMist } from '@/engine/simulation/mist'
 import { registerTerrariumCanvas } from '@/lib/terrariumCanvas'
 import { play } from '@/hooks/useAudio'
 import { useTerrariumEngine } from '@/hooks/useTerrariumEngine'
-import { showToast } from '@/store/toastStore'
-import { useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import {
+  activePourMaterialAtom,
+  activeToolAtom,
+  relaxModeAtom,
+  selectedIdAtom,
+  studioStateAtom,
+  vesselAtom,
+} from '@/store/studio'
+import { showToast } from '@/store/toast'
 
 type CursorKind = 'default' | 'grab' | 'grabbing' | 'pour' | 'mist' | 'prune' | 'boost' | 'scrub'
 
@@ -41,9 +50,9 @@ function cursorFor(
 export function TerrariumCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [dragging, setDragging] = useState(false)
-  const relaxMode = useStudioStore((s) => s.relaxMode)
-  const activeTool = useStudioStore((s) => s.activeTool)
-  const pourMaterial = useStudioStore((s) => s.activePourMaterial)
+  const relaxMode = useAtomValue(relaxModeAtom)
+  const activeTool = useAtomValue(activeToolAtom)
+  const pourMaterial = useAtomValue(activePourMaterialAtom)
   useTerrariumEngine(canvasRef)
 
   useEffect(() => {
@@ -71,8 +80,12 @@ export function TerrariumCanvas() {
     const canvas = canvasRef.current
     if (!canvas) return { nx: 0, ny: 0 }
     const rect = canvas.getBoundingClientRect()
-    const { relaxMode, vessel } = useStudioStore.getState()
-    const R = computeVesselRect(rect.width, rect.height, relaxMode, vesselKX(vessel))
+    const R = computeVesselRect(
+      rect.width,
+      rect.height,
+      appStore.get(relaxModeAtom),
+      vesselKX(appStore.get(vesselAtom)),
+    )
     return toNormalized(clientX, clientY, rect, R)
   }
 
@@ -90,7 +103,7 @@ export function TerrariumCanvas() {
         x: Math.max(0.14, Math.min(0.86, nx)),
         y: Math.max(0.1, Math.min(0.86, ny)),
       }
-      updateDrag(world, nx, ny, vesselKX(useStudioStore.getState().vessel))
+      updateDrag(world, nx, ny, vesselKX(appStore.get(vesselAtom)))
     }
     const onUp = () => {
       let world
@@ -126,7 +139,7 @@ export function TerrariumCanvas() {
   }, [])
 
   const onPointerDown = (e: ReactPointerEvent<HTMLCanvasElement>) => {
-    const store = useStudioStore.getState()
+    const store = appStore.get(studioStateAtom)
     if (store.relaxMode) return
     const world = getWorld()
     const { nx, ny } = norm(e.clientX, e.clientY)
@@ -153,11 +166,11 @@ export function TerrariumCanvas() {
 
     const hit = hitTest(world, nx, ny, kx)
     if (hit) {
-      store.selectItem(hit.uid)
+      appStore.set(selectedIdAtom, hit.uid)
       beginDrag(world, hit, nx, ny)
       setDragging(true)
     } else {
-      store.selectItem(null)
+      appStore.set(selectedIdAtom, null)
     }
   }
 

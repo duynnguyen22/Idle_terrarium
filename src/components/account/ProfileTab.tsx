@@ -1,10 +1,19 @@
+import { useAtomValue, useStore } from 'jotai'
 import { useEffect, useLayoutEffect, useRef, type FormEvent } from 'react'
 import type { PublicUser } from '@/auth'
-import { useAccount, useAuthEnv } from '@/components/account/auth/authEnv'
+import { useAuthEnv } from '@/components/account/auth/authEnv'
 import { AuthField } from '@/components/account/auth/AuthField'
 import { FormError } from '@/components/account/auth/AuthPieces'
 import { StrengthBlock } from '@/components/account/auth/StrengthBlock'
-import { CLEARED_ACCOUNT_FORM, timeAgo } from '@/store/useAccountStore'
+import {
+  backendAtom,
+  busyAtom,
+  CLEARED_ACCOUNT_FORM,
+  sessionAtom,
+  timeAgo,
+  userAtom,
+  viewDataAtom,
+} from '@/store/account'
 
 const SIGNED_OUT_EVERYWHERE_TEXT =
   'You’re signed out everywhere. Sign in again on the devices you use.'
@@ -12,23 +21,24 @@ const DELETED_TEXT = 'Your account and its data were deleted.'
 const MISMATCH_TEXT = 'That doesn’t match your email.'
 
 function ProfileCard({ user }: { user: PublicUser }) {
-  const { store, auth } = useAuthEnv()
-  const busy = useAccount((s) => s.busy)
-  const saved = useAccount((s) => s.viewData.saved === 'profile')
-  const nameUnset = useAccount((s) => s.viewData.name === undefined)
+  const { account, auth } = useAuthEnv()
+  const store = useStore()
+  const busy = useAtomValue(busyAtom)
+  const saved = useAtomValue(viewDataAtom).saved === 'profile'
+  const nameUnset = useAtomValue(viewDataAtom).name === undefined
 
   // Prefill the name before the first paint (spec: `if (v.name === undefined) v.name = u.name`).
   useLayoutEffect(() => {
-    if (nameUnset) store.getState().setViewData({ name: user.name })
-  }, [nameUnset, store, user.name])
+    if (nameUnset) account.setViewData({ name: user.name })
+  }, [nameUnset, account, user.name])
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
-    void store.getState().run(async () => {
-      const name = store.getState().viewData.name ?? user.name
+    void account.run(async () => {
+      const name = store.get(viewDataAtom).name ?? user.name
       const next = await auth.updateProfile(user.id, { name })
       // A reply that arrives after the session ended changes nothing.
-      if (store.getState().setUser(next)) store.getState().setViewData({ saved: 'profile' })
+      if (account.setUser(next)) account.setViewData({ saved: 'profile' })
     })
   }
 
@@ -54,9 +64,10 @@ function ProfileCard({ user }: { user: PublicUser }) {
 }
 
 function PasswordCard({ user }: { user: PublicUser }) {
-  const { store, auth } = useAuthEnv()
-  const busy = useAccount((s) => s.busy)
-  const saved = useAccount((s) => s.viewData.saved === 'password')
+  const { account, auth } = useAuthEnv()
+  const store = useStore()
+  const busy = useAtomValue(busyAtom)
+  const saved = useAtomValue(viewDataAtom).saved === 'password'
 
   if (user.provider !== 'password') {
     return (
@@ -69,10 +80,10 @@ function PasswordCard({ user }: { user: PublicUser }) {
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
-    void store.getState().run(async () => {
-      const v = store.getState().viewData
+    void account.run(async () => {
+      const v = store.get(viewDataAtom)
       await auth.changePassword(user.id, { current: v.current ?? '', next: v.next ?? '' })
-      store.getState().setViewData({ current: '', next: '', saved: 'password' })
+      account.setViewData({ current: '', next: '', saved: 'password' })
     })
   }
 
@@ -98,23 +109,24 @@ function PasswordCard({ user }: { user: PublicUser }) {
 }
 
 function SessionsCard({ user }: { user: PublicUser }) {
-  const { store, auth } = useAuthEnv()
-  const busy = useAccount((s) => s.busy)
-  const session = useAccount((s) => s.session)
+  const { account, auth } = useAuthEnv()
+  const store = useStore()
+  const busy = useAtomValue(busyAtom)
+  const session = useAtomValue(sessionAtom)
 
   const signOutEverywhere = () =>
-    void store.getState().run(async () => {
+    void account.run(async () => {
       await auth.signOutEverywhere(user.id)
       // Same order as Sign out: clear busy and move to sign in before ending the session, so the
       // sign-in screen arrives ready (no "Please wait…") and the dialog focuses it.
-      store.setState({ busy: false })
-      store.getState().goView('signin', {
+      store.set(busyAtom, false)
+      account.goView('signin', {
         ...CLEARED_ACCOUNT_FORM,
         email: user.email,
         password: '',
         banner: { kind: 'success', text: SIGNED_OUT_EVERYWHERE_TEXT },
       })
-      await store.getState().endSession('Signed out of every device')
+      await account.endSession('Signed out of every device')
     })
 
   const kept = session?.remember ? 'stays signed in for 30 days' : 'until you close the browser'
@@ -139,22 +151,23 @@ function SessionsCard({ user }: { user: PublicUser }) {
 
 /** The typed-email confirmation; its field takes focus when it opens. */
 function ConfirmDelete({ user, onCancel }: { user: PublicUser; onCancel: () => void }) {
-  const { store, auth } = useAuthEnv()
-  const busy = useAccount((s) => s.busy)
+  const { account, auth } = useAuthEnv()
+  const store = useStore()
+  const busy = useAtomValue(busyAtom)
   useEffect(() => document.getElementById('auth-confirmEmail')?.focus(), [])
 
   const onDelete = () => {
-    const typed = (store.getState().viewData.confirmEmail ?? '').trim().toLowerCase()
+    const typed = (store.get(viewDataAtom).confirmEmail ?? '').trim().toLowerCase()
     if (typed !== user.email.toLowerCase()) {
-      store.getState().setViewData({ fieldErrors: { confirmEmail: MISMATCH_TEXT } })
+      account.setViewData({ fieldErrors: { confirmEmail: MISMATCH_TEXT } })
       return
     }
-    void store.getState().run(async () => {
+    void account.run(async () => {
       // Close the open terrarium first: endSession's final save (and any pending debounced save)
       // would otherwise write it back into the storage deleteAll just emptied.
-      const openId = await store.getState().detachActiveGarden()
+      const openId = await account.detachActiveGarden()
       try {
-        await store.getState().backend?.deleteAll()
+        await store.get(backendAtom)?.deleteAll()
       } catch {
         // The storage is already gone; the account is deleted either way.
       }
@@ -163,18 +176,17 @@ function ConfirmDelete({ user, onCancel }: { user: PublicUser; onCancel: () => v
       } catch (e) {
         // The account is still there: reopen the terrarium and write it back (under its own name,
         // still in the list), then match the list to the storage. run() shows the error.
-        const s = store.getState()
-        s.attachActiveGarden(openId)
-        await s.flushCloudSave()
-        await s.refreshGardens()
+        account.attachActiveGarden(openId)
+        await account.flushCloudSave()
+        await account.refreshGardens()
         throw e
       }
-      store.setState({ busy: false })
-      store.getState().goView('signup', {
+      store.set(busyAtom, false)
+      account.goView('signup', {
         ...CLEARED_ACCOUNT_FORM,
         banner: { kind: 'info', text: DELETED_TEXT },
       })
-      await store.getState().endSession('Account deleted')
+      await account.endSession('Account deleted')
     })
   }
 
@@ -199,8 +211,8 @@ function ConfirmDelete({ user, onCancel }: { user: PublicUser; onCancel: () => v
 }
 
 function DangerZone({ user }: { user: PublicUser }) {
-  const { store } = useAuthEnv()
-  const confirming = useAccount((s) => !!s.viewData.confirmDeleteAccount)
+  const { account } = useAuthEnv()
+  const confirming = !!useAtomValue(viewDataAtom).confirmDeleteAccount
   const openRef = useRef<HTMLButtonElement>(null)
   const refocus = useRef(false)
 
@@ -212,7 +224,7 @@ function DangerZone({ user }: { user: PublicUser }) {
 
   const cancel = () => {
     refocus.current = true
-    store.getState().setViewData({ confirmDeleteAccount: false })
+    account.setViewData({ confirmDeleteAccount: false })
   }
 
   return (
@@ -229,7 +241,7 @@ function DangerZone({ user }: { user: PublicUser }) {
             ref={openRef}
             type="button"
             className="g-btn danger-outline"
-            onClick={() => store.getState().setViewData({ confirmDeleteAccount: true })}
+            onClick={() => account.setViewData({ confirmDeleteAccount: true })}
           >
             Delete account…
           </button>
@@ -241,7 +253,7 @@ function DangerZone({ user }: { user: PublicUser }) {
 
 /** The Profile & security tab: name, password, where you're signed in and account deletion (spec profileTab). */
 export function ProfileTab() {
-  const user = useAccount((s) => s.user)
+  const user = useAtomValue(userAtom)
   if (!user) return null
   return (
     <div className="acct-stack">

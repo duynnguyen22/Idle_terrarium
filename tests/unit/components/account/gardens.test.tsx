@@ -1,10 +1,11 @@
 import { act, fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useAtomValue } from 'jotai'
+import { patchAccountAtom, viewAtom } from '@/store/account'
 import { describe, expect, it, vi } from 'vitest'
 import { BackendError } from '@/auth/backend'
 import type { VesselId } from '@/data/vessels'
 import { AccountDialog } from '@/components/account/AccountDialog'
-import { useAccount } from '@/components/account/auth/authEnv'
 import { AuthScreen } from '@/components/account/auth/AuthScreen'
 import {
   demoSession,
@@ -16,7 +17,7 @@ import {
 } from '../auth/authHarness'
 
 function CurrentScreen() {
-  const view = useAccount((s) => s.view)
+  const view = useAtomValue(viewAtom)
   return <AuthScreen view={view} />
 }
 
@@ -45,7 +46,7 @@ async function signedIn({ signOut }: { signOut?: () => Promise<void> } = {}) {
   await seed(env, 'g_a', 'Alpha', 'globe', now - 2 * MIN, { day: 3, plants: 2, animals: 1 })
   await seed(env, 'g_b', 'Other', 'cylinder', now - 5 * MIN, { day: 7, plants: 4, animals: 0 })
   await env.backend.setProfile({ activeGardenId: 'g_a' })
-  await act(() => env.store.getState().beginSession(demoUser, demoSession, { isNew: false }))
+  await act(() => env.account.beginSession(demoUser, demoSession, { isNew: false }))
   renderIn(env, <CurrentScreen />)
   return env
 }
@@ -80,9 +81,7 @@ describe('AccountScreen', () => {
     env.backend.kind = 'cloud'
     await seed(env, 'g_a', 'Alpha', 'globe', Date.now())
     await act(() =>
-      env.store
-        .getState()
-        .beginSession({ ...demoUser, verified: false }, demoSession, { isNew: false }),
+      env.account.beginSession({ ...demoUser, verified: false }, demoSession, { isNew: false }),
     )
     renderIn(env, <CurrentScreen />)
     expect(screen.queryByText('Verified')).toBeNull()
@@ -91,10 +90,10 @@ describe('AccountScreen', () => {
 
   it('switching tabs selects the tab and clears viewData', async () => {
     const env = await signedIn()
-    act(() => env.store.getState().setViewData({ error: 'stale', current: 'x' }))
+    act(() => env.account.setViewData({ error: 'stale', current: 'x' }))
     await userEvent.setup().click(screen.getByRole('tab', { name: 'Journal' }))
-    expect(env.store.getState().tab).toBe('journal')
-    expect(env.store.getState().viewData).toEqual({})
+    expect(env.state().tab).toBe('journal')
+    expect(env.state().viewData).toEqual({})
     expect(screen.getByRole('tab', { name: 'Journal' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Terrariums' })).toHaveAttribute(
       'aria-selected',
@@ -108,7 +107,7 @@ describe('AccountScreen', () => {
     const env = await signedIn({ signOut })
     // Values typed on the Profile tab must not follow onto the sign-in screen.
     act(() =>
-      env.store.getState().setViewData({
+      env.account.setViewData({
         name: 'Demo Gardener',
         current: 'old-secret1',
         next: 'new-secret2',
@@ -117,9 +116,9 @@ describe('AccountScreen', () => {
       }),
     )
     await userEvent.setup().click(screen.getByRole('button', { name: 'Sign out' }))
-    await vi.waitFor(() => expect(env.store.getState().view).toBe('signin'))
+    await vi.waitFor(() => expect(env.state().view).toBe('signin'))
     expect(signOut).toHaveBeenCalledTimes(1)
-    const s = env.store.getState()
+    const s = env.state()
     expect(s.phase).toBe('signedout')
     expect(s.user).toBeNull()
     expect(s.gardens).toEqual([])
@@ -146,11 +145,11 @@ describe('AccountScreen in the dialog', () => {
     const signOut = vi.fn(() => Promise.resolve())
     const env = makeEnv('signin', { auth: fakeAuth({ signOut }) })
     await seed(env, 'g_a', 'Alpha', 'globe', Date.now())
-    await act(() => env.store.getState().beginSession(demoUser, demoSession, { isNew: false }))
+    await act(() => env.account.beginSession(demoUser, demoSession, { isNew: false }))
     renderIn(env, <AccountDialog />)
     await userEvent.setup().click(screen.getByRole('button', { name: 'Sign out' }))
-    await vi.waitFor(() => expect(env.store.getState().phase).toBe('signedout'))
-    await vi.waitFor(() => expect(env.store.getState().busy).toBe(false))
+    await vi.waitFor(() => expect(env.state().phase).toBe('signedout'))
+    await vi.waitFor(() => expect(env.state().busy).toBe(false))
     expect(signOut).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('dialog')).toHaveAccessibleName('Welcome back')
     expect(screen.getByRole('status')).toHaveTextContent(
@@ -167,7 +166,7 @@ describe('GardensTab', () => {
     const env = await signedIn()
     await act(() =>
       seed(env, 'g_c', '', 'not-a-vessel', Date.now() - 10 * MIN).then(() =>
-        env.store.getState().refreshGardens(),
+        env.account.refreshGardens(),
       ),
     )
     expect(screen.getByRole('heading', { name: 'My terrariums' })).toBeInTheDocument()
@@ -204,18 +203,18 @@ describe('GardensTab', () => {
     const u = userEvent.setup()
 
     await u.click(row('Other').getByRole('button', { name: 'Open' }))
-    await vi.waitFor(() => expect(env.store.getState().activeId).toBe('g_b'))
+    await vi.waitFor(() => expect(env.state().activeId).toBe('g_b'))
     expect(env.toast).toHaveBeenCalledWith('Opened Other')
     expect(row('Other').getByText('Open')).toHaveClass('g-badge')
     expect(row('Alpha').getByRole('button', { name: 'Open' })).toBeInTheDocument()
 
     await u.click(row('Alpha').getByRole('button', { name: 'Delete' }))
-    expect(env.store.getState().confirmDelete).toBe('g_a')
+    expect(env.state().confirmDelete).toBe('g_a')
     expect(row('Alpha').getByRole('button', { name: 'Keep' })).toBeInTheDocument()
     expect(row('Alpha').queryByRole('button', { name: 'Rename' })).toBeNull()
 
     await u.click(row('Alpha').getByRole('button', { name: 'Keep' }))
-    expect(env.store.getState().confirmDelete).toBeNull()
+    expect(env.state().confirmDelete).toBeNull()
     expect(row('Alpha').queryByRole('button', { name: 'Keep' })).toBeNull()
     expect((await env.backend.listGardens()).map((g) => g.id)).toContain('g_a')
 
@@ -239,7 +238,7 @@ describe('GardensTab', () => {
     await u.clear(input)
     await u.type(input, 'Mossy Corner{Enter}')
     await vi.waitFor(() =>
-      expect(env.store.getState().gardens.find((g) => g.id === 'g_b')?.name).toBe('Mossy Corner'),
+      expect(env.state().gardens.find((g) => g.id === 'g_b')?.name).toBe('Mossy Corner'),
     )
     expect(screen.queryByRole('textbox', { name: 'Terrarium name' })).toBeNull()
     expect(screen.getByText('Mossy Corner')).toBeInTheDocument()
@@ -254,9 +253,9 @@ describe('GardensTab', () => {
     await u.clear(again)
     await u.type(again, 'Nope{Escape}')
     expect(screen.queryByRole('textbox', { name: 'Terrarium name' })).toBeNull()
-    expect(env.store.getState().renaming).toBeNull()
+    expect(env.state().renaming).toBeNull()
     expect(screen.getByText('Mossy Corner')).toBeInTheDocument()
-    expect(env.store.getState().gardens.find((g) => g.id === 'g_b')?.name).toBe('Mossy Corner')
+    expect(env.state().gardens.find((g) => g.id === 'g_b')?.name).toBe('Mossy Corner')
   })
 
   it('Enter then leaving the field saves the name once', async () => {
@@ -269,7 +268,7 @@ describe('GardensTab', () => {
     await u.type(input, 'Once{Enter}')
     await u.tab()
     await vi.waitFor(() =>
-      expect(env.store.getState().gardens.find((g) => g.id === 'g_b')?.name).toBe('Once'),
+      expect(env.state().gardens.find((g) => g.id === 'g_b')?.name).toBe('Once'),
     )
     expect(rename).toHaveBeenCalledTimes(1)
     expect(rename).toHaveBeenCalledWith('g_b', 'Once')
@@ -284,10 +283,10 @@ describe('GardensTab', () => {
     await u.clear(input)
     await u.type(input, '   {Enter}')
     expect(screen.queryByRole('textbox', { name: 'Terrarium name' })).toBeNull()
-    expect(env.store.getState().renaming).toBeNull()
+    expect(env.state().renaming).toBeNull()
     expect(rename).not.toHaveBeenCalled()
     expect(screen.getByText('Other')).toBeInTheDocument()
-    expect(env.store.getState().gardens.find((g) => g.id === 'g_b')?.name).toBe('Other')
+    expect(env.state().gardens.find((g) => g.id === 'g_b')?.name).toBe('Other')
   })
 
   it('Rename saves on blur', async () => {
@@ -299,7 +298,7 @@ describe('GardensTab', () => {
     await u.type(input, 'Blurred')
     await u.tab()
     await vi.waitFor(() =>
-      expect(env.store.getState().gardens.find((g) => g.id === 'g_a')?.name).toBe('Blurred'),
+      expect(env.state().gardens.find((g) => g.id === 'g_a')?.name).toBe('Blurred'),
     )
     expect(screen.queryByRole('textbox', { name: 'Terrarium name' })).toBeNull()
   })
@@ -320,7 +319,7 @@ describe('GardensTab', () => {
 
   it('a second click while a terrarium is being created does not start another', async () => {
     const env = await signedIn()
-    const create = vi.spyOn(env.store.getState(), 'createGarden')
+    const create = vi.spyOn(env.account, 'createGarden')
     const button = screen.getByRole('button', { name: 'New empty tank' })
     fireEvent.click(button)
     fireEvent.click(button)
@@ -334,7 +333,7 @@ describe('GardensTab', () => {
 
   it('a failed create still shows the storage-full message when storage was already full', async () => {
     const env = await signedIn()
-    act(() => env.store.setState({ lastError: 'Storage is full' }))
+    act(() => env.store.set(patchAccountAtom, { lastError: 'Storage is full' }))
     // Every write fails: the flush of the open garden (deduped) and the new record (not).
     vi.spyOn(env.backend, 'saveGarden').mockRejectedValue(new BackendError('quota_exceeded'))
     const u = userEvent.setup()
@@ -348,7 +347,7 @@ describe('GardensTab', () => {
     await vi.waitFor(() => expect(env.toast).toHaveBeenCalledTimes(2))
     expect(env.toast).not.toHaveBeenCalledWith('New terrarium started')
     expect(screen.getByText('2 saved')).toBeInTheDocument()
-    expect(env.store.getState().activeId).toBe('g_a')
+    expect(env.state().activeId).toBe('g_a')
   })
 })
 
@@ -356,17 +355,17 @@ describe('GardensTab in the dialog', () => {
   it('Escape in the rename box cancels the rename as the dialog closes (spec 4994, 6408)', async () => {
     const env = makeEnv('signin')
     await seed(env, 'g_a', 'Alpha', 'globe', Date.now())
-    await act(() => env.store.getState().beginSession(demoUser, demoSession, { isNew: false }))
+    await act(() => env.account.beginSession(demoUser, demoSession, { isNew: false }))
     renderIn(env, <AccountDialog />)
     expect(screen.getByRole('tab', { name: 'Terrariums' })).toHaveFocus()
     const u = userEvent.setup()
     await u.click(screen.getByRole('button', { name: 'Rename' }))
     expect(screen.getByRole('textbox', { name: 'Terrarium name' })).toHaveFocus()
     await u.keyboard('{Escape}')
-    expect(env.store.getState().renaming).toBeNull()
-    expect(env.store.getState().panelOpen).toBe(false)
+    expect(env.state().renaming).toBeNull()
+    expect(env.state().panelOpen).toBe(false)
 
-    act(() => env.store.getState().openPanel())
+    act(() => env.account.openPanel())
     expect(screen.queryByRole('textbox', { name: 'Terrarium name' })).toBeNull()
     expect(screen.getByText('Alpha')).toBeInTheDocument()
   })

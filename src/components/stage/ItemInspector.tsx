@@ -1,3 +1,4 @@
+import { useAtomValue } from 'jotai'
 import { useReducer, type ReactNode } from 'react'
 import { findCatalogDef } from '@/data/catalog'
 import type { CatalogDef, PlacedItem } from '@/data/types'
@@ -13,8 +14,15 @@ import {
 } from '@/engine/items'
 import { play } from '@/hooks/useAudio'
 import type { EngineWorld } from '@/engine/world'
-import { selectRelaxMode, selectSelectedId } from '@/store/selectors'
-import { useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import {
+  plantingStageAtom,
+  relaxModeAtom,
+  selectedIdAtom,
+  substratesAtom,
+  waterSplitAtom,
+  worldSnapshotAtom,
+} from '@/store/studio'
 
 function Icon({ children }: { children: ReactNode }) {
   return (
@@ -81,9 +89,9 @@ function inspectorMeta(item: PlacedItem, def: CatalogDef | null): string {
  * each UI mutation (local tick plus the store snapshot mutateWorld commits), never per engine frame.
  */
 export function ItemInspector() {
-  const selectedId = useStudioStore(selectSelectedId)
-  const relaxMode = useStudioStore(selectRelaxMode)
-  useStudioStore((s) => s.worldSnapshot)
+  const selectedId = useAtomValue(selectedIdAtom)
+  const relaxMode = useAtomValue(relaxModeAtom)
+  useAtomValue(worldSnapshotAtom)
   const [, bump] = useReducer((n: number) => n + 1, 0)
 
   if (!selectedId || relaxMode) return null
@@ -99,7 +107,9 @@ export function ItemInspector() {
   const meta = inspectorMeta(item, def)
 
   const onDuplicate = () => {
-    const { plantingStage, substrates, waterSplit, selectItem } = useStudioStore.getState()
+    const plantingStage = appStore.get(plantingStageAtom)
+    const substrates = appStore.get(substratesAtom)
+    const waterSplit = appStore.get(waterSplitAtom)
     let uid: string | null = null
     apply((w) => {
       uid =
@@ -110,14 +120,14 @@ export function ItemInspector() {
         })?.uid ?? null
     })
     if (uid) {
-      selectItem(uid)
+      appStore.set(selectedIdAtom, uid)
       play('repot')
     }
   }
 
   const onDelete = () => {
     apply((w) => deleteItem(w, item.uid))
-    useStudioStore.getState().selectItem(null)
+    appStore.set(selectedIdAtom, null)
     play('prune')
   }
 

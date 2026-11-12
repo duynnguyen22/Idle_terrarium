@@ -1,10 +1,12 @@
+import { useAtomValue } from 'jotai'
 import { useEffect, useState } from 'react'
 import { startAmbient, type AmbientHandle } from '@/engine/audio/ambient'
 import { playCue } from '@/engine/audio/asmr'
 import { ensureAudioContext } from '@/engine/audio/audioContext'
 import type { SoundPresetId } from '@/data/types'
 import type { AsmrCue } from '@/engine/interaction'
-import { useStudioStore } from '@/store/useStudioStore'
+import { appStore } from '@/store/appStore'
+import { audioEnabledAtom, musicVolumeAtom, soundPresetAtom } from '@/store/studio'
 
 /**
  * Plays a tactile cue; no-op while audio is disabled (prototype playTactileASMR guard).
@@ -13,7 +15,7 @@ import { useStudioStore } from '@/store/useStudioStore'
  * import `play` directly instead of threading it through props or a context. It reads the store lazily.
  */
 export function play(cue: AsmrCue): void {
-  if (!useStudioStore.getState().audioEnabled) return
+  if (!appStore.get(audioEnabledAtom)) return
   const ctx = ensureAudioContext()
   if (ctx) playCue(ctx, cue)
 }
@@ -31,7 +33,7 @@ function ensureAmbient(preset: SoundPresetId): void {
   stopAmbient()
   const ctx = ensureAudioContext()
   if (ctx) {
-    const volume = useStudioStore.getState().musicVolume
+    const volume = appStore.get(musicVolumeAtom)
     ambient = { handle: startAmbient(ctx, preset, Math.random, volume), preset }
   }
 }
@@ -46,14 +48,13 @@ function setAmbientVolume(volume: number): void {
  * that enables audio (Safari only lets an AudioContext start inside the gesture's call stack, not from a later effect).
  */
 export function startAudioFromGesture(): void {
-  const s = useStudioStore.getState()
-  s.setAudioEnabled(true)
-  ensureAmbient(s.soundPreset)
+  appStore.set(audioEnabledAtom, true)
+  ensureAmbient(appStore.get(soundPresetAtom))
 }
 
 /** Turns audio off and stops the loop; never creates an AudioContext. */
 export function stopAudio(): void {
-  useStudioStore.getState().setAudioEnabled(false)
+  appStore.set(audioEnabledAtom, false)
   stopAmbient()
 }
 
@@ -64,9 +65,9 @@ export function stopAudio(): void {
  * persisted `audioEnabled: true` on reload must not create an AudioContext without one.
  */
 export function useAudio(): { play: typeof play } {
-  const audioEnabled = useStudioStore((s) => s.audioEnabled)
-  const soundPreset = useStudioStore((s) => s.soundPreset)
-  const musicVolume = useStudioStore((s) => s.musicVolume)
+  const audioEnabled = useAtomValue(audioEnabledAtom)
+  const soundPreset = useAtomValue(soundPresetAtom)
+  const musicVolume = useAtomValue(musicVolumeAtom)
   const [unlocked, setUnlocked] = useState(false)
 
   useEffect(() => {

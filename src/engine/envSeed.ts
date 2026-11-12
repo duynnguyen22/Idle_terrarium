@@ -1,6 +1,6 @@
 import { finiteOr } from '@/lib/finite'
-import type { StudioState } from '@/store/useStudioStore'
-import { DEFAULT_TELEMETRY } from '@/store/useTelemetryStore'
+import type { StudioState } from '@/store/studio'
+import { DEFAULT_TELEMETRY } from '@/store/telemetry'
 import type { EngineWorld } from './world'
 
 /**

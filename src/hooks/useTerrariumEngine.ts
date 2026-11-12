@@ -20,11 +20,16 @@ import { warmSpriteCache } from '@/engine/sprites/spriteCache'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { play } from '@/hooks/useAudio'
 import { recordReport } from '@/store/awayFlow'
-import { showToast } from '@/store/toastStore'
-import { useAccountStore } from '@/store/useAccountStore'
-import { useOverlayStore } from '@/store/useOverlayStore'
-import { useStudioStore } from '@/store/useStudioStore'
-import { useTelemetryStore } from '@/store/useTelemetryStore'
+import { phaseAtom } from '@/store/account'
+import { appStore, type AppStore } from '@/store/appStore'
+import { awayIndexAtom } from '@/store/overlay'
+import {
+  dayCountAtom,
+  lastSimulatedAtAtom,
+  studioStateAtom,
+  worldSnapshotAtom,
+} from '@/store/studio'
+import { showToast } from '@/store/toast'
 
 /** Longest simulated step; a backgrounded tab resumes with a clamped dt instead of a huge jump. */
 const MAX_DT_MS = 100
@@ -35,15 +40,15 @@ declare global {
     /** Dev/e2e debug handle; only present when `import.meta.env.DEV` (Playwright runs the dev server). */
     __botanica?: {
       world: () => EngineWorld
-      store: typeof useStudioStore
-      telemetry: typeof useTelemetryStore
+      /** The app's jotai store (studio, telemetry, overlay and account atoms). */
+      store: AppStore
     }
   }
 }
 
 /**
- * Owns the EngineWorld and the single rAF loop for `canvasRef`. The hot path reads the store via
- * `getState()` once per frame and never writes to it. The canvas backing size is owned by the component.
+ * Owns the EngineWorld and the single rAF loop for `canvasRef`. The hot path reads the studio state
+ * once per frame for rendering. The canvas backing size is owned by the component.
  */
 export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null>): void {
   useEffect(() => {
@@ -53,9 +58,9 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
     if (!ctx) return
 
     const world = createWorld()
-    seedWorldEnv(world, useStudioStore.getState())
-    const initial = useStudioStore.getState().worldSnapshot
-    const dayCount = useStudioStore.getState().dayCount
+    seedWorldEnv(world, appStore.get(studioStateAtom))
+    const initial = appStore.get(worldSnapshotAtom)
+    const dayCount = appStore.get(dayCountAtom)
     world.ecoTime = ecoTimeFromDayCount(dayCount)
     if (initial) restoreWorld(world, initial, dayCount)
     registerWorld(world)
@@ -64,7 +69,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
     // outside the rAF frame.
     const catchUp = () => {
       try {
-        const r = runCatchUpIfDue(world, useStudioStore.getState(), Date.now())
+        const r = runCatchUpIfDue(world, appStore, Date.now())
         if (r) {
           recordReport(r, { journal: true })
           // Persist the caught-up world alongside the already-advanced lastSimulatedAt.
@@ -73,44 +78,44 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       } catch (e) {
         // Never block the engine: skip this gap instead of retrying it on every reload.
         console.error('Catch-up failed', e)
-        useStudioStore.getState().setLastSimulatedAt(Date.now())
+        appStore.set(lastSimulatedAtAtom, Date.now())
       }
     }
     // While the account check runs, sign-in may still replace this garden with a saved one, so the catch-up
     // waits for the phase to settle and then runs against whichever garden is in place.
     let catchUpPending = false
     const catchUpWhenSettled = () => {
-      if (useAccountStore.getState().phase === 'checking') catchUpPending = true
+      if (appStore.get(phaseAtom) === 'checking') catchUpPending = true
       else catchUp()
     }
-    const unsubscribeAccount = useAccountStore.subscribe((a) => {
-      if (!catchUpPending || a.phase === 'checking') return
+    // Pending is only set while the phase is 'checking', so leaving it is always a phase change.
+    const unsubscribeAccount = appStore.sub(phaseAtom, () => {
+      if (!catchUpPending || appStore.get(phaseAtom) === 'checking') return
       catchUpPending = false
       catchUp()
     })
     const offRestored = onWorldRestored(() => {
       // An open card showed the previous garden's log; the applied one reopens it only for its own gap.
-      useOverlayStore.getState().closeAway()
+      appStore.set(awayIndexAtom, null)
       catchUpWhenSettled()
     })
     catchUpWhenSettled()
     if (import.meta.env.DEV)
       window.__botanica = {
         world: () => world,
-        store: useStudioStore,
-        telemetry: useTelemetryStore,
+        store: appStore,
       }
     warmSpriteCache(ALL_CATALOG_DEFS.map((d) => d.id as CatalogId))
 
     // External snapshot changes (e.g. a preset load) replace the world's persistable parts;
     // snapshots the bridge wrote itself are skipped so mid-interaction item objects are not replaced.
-    const unsubscribe = useStudioStore.subscribe((s, prev) => {
-      if (
-        s.worldSnapshot &&
-        s.worldSnapshot !== prev.worldSnapshot &&
-        !isOwnSnapshot(s.worldSnapshot)
-      )
-        restoreWorld(world, s.worldSnapshot, s.dayCount)
+    let prevSnapshot = appStore.get(worldSnapshotAtom)
+    const unsubscribe = appStore.sub(worldSnapshotAtom, () => {
+      const snap = appStore.get(worldSnapshotAtom)
+      const prev = prevSnapshot
+      prevSnapshot = snap
+      if (snap && snap !== prev && !isOwnSnapshot(snap))
+        restoreWorld(world, snap, appStore.get(dayCountAtom))
     })
 
     let rafId = 0
@@ -121,7 +126,8 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       const dt = Math.min(timestamp - (last || timestamp), MAX_DT_MS)
       last = timestamp
 
-      const state = useStudioStore.getState()
+      // Read before tick: this frame renders the state the frame started with.
+      const state = appStore.get(studioStateAtom)
       tick(world, dt, timestamp, { onCue: play, onToast: showToast, commit: commitWorld })
       if (world.pourSettled) {
         // Pointer-up committed before the last particles landed; commit once more outside the frame.
@@ -156,12 +162,11 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       rafId = 0
     }
     const saveNow = () => {
-      const s = useStudioStore.getState()
       // Push the latest day count and cycle progress now, not up to 250 ms late.
-      flushTelemetry(world, s)
-      flushEnvSeed(world, s)
+      flushTelemetry(world, appStore)
+      flushEnvSeed(world, appStore)
       commitWorld()
-      s.setLastSimulatedAt(Date.now())
+      appStore.set(lastSimulatedAtAtom, Date.now())
     }
     const onVisibility = () => {
       if (document.hidden) {

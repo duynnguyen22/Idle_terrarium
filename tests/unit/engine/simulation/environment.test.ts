@@ -5,6 +5,8 @@ import { isLampOn } from '@/engine/simulation/clock'
 import { frameScale, simSpeedMult } from '@/engine/simulation/constants'
 import { computeEnvTargets, updateEnvironment } from '@/engine/simulation/environment'
 import { flushEnvSeed } from '@/engine/simulation/telemetry'
+import { createStore } from 'jotai'
+import { mineralSpotsAtom } from '@/store/studio'
 import { createWorld } from '@/engine/world'
 
 const base = {
@@ -142,11 +144,13 @@ describe('room effects on the environment', () => {
   it('flushEnvSeed writes rounded mineral spots only when they changed', () => {
     const w = createWorld()
     w.mineralSpots = 0.123456
-    const setEnvSeed = vi.fn()
-    const setMineralSpots = vi.fn()
-    flushEnvSeed(w, { setEnvSeed, setMineralSpots, mineralSpots: 0 })
-    expect(setMineralSpots).toHaveBeenCalledWith(0.123)
-    flushEnvSeed(w, { setEnvSeed, setMineralSpots, mineralSpots: 0.123 })
-    expect(setMineralSpots).toHaveBeenCalledTimes(1)
+    const store = createStore()
+    const spotWrites = vi.fn()
+    store.sub(mineralSpotsAtom, spotWrites)
+    flushEnvSeed(w, store)
+    expect(store.get(mineralSpotsAtom)).toBe(0.123)
+    expect(spotWrites).toHaveBeenCalledTimes(1)
+    flushEnvSeed(w, store)
+    expect(spotWrites).toHaveBeenCalledTimes(1)
   })
 })

@@ -59,12 +59,12 @@ describe('ForgotScreen', () => {
     await u.type(screen.getByLabelText('Email'), 'linh@example.com')
     const before = Date.now()
     await u.click(screen.getByRole('button', { name: 'Send reset code' }))
-    await vi.waitFor(() => expect(env.store.getState().view).toBe('reset'))
+    await vi.waitFor(() => expect(env.state().view).toBe('reset'))
     expect(requestPasswordReset).toHaveBeenCalledWith('linh@example.com')
-    const v = env.store.getState().viewData
+    const v = env.state().viewData
     expect(v).toMatchObject({ email: 'linh@example.com', code: '', password: '' })
     expect(v.resendAt).toBeGreaterThanOrEqual(before + 30_000)
-    expect(env.store.getState().busy).toBe(false)
+    expect(env.state().busy).toBe(false)
   })
 
   it('an invalid email shows the service’s message under the field', async () => {
@@ -77,7 +77,7 @@ describe('ForgotScreen', () => {
   it('Back to sign in returns to the sign-in view', async () => {
     const env = renderAuth('forgot')
     await userEvent.setup().click(screen.getByRole('button', { name: 'Back to sign in' }))
-    expect(env.store.getState().view).toBe('signin')
+    expect(env.state().view).toBe('signin')
   })
 })
 
@@ -119,13 +119,13 @@ describe('ResetScreen', () => {
     await u.keyboard('482913')
     await u.type(screen.getByLabelText('New password'), 'newgarden9')
     await u.click(screen.getByRole('button', { name: 'Update password' }))
-    await vi.waitFor(() => expect(env.store.getState().view).toBe('resetDone'))
+    await vi.waitFor(() => expect(env.state().view).toBe('resetDone'))
     expect(resetPassword).toHaveBeenCalledWith({
       email: 'linh@example.com',
       code: '482913',
       password: 'newgarden9',
     })
-    expect(env.store.getState().viewData.password).toBe('')
+    expect(env.state().viewData.password).toBe('')
   })
 
   it('a bad code shows the service’s message on the code field', async () => {
@@ -140,7 +140,7 @@ describe('ResetScreen', () => {
       'aria-describedby',
       'auth-code-err',
     )
-    expect(env.store.getState().view).toBe('reset')
+    expect(env.state().view).toBe('reset')
   })
 
   it('a too-weak password shows the service’s message on the password field', async () => {
@@ -194,8 +194,8 @@ describe('ResetDoneScreen', () => {
     const btn = screen.getByRole('button', { name: 'Sign in' })
     expect(btn).toHaveAttribute('data-autofocus', '1')
     await userEvent.setup().click(btn)
-    expect(env.store.getState().view).toBe('signin')
-    expect(env.store.getState().viewData).toMatchObject({ email: 'linh@example.com', password: '' })
+    expect(env.state().view).toBe('signin')
+    expect(env.state().viewData).toMatchObject({ email: 'linh@example.com', password: '' })
   })
 })
 
@@ -232,9 +232,9 @@ describe('MagicSentScreen', () => {
     })
     await seedGarden(env)
     await userEvent.setup().click(screen.getByRole('button', { name: 'Open the link' }))
-    await vi.waitFor(() => expect(env.store.getState().panelOpen).toBe(false))
+    await vi.waitFor(() => expect(env.state().panelOpen).toBe(false))
     expect(completeMagicLink).toHaveBeenCalledWith('demo@botanica.app')
-    expect(env.store.getState().phase).toBe('cloud')
+    expect(env.state().phase).toBe('cloud')
     expect(env.toast).toHaveBeenCalledWith('Signed in as demo@botanica.app')
   })
 
@@ -247,7 +247,7 @@ describe('MagicSentScreen', () => {
       viewData: { email: 'demo@botanica.app' },
     })
     await userEvent.setup().click(screen.getByRole('button', { name: 'Open the link' }))
-    await vi.waitFor(() => expect(env.store.getState().phase).toBe('onboarding'))
+    await vi.waitFor(() => expect(env.state().phase).toBe('onboarding'))
     expect(env.toast).not.toHaveBeenCalled()
   })
 
@@ -260,7 +260,7 @@ describe('MagicSentScreen', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'This link has expired. Send a new one.',
     )
-    expect(env.store.getState().phase).toBe('signedout')
+    expect(env.state().phase).toBe('signedout')
   })
 
   it('Open the link is disabled while the link is being opened', async () => {
@@ -279,7 +279,7 @@ describe('MagicSentScreen', () => {
     await userEvent.setup().click(btn)
     expect(btn).toBeDisabled()
     finish()
-    await vi.waitFor(() => expect(env.store.getState().busy).toBe(false))
+    await vi.waitFor(() => expect(env.state().busy).toBe(false))
     expect(btn).toBeEnabled()
   })
 
@@ -329,12 +329,12 @@ describe('ProviderScreen', () => {
     await u.type(screen.getByLabelText('Google account email'), 'demo@botanica.app')
     await u.type(screen.getByLabelText('Name on that account'), 'Demo Gardener')
     await u.click(screen.getByRole('button', { name: 'Continue with Google' }))
-    await vi.waitFor(() => expect(env.store.getState().panelOpen).toBe(false))
+    await vi.waitFor(() => expect(env.state().panelOpen).toBe(false))
     expect(signInWithProvider).toHaveBeenCalledWith('Google', {
       email: 'demo@botanica.app',
       name: 'Demo Gardener',
     })
-    expect(env.store.getState().phase).toBe('cloud')
+    expect(env.state().phase).toBe('cloud')
     expect(env.toast).toHaveBeenCalledWith('Signed in with Google')
   })
 
@@ -347,7 +347,7 @@ describe('ProviderScreen', () => {
       viewData: { provider: 'Apple', email: 'demo@botanica.app', name: 'Demo Gardener' },
     })
     await userEvent.setup().click(screen.getByRole('button', { name: 'Continue with Apple' }))
-    await vi.waitFor(() => expect(env.store.getState().phase).toBe('onboarding'))
+    await vi.waitFor(() => expect(env.state().phase).toBe('onboarding'))
     expect(signInWithProvider).toHaveBeenCalledWith('Apple', {
       email: 'demo@botanica.app',
       name: 'Demo Gardener',
@@ -365,6 +365,6 @@ describe('ProviderScreen', () => {
   it('Back returns to the sign-in view', async () => {
     const env = renderAuth('provider', { viewData: { provider: 'Google' } })
     await userEvent.setup().click(screen.getByRole('button', { name: 'Back' }))
-    expect(env.store.getState().view).toBe('signin')
+    expect(env.state().view).toBe('signin')
   })
 })

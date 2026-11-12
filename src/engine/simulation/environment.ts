@@ -1,7 +1,7 @@
 import { findCatalogDef } from '@/data/catalog'
 import type { PlacedItem } from '@/data/types'
 import { clamp } from '@/lib/clamp'
-import type { StudioState } from '@/store/useStudioStore'
+import type { StudioState } from '@/store/studio'
 import { poolHasWater } from '../geometry'
 import type { EngineWorld, EnvState } from '../world'
 import { isLampOn } from './clock'

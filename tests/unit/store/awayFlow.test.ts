@@ -5,9 +5,16 @@ import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import type { AwayReport } from '@/engine/simulation/report'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { journalFromReport, plusOneDay, recordReport } from '@/store/awayFlow'
-import { useAccountStore } from '@/store/useAccountStore'
-import { useOverlayStore } from '@/store/useOverlayStore'
-import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+import { account, journalAtom, patchAccountAtom, resetAccountAtom } from '@/store/account'
+import { appStore } from '@/store/appStore'
+import { awayIndexAtom, resetOverlayAtom } from '@/store/overlay'
+import {
+  awayLogAtom,
+  createDefaultState,
+  dayCountAtom,
+  patchStudioAtom,
+  studioStateAtom,
+} from '@/store/studio'
 import { MemoryStorage } from '../components/auth/authHarness'
 
 const report = (over: Partial<AwayReport> = {}): AwayReport => ({
@@ -25,18 +32,17 @@ const report = (over: Partial<AwayReport> = {}): AwayReport => ({
   ...over,
 })
 
-const initialAccount = useAccountStore.getState()
 let world: EngineWorld
 
 beforeEach(() => {
-  useStudioStore.setState(createDefaultState())
-  useOverlayStore.setState({ growthBoardOpen: false, awayIndex: null, tour: null })
+  appStore.set(patchStudioAtom, createDefaultState())
+  appStore.set(resetOverlayAtom)
   world = createWorld()
   registerWorld(world)
 })
 
 afterEach(() => {
-  useAccountStore.setState(initialAccount, true)
+  appStore.set(resetAccountAtom)
   unregisterWorld()
   vi.restoreAllMocks()
 })
@@ -69,35 +75,35 @@ describe('recordReport', () => {
   it('opens the card and logs once per key', () => {
     const r = report()
     recordReport(r, { journal: false })
-    expect(useStudioStore.getState().awayLog).toHaveLength(1)
-    expect(useOverlayStore.getState().awayIndex).toBe(0)
+    expect(appStore.get(awayLogAtom)).toHaveLength(1)
+    expect(appStore.get(awayIndexAtom)).toBe(0)
 
-    useOverlayStore.getState().closeAway()
+    appStore.set(awayIndexAtom, null)
     recordReport({ ...r }, { journal: false })
-    expect(useStudioStore.getState().awayLog).toHaveLength(1)
-    expect(useOverlayStore.getState().awayIndex).toBe(0)
+    expect(appStore.get(awayLogAtom)).toHaveLength(1)
+    expect(appStore.get(awayIndexAtom)).toBe(0)
 
     recordReport(report({ to: 3000 }), { journal: false })
-    expect(useStudioStore.getState().awayLog).toHaveLength(2)
+    expect(appStore.get(awayLogAtom)).toHaveLength(2)
   })
 
   it('journals only when signed in with a terrarium open, once per key', async () => {
     const backend = createLocalBackend('u_demo', new MemoryStorage())
     const add = vi.spyOn(backend, 'addJournal')
     const r = report({ mode: 'day' })
-    useAccountStore.setState({ phase: 'signedout', activeId: 'g_a', backend })
+    appStore.set(patchAccountAtom, { phase: 'signedout', activeId: 'g_a', backend })
     recordReport(r, { journal: true })
     await act(async () => {})
     expect(add).not.toHaveBeenCalled()
 
-    useAccountStore.setState({ phase: 'cloud', activeId: 'g_a', backend })
+    appStore.set(patchAccountAtom, { phase: 'cloud', activeId: 'g_a', backend })
     recordReport(r, { journal: false })
     await act(async () => {})
     expect(add).not.toHaveBeenCalled()
 
     recordReport(r, { journal: true })
-    await vi.waitFor(() => expect(useAccountStore.getState().journal).toHaveLength(1))
-    expect(useAccountStore.getState().journal[0]).toMatchObject({
+    await vi.waitFor(() => expect(appStore.get(journalAtom)).toHaveLength(1))
+    expect(appStore.get(journalAtom)[0]).toMatchObject({
       auto: true,
       key: 'day:1000:2000',
       note: 'A quiet stretch. The tank rested while you were away.',
@@ -109,8 +115,8 @@ describe('recordReport', () => {
 
   it('flushes the caught-up world to the stores before journaling, so the entry carries its day', async () => {
     const backend = createLocalBackend('u_demo', new MemoryStorage())
-    useAccountStore.setState({ phase: 'cloud', activeId: 'g_a', backend })
-    useStudioStore.setState({ dayCount: 1 })
+    appStore.set(patchAccountAtom, { phase: 'cloud', activeId: 'g_a', backend })
+    appStore.set(patchStudioAtom, { dayCount: 1 })
     // The catch-up moved the world three days on; nothing has pushed it to the stores yet.
     world.ecoTime = 3.2
     world.env.nutrients = 12
@@ -118,9 +124,9 @@ describe('recordReport', () => {
     recordReport(report({ to: 9000 }), { journal: true })
     // The care report is recomputed for the caught-up world.
     expect(world.careIssues).not.toBe(staleIssues)
-    expect(useStudioStore.getState().dayCount).toBe(4)
-    await vi.waitFor(() => expect(useAccountStore.getState().journal).toHaveLength(1))
-    expect(useAccountStore.getState().journal[0]).toMatchObject({
+    expect(appStore.get(dayCountAtom)).toBe(4)
+    await vi.waitFor(() => expect(appStore.get(journalAtom)).toHaveLength(1))
+    expect(appStore.get(journalAtom)[0]).toMatchObject({
       day: 4,
       metrics: { nutrients: 12 },
     })
@@ -130,9 +136,9 @@ describe('recordReport', () => {
     const backend = createLocalBackend('u_demo', new MemoryStorage())
     const handle = vi.fn()
     vi.spyOn(backend, 'addJournal').mockRejectedValue(new Error('offline'))
-    useAccountStore.setState({ phase: 'cloud', activeId: 'g_a', backend })
-    const add = vi.fn().mockRejectedValue(new Error('boom'))
-    useAccountStore.setState({ addJournalEntry: add, handleCloudError: handle })
+    appStore.set(patchAccountAtom, { phase: 'cloud', activeId: 'g_a', backend })
+    vi.spyOn(account, 'addJournalEntry').mockRejectedValue(new Error('boom'))
+    vi.spyOn(account, 'handleCloudError').mockImplementation(handle)
     recordReport(report(), { journal: true })
     await vi.waitFor(() => expect(handle).toHaveBeenCalledTimes(1))
   })
@@ -143,11 +149,11 @@ describe('plusOneDay', () => {
     const now = Date.UTC(2026, 10, 8, 12)
     const toast = plusOneDay(() => 0.99, now)
     expect(toast).toMatch(/^Day 2: plants grew/)
-    const s = useStudioStore.getState()
+    const s = appStore.get(studioStateAtom)
     expect(s.dayCount).toBe(2)
     expect(s.awayLog).toHaveLength(1)
     expect(s.awayLog[0]).toMatchObject({ mode: 'day', reason: '+1 day', tankHours: 24, to: now })
-    expect(useOverlayStore.getState().awayIndex).toBe(0)
+    expect(appStore.get(awayIndexAtom)).toBe(0)
     expect(world.moldPatches).toHaveLength(0)
   })
 
@@ -158,7 +164,7 @@ describe('plusOneDay', () => {
   })
 
   it('adds no mold after the first three days', () => {
-    useStudioStore.setState({ dayCount: 10, setupDay: 1 })
+    appStore.set(patchStudioAtom, { dayCount: 10, setupDay: 1 })
     world.ecoTime = 9
     plusOneDay(() => 0.1, 5_000_000)
     expect(world.moldPatches).toHaveLength(0)
