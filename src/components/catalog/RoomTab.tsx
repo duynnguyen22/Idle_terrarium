@@ -11,6 +11,7 @@ import {
   qualityWord,
 } from '@/engine/room'
 import { useStudioStore } from '@/store/useStudioStore'
+import { Slider } from '@/components/ui/Slider'
 
 const WATER_OPTIONS = (Object.keys(WATER_SOURCES) as WaterSourceId[]).map((id) => ({
   id,
@@ -91,40 +92,35 @@ export function RoomTab() {
         <div className="mt-2 space-y-2.5 rounded-2xl border border-sand-border bg-white p-3">
           <div className="space-y-1">
             <div className="flex items-center justify-between text-xs">
-              <label htmlFor="env-tds" className="font-medium text-ink-soft">
+              <span id="env-tds-label" className="font-medium text-ink-soft">
                 Hardness (TDS)
-              </label>
+              </span>
               <span className="text-[11px] tabular-nums text-stone">{tdsText}</span>
             </div>
-            <input
-              id="env-tds"
-              type="range"
+            <Slider
+              aria-labelledby="env-tds-label"
               min={TDS_RANGE[0]}
               max={TDS_RANGE[1]}
               step={10}
               value={room.tds}
               disabled={fixed}
-              onChange={(e) => setRoom({ tds: Number(e.target.value) })}
-              className="w-full"
+              onValueChange={(tds) => setRoom({ tds })}
             />
           </div>
           <div className="space-y-1">
             <div className="flex items-center justify-between text-xs">
-              <label htmlFor="env-ph" className="font-medium text-ink-soft">
+              <span id="env-ph-label" className="font-medium text-ink-soft">
                 pH
-              </label>
+              </span>
               <span className="text-[11px] tabular-nums text-stone">pH {env.ph.toFixed(1)}</span>
             </div>
-            <input
-              id="env-ph"
-              type="range"
+            <Slider
+              aria-labelledby="env-ph-label"
               min={PH_RANGE[0] * 10}
               max={PH_RANGE[1] * 10}
-              step={1}
               value={Math.round(room.ph * 10)}
               disabled={fixed}
-              onChange={(e) => setRoom({ ph: Number(e.target.value) / 10 })}
-              className="w-full"
+              onValueChange={(v) => setRoom({ ph: v / 10 })}
             />
           </div>
           <p className="text-[10.5px] text-stone">

@@ -2,9 +2,12 @@ import { render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, vi } from 'vitest'
 import App from '@/App'
 import { makeRecordingContext } from './helpers/recordingContext'
+import { WELCOME_KEY } from '@/store/useAccountStore'
 
 describe('App', () => {
   beforeEach(() => {
+    // Skip the first-visit sign-up prompt: Radix's modal dialog hides the page behind it.
+    localStorage.setItem(WELCOME_KEY, '1')
     vi.stubGlobal(
       'ResizeObserver',
       class {

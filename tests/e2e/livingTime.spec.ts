@@ -16,7 +16,7 @@ test('Growth button opens the growth board and Escape closes it', async ({ page 
 test('previewing a one-day gap shows the away card and Got it closes it', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'More actions' }).click()
-  await page.getByRole('button', { name: 'Preview a gap of 1 day' }).click()
+  await page.getByRole('menuitem', { name: 'Preview a gap of 1 day' }).click()
   const card = page.locator('section#away-card')
   await expect(card).toBeVisible()
   await expect(card).toContainText('Preview · 24 h later')

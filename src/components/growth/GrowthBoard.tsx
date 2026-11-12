@@ -1,3 +1,4 @@
+import { RadioGroup } from 'radix-ui'
 import { useEffect, useId, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { tryGetWorld } from '@/engine/engineBridge'
@@ -220,17 +221,16 @@ export function GrowthBoard() {
         </button>
       </div>
 
-      <div
-        role="radiogroup"
+      <RadioGroup.Root
         aria-label="Tank pace"
+        orientation="horizontal"
+        value={pace}
         className="grid grid-cols-4 gap-[3px] rounded-[11px] bg-sand-light p-[3px]"
       >
         {PACE_IDS.map((id) => (
-          <button
+          <RadioGroup.Item
             key={id}
-            type="button"
-            role="radio"
-            aria-checked={pace === id}
+            value={id}
             onClick={() => choosePace(id)}
             className={`h-[30px] whitespace-nowrap rounded-lg text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-forest-mid ${
               pace === id
@@ -239,9 +239,9 @@ export function GrowthBoard() {
             }`}
           >
             {PACE_LABELS[id]}
-          </button>
+          </RadioGroup.Item>
         ))}
-      </div>
+      </RadioGroup.Root>
       <p className="-mt-1 mx-0.5 text-[11.5px] text-stone">{`${PACE_SUBTITLES[pace]}. ${watching}`}</p>
 
       {stats && (

@@ -1,4 +1,5 @@
 import { useId, useMemo, useRef, useSyncExternalStore, type ChangeEvent } from 'react'
+import { RadioGroup } from 'radix-ui'
 import { BACKDROPS } from '@/data/backdrops'
 import type { BackdropId } from '@/data/types'
 import { paintBackdrop } from '@/engine/render/backdrop'
@@ -12,6 +13,7 @@ import { MAX_BACKDROP_HAZE } from '@/store/migrations'
 import { showToast } from '@/store/toastStore'
 import { useStudioStore } from '@/store/useStudioStore'
 import { LineIcon } from '../ui/LineIcon'
+import { Slider } from '../ui/Slider'
 
 const THUMB_W = 144
 const THUMB_H = 96
@@ -62,6 +64,8 @@ export function BackdropSection() {
   const setBackdropHaze = useStudioStore((s) => s.setBackdropHaze)
   const photo = useSyncExternalStore(subscribeCustomBackdrop, getCustomBackdrop)
   const fileRef = useRef<HTMLInputElement>(null)
+  // Radix clicks a radio that arrow keys move focus onto; that click must not open the file picker.
+  const arrowNav = useRef(false)
   const hazeId = useId()
 
   const photoThumb = useMemo(
@@ -72,7 +76,7 @@ export function BackdropSection() {
 
   const choose = (id: BackdropId) => {
     if (id === 'custom' && !photo) {
-      openFilePicker()
+      if (!arrowNav.current) openFilePicker()
       return
     }
     setBackdrop(id)
@@ -120,16 +124,25 @@ export function BackdropSection() {
           </span>
         )}
       </div>
-      <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="Backdrop">
+      <RadioGroup.Root
+        value={backdrop}
+        aria-label="Backdrop"
+        orientation="horizontal"
+        className="grid grid-cols-4 gap-1.5"
+        onKeyDownCapture={(e) => {
+          arrowNav.current = e.key.startsWith('Arrow')
+        }}
+        onKeyUpCapture={() => {
+          arrowNav.current = false
+        }}
+      >
         {BACKDROPS.map((b) => {
           const thumb = b.id === 'custom' ? photoThumb : sceneThumb(b.id)
           const upload = b.id === 'custom' && !photo
           return (
-            <button
+            <RadioGroup.Item
               key={b.id}
-              type="button"
-              role="radio"
-              aria-checked={backdrop === b.id}
+              value={b.id}
               aria-label={b.name}
               onClick={() => choose(b.id)}
               className="bd-tile"
@@ -146,10 +159,10 @@ export function BackdropSection() {
                 />
               )}
               <span className="bd-name">{b.name}</span>
-            </button>
+            </RadioGroup.Item>
           )
         })}
-      </div>
+      </RadioGroup.Root>
       <input
         ref={fileRef}
         type="file"
@@ -161,19 +174,17 @@ export function BackdropSection() {
       {backdrop !== 'none' && (
         <div className="mt-2.5 space-y-1">
           <div className="flex items-center justify-between text-xs">
-            <label htmlFor={hazeId} className="font-medium text-ink-soft">
+            <span id={hazeId} className="font-medium text-ink-soft">
               Depth haze
-            </label>
+            </span>
             <span className="tabular-nums text-[11px] text-stone">{haze}%</span>
           </div>
-          <input
-            id={hazeId}
-            type="range"
+          <Slider
+            aria-labelledby={hazeId}
             min={0}
             max={MAX_BACKDROP_HAZE}
             value={haze}
-            onChange={(e) => setBackdropHaze(Number(e.target.value))}
-            className="w-full"
+            onValueChange={setBackdropHaze}
           />
           <p className="text-[10.5px] text-stone">
             More haze pushes the scene further back behind your plants.

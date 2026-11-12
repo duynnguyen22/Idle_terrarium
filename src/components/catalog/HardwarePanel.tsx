@@ -1,4 +1,5 @@
 import { useId, type ReactNode } from 'react'
+import { RadioGroup, Switch } from 'radix-ui'
 import { useShallow } from 'zustand/react/shallow'
 import type { PumpFlow } from '@/data/types'
 import { hasPool } from '@/engine/geometry'
@@ -67,13 +68,11 @@ export function SwitchRow({
 }) {
   const subId = useId()
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
+    <Switch.Root
+      checked={checked}
       aria-label={label}
       aria-describedby={subId}
-      onClick={onToggle}
+      onCheckedChange={onToggle}
       className="flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-[9px] text-left transition-colors hover:bg-[#f1f4ef]"
     >
       <span className={`${ICON_BASE} ${iconClass}`}>{icon}</span>
@@ -86,7 +85,7 @@ export function SwitchRow({
           className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${checked ? 'translate-x-[14px]' : ''}`}
         />
       </span>
-    </button>
+    </Switch.Root>
   )
 }
 
@@ -150,20 +149,19 @@ export function HardwarePanel() {
         </span>
         <HwText label="Waterfall pump" sub={pumpSub} />
       </div>
-      <div
-        role="radiogroup"
+      <RadioGroup.Root
         aria-label="Waterfall pump"
+        orientation="horizontal"
+        value={pumpFlow}
+        disabled={!pool}
         className="mb-2 ml-[50px] mr-2.5 grid grid-cols-3 gap-0.5 rounded-[9px] bg-[#e7eae3] p-0.5"
       >
         {FLOWS.map(({ flow, label }) => {
           const checked = pumpFlow === flow
           return (
-            <button
+            <RadioGroup.Item
               key={flow}
-              type="button"
-              role="radio"
-              aria-checked={checked}
-              disabled={!pool}
+              value={flow}
               onClick={() => setPumpFlow(flow)}
               className={`h-[26px] rounded-[7px] text-[11.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                 checked
@@ -172,10 +170,10 @@ export function HardwarePanel() {
               }`}
             >
               {label}
-            </button>
+            </RadioGroup.Item>
           )
         })}
-      </div>
+      </RadioGroup.Root>
     </div>
   )
 }

@@ -218,7 +218,13 @@ describe('utility actions', () => {
     world.breed = { springtails: 0.5 }
     render(<TopNav />)
     const u = user()
-    await u.click(screen.getByRole('button', { name: 'More actions' }))
+    // Radix opens the menu on pointerdown or Enter, not on a bare click event.
+    act(
+      () =>
+        void fireEvent.keyDown(screen.getByRole('button', { name: 'More actions' }), {
+          key: 'Enter',
+        }),
+    )
     await u.click(screen.getByRole('menuitem', { name: 'Clear all specimens' }))
     expect(world.items).toEqual([])
     expect(world.mossTufts).toEqual([])
@@ -230,7 +236,13 @@ describe('utility actions', () => {
   it('Rebuild applies Falls Lake to the world and store', async () => {
     render(<TopNav />)
     const u = user()
-    await u.click(screen.getByRole('button', { name: 'More actions' }))
+    // Radix opens the menu on pointerdown or Enter, not on a bare click event.
+    act(
+      () =>
+        void fireEvent.keyDown(screen.getByRole('button', { name: 'More actions' }), {
+          key: 'Enter',
+        }),
+    )
     await u.click(screen.getByRole('menuitem', { name: 'Rebuild the Falls Lake paludarium' }))
     expect(world.items.length).toBeGreaterThan(5)
     const fauna = world.items.find((i) => i.category === 'fauna')

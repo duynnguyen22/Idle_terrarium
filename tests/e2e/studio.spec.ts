@@ -51,7 +51,10 @@ test('studio journey: biome, 5x, relax, persistence', async ({ page }) => {
   const pump = page.getByRole('radiogroup', { name: 'Waterfall pump' })
   await pump.getByRole('radio', { name: 'Strong' }).click()
   await expect(pump.getByRole('radio', { name: 'Strong' })).toBeChecked()
-  await expect(page.getByLabel('Pool width')).toHaveValue('32')
+  await expect(page.getByRole('slider', { name: 'Pool width' })).toHaveAttribute(
+    'aria-valuenow',
+    '32',
+  )
   await expect
     .poll(() =>
       page.evaluate(() => {
@@ -90,7 +93,10 @@ test('studio journey: biome, 5x, relax, persistence', async ({ page }) => {
   await expect(
     page.getByRole('radiogroup', { name: 'Waterfall pump' }).getByRole('radio', { name: 'Strong' }),
   ).toBeChecked()
-  await expect(page.getByLabel('Pool width')).toHaveValue('32')
+  await expect(page.getByRole('slider', { name: 'Pool width' })).toHaveAttribute(
+    'aria-valuenow',
+    '32',
+  )
 })
 
 test('a wide rectangular tank renders without page errors', async ({ page }) => {

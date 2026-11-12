@@ -11,6 +11,7 @@ import { configureSpriteCache } from '@/engine/sprites/spriteCache'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { useToastStore } from '@/store/toastStore'
 import { createDefaultState, useStudioStore, type StudioState } from '@/store/useStudioStore'
+import { setSlider } from '../helpers/slider'
 
 const TERRAIN = { substrates: DEFAULT_SUBSTRATES, waterSplit: 0.32 }
 let world: EngineWorld
@@ -104,14 +105,14 @@ describe('LeftSidebar panels', () => {
   it('pool width slider creates a pool with the cycling toast', () => {
     set({ waterSplit: 0, cycleProgress: 1, substrates: { ...DEFAULT_SUBSTRATES, water: 10 } })
     render(<LeftSidebar />)
-    fireEvent.change(screen.getByLabelText('Pool width'), { target: { value: '30' } })
+    setSlider(screen.getByRole('slider', { name: 'Pool width' }), 30)
     expect(state().waterSplit).toBeCloseTo(0.3, 5)
     expect(state().cycleProgress).toBe(0)
     expect(world.env.cycleProgress).toBe(0)
     expect(state().substrates.water).toBe(40)
     expect(toast()).toBe('New pool: it cycles for about 3 weeks before fish and shrimp are safe')
     act(() => state().setCycleProgress(0.5))
-    fireEvent.change(screen.getByLabelText('Pool width'), { target: { value: '45' } })
+    setSlider(screen.getByRole('slider', { name: 'Pool width' }), 45)
     expect(state().cycleProgress).toBe(0.5)
   })
 
@@ -119,13 +120,13 @@ describe('LeftSidebar panels', () => {
     set({ cycleProgress: 1, substrates: { ...DEFAULT_SUBSTRATES, water: 0 } })
     world.env.cycleProgress = 1
     render(<LeftSidebar />)
-    fireEvent.change(screen.getByLabelText('Pool water'), { target: { value: '10' } })
+    setSlider(screen.getByRole('slider', { name: 'Pool water' }), 10)
     expect(state().substrates.water).toBe(10)
     expect(state().cycleProgress).toBe(0)
     expect(world.env.cycleProgress).toBe(0)
     act(() => state().setCycleProgress(0.5))
     world.env.cycleProgress = 0.5
-    fireEvent.change(screen.getByLabelText('Pool water'), { target: { value: '20' } })
+    setSlider(screen.getByRole('slider', { name: 'Pool water' }), 20)
     expect(state().cycleProgress).toBe(0.5)
     expect(world.env.cycleProgress).toBe(0.5)
   })
@@ -212,7 +213,7 @@ describe('LeftSidebar panels', () => {
   it('a slider change writes mm and updates the total', () => {
     render(<LeftSidebar />)
     expect(screen.getByTestId('total-substrate-depth')).toHaveTextContent('56 mm')
-    fireEvent.change(screen.getByLabelText('Tropical substrate'), { target: { value: '30' } })
+    setSlider(screen.getByRole('slider', { name: 'Tropical substrate' }), 30)
     expect(state().substrates.soil).toBe(30)
     expect(screen.getByTestId('total-substrate-depth')).toHaveTextContent('52 mm')
     expect(screen.queryByLabelText('Siphon / Scoop Out')).not.toBeInTheDocument()

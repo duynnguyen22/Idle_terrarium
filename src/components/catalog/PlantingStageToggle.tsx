@@ -1,3 +1,4 @@
+import { RadioGroup } from 'radix-ui'
 import { StageIcon } from '@/components/ui/StudioIcons'
 import type { GrowthStage } from '@/data/types'
 import { mutateWorld } from '@/engine/engineBridge'
@@ -41,13 +42,16 @@ export function PlantingStageToggle() {
   return (
     <div className="stage-card">
       <div className="mb-2 text-xs font-semibold text-[#163022]">Plant as</div>
-      <div className="stage-seg" role="radiogroup" aria-label="Planting stage">
+      <RadioGroup.Root
+        className="stage-seg"
+        aria-label="Planting stage"
+        orientation="horizontal"
+        value={isSprout ? 'sprout' : 'mature'}
+      >
         {OPTIONS.map((o) => (
-          <button
+          <RadioGroup.Item
             key={o.stage}
-            type="button"
-            role="radio"
-            aria-checked={(o.stage === 'sprout') === isSprout}
+            value={o.stage}
             onClick={() => choose(o.stage, o.toast)}
             className="stage-opt"
           >
@@ -56,9 +60,9 @@ export function PlantingStageToggle() {
               <b>{o.label}</b>
               <small>{o.hint}</small>
             </span>
-          </button>
+          </RadioGroup.Item>
         ))}
-      </div>
+      </RadioGroup.Root>
       <div className="mt-2 text-[11px] leading-snug text-[#4a6b56]">
         {isSprout
           ? 'Places seedlings at 62% size. They grow into mature plants over a few in-game days.'

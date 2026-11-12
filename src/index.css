@@ -87,8 +87,7 @@
   }
 
   /* Keyboard focus ring (tokens only); mouse clicks do not show it. */
-  :focus-visible,
-  input[type='range']:focus-visible {
+  :focus-visible {
     outline: 2px solid var(--color-moss);
     outline-offset: 2px;
   }
@@ -113,19 +112,30 @@
     background: rgba(45, 90, 67, 0.6);
   }
 
-  /* Range slider */
-  input[type='range'] {
-    -webkit-appearance: none;
-    appearance: none;
+  /* Slider (Radix): same look as the old native range input */
+  .slider {
+    position: relative;
+    display: flex;
+    align-items: center;
     width: 100%;
+    height: 16px;
+    touch-action: none;
+    user-select: none;
+    cursor: pointer;
+  }
+  .slider-track {
+    position: relative;
+    flex-grow: 1;
     height: 6px;
     background: var(--color-sand-track);
     border-radius: 999px;
-    outline: none;
   }
-  input[type='range']::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
+  .slider-range {
+    position: absolute;
+    height: 100%;
+  }
+  .slider-thumb {
+    display: block;
     width: 16px;
     height: 16px;
     border-radius: 50%;
@@ -135,8 +145,18 @@
     cursor: pointer;
     transition: transform 0.15s ease;
   }
-  input[type='range']::-webkit-slider-thumb:hover {
+  .slider-thumb:hover {
     transform: scale(1.15);
+  }
+  .slider.slider-thin .slider-track {
+    height: 4px;
+  }
+  .slider[data-disabled] {
+    cursor: default;
+  }
+  .slider[data-disabled] .slider-thumb {
+    cursor: default;
+    transform: none;
   }
 }
 
@@ -494,7 +514,8 @@
   color: #5b665e;
   line-height: 1.35;
 }
-input[type='range']:disabled {
+/* sits outside the base layer so it beats layered rules, like the old :disabled rule */
+.slider[data-disabled] {
   opacity: 0.45;
 }
 .bd-tile {

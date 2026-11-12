@@ -1,3 +1,5 @@
+import { RadioGroup } from 'radix-ui'
+
 export interface EnvOption<T extends string> {
   id: T
   name: string
@@ -17,23 +19,16 @@ export function EnvOptionList<T extends string>({
   onChange: (id: T) => void
 }) {
   return (
-    <div className="env-list" role="radiogroup" aria-label={label}>
+    <RadioGroup.Root className="env-list" aria-label={label} value={value}>
       {options.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          role="radio"
-          aria-checked={o.id === value}
-          onClick={() => onChange(o.id)}
-          className="env-opt"
-        >
+        <RadioGroup.Item key={o.id} value={o.id} onClick={() => onChange(o.id)} className="env-opt">
           <span className="env-dot" aria-hidden="true" />
           <span className="env-txt">
             <b>{o.name}</b>
             <small>{o.sub}</small>
           </span>
-        </button>
+        </RadioGroup.Item>
       ))}
-    </div>
+    </RadioGroup.Root>
   )
 }

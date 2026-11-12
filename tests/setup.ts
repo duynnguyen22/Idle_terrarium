@@ -5,3 +5,12 @@ import '@testing-library/jest-dom/vitest'
 HTMLCanvasElement.prototype.getContext = (() =>
   null) as typeof HTMLCanvasElement.prototype.getContext
 HTMLCanvasElement.prototype.toDataURL = () => 'data:,'
+
+// jsdom has no ResizeObserver; Radix Slider and Popper (menus) measure with it.
+if (!('ResizeObserver' in globalThis)) {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver
+}

@@ -2,9 +2,12 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { StudioLayout } from '@/components/layout/StudioLayout'
 import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+import { WELCOME_KEY } from '@/store/useAccountStore'
 
 beforeEach(() => {
   useStudioStore.setState(createDefaultState())
+  // Skip the first-visit sign-up prompt: Radix's modal dialog hides the page behind it.
+  localStorage.setItem(WELCOME_KEY, '1')
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: false,
     media: query,

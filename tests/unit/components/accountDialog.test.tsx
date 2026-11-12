@@ -108,9 +108,11 @@ describe('AccountDialog', () => {
     // Each screen's first field carries data-autofocus.
     expect(screen.getByLabelText('Email')).toHaveFocus()
 
-    chip.focus()
+    // Focus is trapped in the dialog, so move it to another field there.
+    const password = screen.getByLabelText('Password')
+    password.focus()
     act(() => useAccountStore.getState().setViewData({ email: 'a@b.co' }))
-    expect(chip).toHaveFocus()
+    expect(password).toHaveFocus()
 
     act(() => useAccountStore.getState().goView('signup'))
     expect(screen.getByLabelText('Your name')).toHaveFocus()

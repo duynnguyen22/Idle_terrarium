@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BackdropSection } from '@/components/catalog/BackdropSection'
@@ -6,6 +6,7 @@ import { VesselTab } from '@/components/catalog/VesselTab'
 import { clearCustomBackdrop, setCustomBackdropFromFile } from '@/lib/backdropPhoto'
 import { useToastStore } from '@/store/toastStore'
 import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+import { setSlider } from '../helpers/slider'
 
 beforeEach(() => {
   useStudioStore.setState(createDefaultState())
@@ -60,7 +61,10 @@ describe('BackdropSection', () => {
     expect(screen.queryByLabelText('Depth haze')).toBeNull()
     await user.click(screen.getByRole('radio', { name: 'Ha Long karst' }))
     expect(useStudioStore.getState().backdrop).toBe('karst')
-    expect(screen.getByLabelText('Depth haze')).toHaveValue('35')
+    expect(screen.getByRole('slider', { name: 'Depth haze' })).toHaveAttribute(
+      'aria-valuenow',
+      '35',
+    )
     expect(screen.getByRole('radio', { name: 'Ha Long karst' })).toHaveAttribute(
       'aria-checked',
       'true',
@@ -74,10 +78,10 @@ describe('BackdropSection', () => {
   it('the haze slider writes through the store', () => {
     useStudioStore.setState({ backdrop: 'pines' })
     render(<BackdropSection />)
-    const slider = screen.getByLabelText('Depth haze')
-    expect(slider).toHaveAttribute('min', '0')
-    expect(slider).toHaveAttribute('max', '80')
-    fireEvent.change(slider, { target: { value: '60' } })
+    const slider = screen.getByRole('slider', { name: 'Depth haze' })
+    expect(slider).toHaveAttribute('aria-valuemin', '0')
+    expect(slider).toHaveAttribute('aria-valuemax', '80')
+    setSlider(slider, 60)
     expect(useStudioStore.getState().backdropHaze).toBe(60)
     expect(screen.getByText('60%')).toBeInTheDocument()
   })

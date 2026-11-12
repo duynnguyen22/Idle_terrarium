@@ -1,5 +1,6 @@
+import { Dialog } from 'radix-ui'
 import { useEffect, useRef } from 'react'
-import { useAccount, useAuthEnv } from '@/components/account/auth/authEnv'
+import { useAccount } from '@/components/account/auth/authEnv'
 import { AuthScreen } from '@/components/account/auth/AuthScreen'
 import type { AuthView } from '@/store/useAccountStore'
 
@@ -13,82 +14,82 @@ function useResolvedView(): AuthView {
   })
 }
 
-/** Modal shell for every account screen: scrim, panel, close button, Escape and focus handling. */
+const focusAutofocus = (panel: HTMLElement | null) => {
+  const target = panel?.querySelector<HTMLElement>('[data-autofocus]') ?? panel
+  target?.focus()
+}
+
+/**
+ * Modal shell for every account screen, on Radix Dialog: scrim, panel, close button, Escape and
+ * focus trapping. Onboarding cannot be dismissed: `closePanel` does nothing in that phase.
+ */
 export function AccountDialog() {
-  const { store } = useAuthEnv()
   const panelOpen = useAccount((s) => s.panelOpen)
   const onboarding = useAccount((s) => s.phase === 'onboarding')
   const closePanel = useAccount((s) => s.closePanel)
   const view = useResolvedView()
   const panelRef = useRef<HTMLDivElement>(null)
-  const wasOpen = useRef(false)
+  const shownView = useRef<AuthView | null>(null)
 
+  // A different screen replacing the body takes focus to its [data-autofocus] element (its old
+  // elements are gone); re-renders within the same view leave focus where the person put it.
   useEffect(() => {
-    if (!panelOpen) return
-    // Capture phase + stopPropagation: Escape closes the dialog only, not relax mode or the selection.
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      e.stopPropagation()
-      store.getState().closePanel()
+    if (!panelOpen) {
+      shownView.current = null
+      return
     }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [panelOpen, store])
-
-  // Focus moves only on open and when a different screen replaces the body (its old elements are gone);
-  // re-renders within the same view leave focus where the person put it. Back to the chip on close.
-  useEffect(() => {
-    if (panelOpen) {
-      const panel = panelRef.current
-      const target = panel?.querySelector<HTMLElement>('[data-autofocus]') ?? panel
-      target?.focus()
-    } else if (wasOpen.current) {
-      document.getElementById('btn-account')?.focus()
-    }
-    wasOpen.current = panelOpen
-    // `view` is a string: the effect re-runs on a screen change, not on same-view store updates.
+    if (shownView.current !== null && shownView.current !== view) focusAutofocus(panelRef.current)
+    shownView.current = view
   }, [panelOpen, view])
 
-  if (!panelOpen) return null
-
   return (
-    <>
-      <div id="acct-scrim" className="acct-scrim" onClick={closePanel} />
-      <div
-        id="acct-panel"
-        ref={panelRef}
-        className={`acct-panel${view === 'account' ? ' wide' : ''}`}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="acct-title"
-        tabIndex={-1}
-      >
-        {!onboarding && (
-          <button
-            id="acct-close"
-            type="button"
-            className="acct-x"
-            aria-label="Close"
-            onClick={closePanel}
-          >
-            <svg
-              className="h-4 w-4 shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.8}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M6 6l12 12M18 6L6 18" />
-            </svg>
-          </button>
-        )}
-        <div id="acct-body" className="acct-body">
-          <AuthScreen view={view} />
-        </div>
-      </div>
-    </>
+    <Dialog.Root
+      open={panelOpen}
+      onOpenChange={(open) => {
+        if (!open) closePanel()
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay id="acct-scrim" className="acct-scrim" onClick={closePanel} />
+        <Dialog.Content
+          id="acct-panel"
+          ref={panelRef}
+          className={`acct-panel${view === 'account' ? ' wide' : ''}`}
+          aria-modal="true"
+          aria-labelledby="acct-title"
+          aria-describedby={undefined}
+          // Escape closes the dialog only, not relax mode or the selection (global handler on window).
+          onEscapeKeyDown={(e) => e.stopPropagation()}
+          onOpenAutoFocus={(e) => {
+            e.preventDefault()
+            focusAutofocus(panelRef.current)
+          }}
+          onCloseAutoFocus={(e) => {
+            e.preventDefault()
+            document.getElementById('btn-account')?.focus()
+          }}
+        >
+          {!onboarding && (
+            <Dialog.Close id="acct-close" className="acct-x" aria-label="Close">
+              <svg
+                className="h-4 w-4 shrink-0"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </Dialog.Close>
+          )}
+          <div id="acct-body" className="acct-body">
+            <AuthScreen view={view} />
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }

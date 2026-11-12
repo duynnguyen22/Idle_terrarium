@@ -1,9 +1,10 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { RoomTab } from '@/components/catalog/RoomTab'
 import { LeftSidebar } from '@/components/layout/LeftSidebar'
 import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
+import { setSlider } from '../helpers/slider'
 
 const room = () => useStudioStore.getState().room
 
@@ -38,29 +39,31 @@ describe('RoomTab', () => {
   it('choosing RO disables the sliders and shows the fixed note', async () => {
     const user = userEvent.setup()
     render(<RoomTab />)
-    expect(screen.getByLabelText('Hardness (TDS)')).toBeEnabled()
+    expect(screen.getByLabelText('Hardness (TDS)')).not.toHaveAttribute('data-disabled')
     expect(screen.getByText('Read them from a TDS pen and pH strip.')).toBeInTheDocument()
     await user.click(screen.getByRole('radio', { name: /RO or distilled/ }))
-    expect(screen.getByLabelText('Hardness (TDS)')).toBeDisabled()
-    expect(screen.getByLabelText('pH')).toBeDisabled()
+    // Radix marks a disabled slider thumb with data-disabled and drops it from the tab order.
+    expect(screen.getByLabelText('Hardness (TDS)')).toHaveAttribute('data-disabled')
+    expect(screen.getByLabelText('pH')).toHaveAttribute('data-disabled')
+    expect(screen.getByLabelText('pH')).not.toHaveAttribute('tabindex')
     expect(screen.getByText('RO or distilled sets these for you.')).toBeInTheDocument()
     expect(room().water).toBe('ro')
   })
 
   it('the sliders write tds and pH in tenths, and the value text follows', () => {
     render(<RoomTab />)
-    const tds = screen.getByLabelText('Hardness (TDS)') as HTMLInputElement
-    const ph = screen.getByLabelText('pH') as HTMLInputElement
-    expect(ph.value).toBe('72')
+    const tds = screen.getByRole('slider', { name: 'Hardness (TDS)' })
+    const ph = screen.getByRole('slider', { name: 'pH' })
+    expect(ph).toHaveAttribute('aria-valuenow', '72')
     expect(screen.getByText('180 ppm')).toBeInTheDocument()
     expect(screen.getByText('pH 7.2')).toBeInTheDocument()
-    fireChange(tds, '400')
-    fireChange(ph, '80')
+    setSlider(tds, 400)
+    setSlider(ph, 80)
     expect(room().tds).toBe(400)
     expect(room().ph).toBeCloseTo(8.0)
     expect(screen.getByText('400 ppm · hard')).toBeInTheDocument()
     expect(screen.getByText('pH 8.0')).toBeInTheDocument()
-    fireChange(tds, '60')
+    setSlider(tds, 60)
     expect(screen.getByText('60 ppm · very soft')).toBeInTheDocument()
   })
 
@@ -103,7 +106,3 @@ describe('LeftSidebar room tab', () => {
     expect(screen.getByText('Water you use')).toBeInTheDocument()
   })
 })
-
-function fireChange(el: HTMLInputElement, value: string) {
-  fireEvent.change(el, { target: { value } })
-}

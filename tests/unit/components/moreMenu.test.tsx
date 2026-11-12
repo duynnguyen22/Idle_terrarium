@@ -11,6 +11,14 @@ import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
 import { useToastStore } from '@/store/toastStore'
 
 const click = (el: HTMLElement) => act(() => void fireEvent.click(el))
+/** Radix opens its menu on pointerdown or Enter, not on click. */
+const openTrigger = () =>
+  act(
+    () =>
+      void fireEvent.keyDown(screen.getByRole('button', { name: 'More actions' }), {
+        key: 'Enter',
+      }),
+  )
 
 const openMenu = () => {
   render(
@@ -19,7 +27,7 @@ const openMenu = () => {
       <AwayCard />
     </>,
   )
-  click(screen.getByRole('button', { name: 'More actions' }))
+  openTrigger()
 }
 
 const logged = (): AwayReport => ({
@@ -58,9 +66,11 @@ describe('MoreMenu time away', () => {
     expect(screen.getByRole('group', { name: 'Time away' })).toBeTruthy()
     expect(screen.getByRole('group', { name: 'Preview a gap' })).toBeTruthy()
     for (const l of ['8 h', '1 day', '3 days', '1 week'])
-      expect(screen.getByRole('button', { name: `Preview a gap of ${l}` }).textContent).toBe(l)
+      expect(screen.getByRole('menuitem', { name: `Preview a gap of ${l}` }).textContent).toBe(l)
     expect(
-      screen.getByRole('switch', { name: "Grow while I'm away" }).getAttribute('aria-checked'),
+      screen
+        .getByRole('menuitemcheckbox', { name: "Grow while I'm away" })
+        .getAttribute('aria-checked'),
     ).toBe('true')
   })
 
@@ -73,14 +83,14 @@ describe('MoreMenu time away', () => {
     expect(useOverlayStore.getState().awayIndex).toBeNull()
 
     useStudioStore.setState({ awayLog: [logged()] })
-    click(screen.getByRole('button', { name: 'More actions' }))
+    openTrigger()
     click(screen.getByRole('menuitem', { name: 'Show the last summary' }))
     expect(useOverlayStore.getState().awayIndex).toBe(0)
   })
 
   it('1 day previews a 24 h gap and opens its card', () => {
     openMenu()
-    click(screen.getByRole('button', { name: 'Preview a gap of 1 day' }))
+    click(screen.getByRole('menuitem', { name: 'Preview a gap of 1 day' }))
     const s = useStudioStore.getState()
     expect(s.awayLog[0]).toMatchObject({ mode: 'preview', hours: 24 })
     expect(useOverlayStore.getState().awayIndex).toBe(0)
@@ -90,7 +100,7 @@ describe('MoreMenu time away', () => {
 
   it('the switch toggles catchupEnabled and toasts both strings', () => {
     openMenu()
-    const sw = () => screen.getByRole('switch', { name: "Grow while I'm away" })
+    const sw = () => screen.getByRole('menuitemcheckbox', { name: "Grow while I'm away" })
     click(sw())
     expect(useStudioStore.getState().catchupEnabled).toBe(false)
     expect(useToastStore.getState().message).toBe(
@@ -106,7 +116,7 @@ describe('MoreMenu time away', () => {
     const add = vi.fn().mockResolvedValue(undefined)
     useAccountStore.setState({ phase: 'cloud', activeId: 'g_a', addJournalEntry: add })
     openMenu()
-    click(screen.getByRole('button', { name: 'Preview a gap of 8 h' }))
+    click(screen.getByRole('menuitem', { name: 'Preview a gap of 8 h' }))
     await act(async () => {})
     expect(useStudioStore.getState().awayLog).toHaveLength(1)
     expect(add).not.toHaveBeenCalled()

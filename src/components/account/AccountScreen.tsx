@@ -1,3 +1,4 @@
+import { Tabs } from 'radix-ui'
 import { useAccount, useAuthEnv } from '@/components/account/auth/authEnv'
 import {
   avatarColor,
@@ -47,51 +48,50 @@ export function AccountScreen() {
     })
 
   return (
-    <div className="auth-screen wide">
-      <div className="acct-head">
-        <span className="acct-big-avatar" style={{ background: avatarColor(user.id) }}>
-          {initialsOf(user.name)}
-        </span>
-        <div className="min-w-0">
-          <h2 id="acct-title" className="auth-title left">
-            {user.name}
-          </h2>
-          <p className="acct-email">
-            <span>{user.email}</span>
-            {user.verified && <span className="acct-verified">Verified</span>}
-          </p>
+    <Tabs.Root asChild value={tab} onValueChange={(id) => selectTab(id as AccountTab)}>
+      <div className="auth-screen wide">
+        <div className="acct-head">
+          <span className="acct-big-avatar" style={{ background: avatarColor(user.id) }}>
+            {initialsOf(user.name)}
+          </span>
+          <div className="min-w-0">
+            <h2 id="acct-title" className="auth-title left">
+              {user.name}
+            </h2>
+            <p className="acct-email">
+              <span>{user.email}</span>
+              {user.verified && <span className="acct-verified">Verified</span>}
+            </p>
+          </div>
+        </div>
+        <Tabs.List className="acct-tabs">
+          {TABS.map(([id, label]) => (
+            <Tabs.Trigger
+              key={id}
+              value={id}
+              className="acct-tab"
+              data-autofocus={tab === id ? '1' : undefined}
+              // Radix selects on mousedown and keyboard; a plain click (assistive tech) selects too.
+              onClick={() => tab !== id && selectTab(id)}
+            >
+              {label}
+            </Tabs.Trigger>
+          ))}
+        </Tabs.List>
+        <Tabs.Content value={tab}>
+          {tab === 'terrariums' && <GardensTab />}
+          {tab === 'journal' && <JournalTab />}
+          {tab === 'profile' && <ProfileTab />}
+        </Tabs.Content>
+        <div className="acct-foot">
+          <span className="acct-muted">
+            {cloud ? 'Saved to your account' : 'Saved in this browser (prototype backend)'}
+          </span>
+          <button type="button" className="g-btn" disabled={busy} onClick={signOut}>
+            Sign out
+          </button>
         </div>
       </div>
-      <div className="acct-tabs" role="tablist">
-        {TABS.map(([id, label]) => (
-          <button
-            key={id}
-            id={`acct-tab-${id}`}
-            type="button"
-            role="tab"
-            className="acct-tab"
-            aria-selected={tab === id}
-            aria-controls="acct-tabpanel"
-            data-autofocus={tab === id ? '1' : undefined}
-            onClick={() => selectTab(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      <div id="acct-tabpanel" role="tabpanel" aria-labelledby={`acct-tab-${tab}`}>
-        {tab === 'terrariums' && <GardensTab />}
-        {tab === 'journal' && <JournalTab />}
-        {tab === 'profile' && <ProfileTab />}
-      </div>
-      <div className="acct-foot">
-        <span className="acct-muted">
-          {cloud ? 'Saved to your account' : 'Saved in this browser (prototype backend)'}
-        </span>
-        <button type="button" className="g-btn" disabled={busy} onClick={signOut}>
-          Sign out
-        </button>
-      </div>
-    </div>
+    </Tabs.Root>
   )
 }

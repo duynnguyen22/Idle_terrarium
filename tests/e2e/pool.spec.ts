@@ -9,9 +9,15 @@ test('pool width, cycling and the next-step action', async ({ page }) => {
   await expect(page.getByText('Arid: open top, sand, no fogger')).toBeVisible()
   // Both the hardware pump status and the EcoStats water-cycle row say this with no pool.
   await expect(page.getByText('No pool in this build').first()).toBeVisible()
-  await expect(page.getByLabel('Pool width')).toHaveValue('0')
+  await expect(page.getByRole('slider', { name: 'Pool width' })).toHaveAttribute(
+    'aria-valuenow',
+    '0',
+  )
 
-  await page.getByLabel('Pool width').fill('30')
+  // The Radix slider thumb is not an input: PageUp moves it ten steps (10 %).
+  const poolWidth = page.getByRole('slider', { name: 'Pool width' })
+  await poolWidth.focus()
+  for (let i = 0; i < 3; i++) await poolWidth.press('PageUp')
   await expect(
     page.getByText('New pool: it cycles for about 3 weeks before fish and shrimp are safe'),
   ).toBeVisible()
@@ -22,6 +28,9 @@ test('pool width, cycling and the next-step action', async ({ page }) => {
   await expect(page.getByText(/Cycled · ammonia 0 ppm/)).toBeVisible()
 
   await page.reload()
-  await expect(page.getByLabel('Pool width')).toHaveValue('30')
+  await expect(page.getByRole('slider', { name: 'Pool width' })).toHaveAttribute(
+    'aria-valuenow',
+    '30',
+  )
   await expect(page.getByText(/Cycled · ammonia 0 ppm/)).toBeVisible()
 })

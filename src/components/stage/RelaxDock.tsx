@@ -1,5 +1,7 @@
+import { RadioGroup } from 'radix-ui'
 import { useEffect, useId, useRef, useState } from 'react'
 import { LineIcon, type IconName } from '@/components/ui/LineIcon'
+import { Slider } from '@/components/ui/Slider'
 import { SOUND_PRESETS, type SoundPreset } from '@/data/soundPresets'
 import type { LightingId } from '@/data/types'
 import {
@@ -42,17 +44,16 @@ function VolumeSlider({
 }) {
   const pct = Math.round(volume * 100)
   return (
-    <input
-      type="range"
+    <Slider
       min={0}
       max={100}
       step={5}
       value={pct}
-      onChange={(e) => onChange(Number(e.target.value) / 100)}
+      onValueChange={(v) => onChange(v / 100)}
       aria-label="Music volume"
       aria-valuetext={`${pct}%`}
       title={`Volume ${pct}%`}
-      className={`h-1 cursor-pointer accent-sage ${className}`}
+      className={`slider-thin ${className}`}
     />
   )
 }
@@ -161,16 +162,19 @@ function Dock() {
               <VolumeSlider volume={musicVolume} onChange={changeVolume} className="flex-1" />
             </div>
             {SOUND_GROUPS.map((g) => (
-              <div key={g.kind} role="radiogroup" aria-label={`${g.label} sounds`} className="py-1">
+              <RadioGroup.Root
+                key={g.kind}
+                aria-label={`${g.label} sounds`}
+                value={soundPreset}
+                className="py-1"
+              >
                 <p className="px-3 pb-1 pt-2 text-xs text-white/50">{g.label}</p>
                 {SOUND_PRESETS.filter((p) => p.kind === g.kind).map((p) => {
                   const active = p.id === soundPreset
                   return (
-                    <button
+                    <RadioGroup.Item
                       key={p.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={active}
+                      value={p.id}
                       data-sound={p.id}
                       onClick={() => setSoundPreset(p.id)}
                       className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left transition-colors duration-150 ${
@@ -186,10 +190,10 @@ function Dock() {
                         <span className="text-xs text-white/50">{p.hint}</span>
                       </span>
                       {active && <LineIcon name="check" className="h-4 w-4 text-sage" />}
-                    </button>
+                    </RadioGroup.Item>
                   )
                 })}
-              </div>
+              </RadioGroup.Root>
             ))}
           </div>
         )}
@@ -209,20 +213,23 @@ function Dock() {
         <VolumeSlider
           volume={musicVolume}
           onChange={changeVolume}
-          className="hidden w-24 sm:block"
+          className="hidden w-24 sm:flex"
         />
       </div>
       <Divider />
 
-      <div role="radiogroup" aria-label="Light" className="flex items-center gap-0.5">
+      <RadioGroup.Root
+        aria-label="Light"
+        orientation="horizontal"
+        value={autoLight ? 'auto' : lighting}
+        className="flex items-center gap-0.5"
+      >
         {LIGHTS.map((l) => {
           const active = !autoLight && l.id === lighting
           return (
-            <button
+            <RadioGroup.Item
               key={l.id}
-              type="button"
-              role="radio"
-              aria-checked={active}
+              value={l.id}
               aria-label={l.label}
               title={l.label}
               data-weather={l.id}
@@ -230,21 +237,19 @@ function Dock() {
               className={`${ICON_BTN} ${active ? ON : IDLE}`}
             >
               <LineIcon name={l.icon} />
-            </button>
+            </RadioGroup.Item>
           )
         })}
-        <button
-          type="button"
-          role="radio"
-          aria-checked={autoLight}
+        <RadioGroup.Item
+          value="auto"
           aria-label="Follow my clock"
           title="Follow my clock"
           onClick={() => setAutoLightSync(true)}
           className={`${ICON_BTN} ${autoLight ? ON : IDLE}`}
         >
           <LineIcon name="auto" />
-        </button>
-      </div>
+        </RadioGroup.Item>
+      </RadioGroup.Root>
       <Divider />
 
       <button

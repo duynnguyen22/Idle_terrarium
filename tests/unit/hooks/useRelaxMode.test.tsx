@@ -8,6 +8,7 @@ import { play, stopAudio, useAudio } from '@/hooks/useAudio'
 import { RELAX_IDLE_MS, useRelaxMode } from '@/hooks/useRelaxMode'
 import { createDefaultState, useStudioStore } from '@/store/useStudioStore'
 import { createFakeAudio } from '../helpers/fakeAudio'
+import { setSlider } from '../helpers/slider'
 
 function Harness() {
   useRelaxMode()
@@ -75,8 +76,8 @@ describe('useRelaxMode', () => {
     fireEvent.click(screen.getByRole('button', { name: /Sound/ }))
     fireEvent.click(screen.getByText('Soft Piano'))
     expect(useStudioStore.getState().soundPreset).toBe('piano')
-    const [slider] = screen.getAllByLabelText('Music volume')
-    fireEvent.change(slider, { target: { value: '80' } })
+    const [slider] = screen.getAllByRole('slider', { name: 'Music volume' })
+    setSlider(slider!, 80)
     expect(useStudioStore.getState().musicVolume).toBe(0.8)
     fireEvent.click(screen.getByLabelText('Mute music'))
     expect(useStudioStore.getState().musicVolume).toBe(0)

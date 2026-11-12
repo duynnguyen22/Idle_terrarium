@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { DropdownMenu } from 'radix-ui'
 import { AccountChip } from '@/components/account/AccountChip'
 import { LineIcon } from '@/components/ui/LineIcon'
 import { startAudioFromGesture, stopAudio } from '@/hooks/useAudio'
@@ -65,33 +65,7 @@ const MENU_ITEM =
 
 /** "⋯" button with the rarely used, destructive actions (prototype #more-menu). */
 function MoreMenu() {
-  const [open, setOpen] = useState(false)
-  const rootRef = useRef<HTMLDivElement>(null)
   const catchupEnabled = useStudioStore((s) => s.catchupEnabled)
-
-  useEffect(() => {
-    if (!open) return
-    const onDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
-    }
-    // Capture phase + stopPropagation: Escape closes the menu only, not relax mode or the selection.
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      e.stopPropagation()
-      setOpen(false)
-    }
-    document.addEventListener('pointerdown', onDown)
-    window.addEventListener('keydown', onKey, true)
-    return () => {
-      document.removeEventListener('pointerdown', onDown)
-      window.removeEventListener('keydown', onKey, true)
-    }
-  }, [open])
-
-  const run = (fn: () => void) => () => {
-    setOpen(false)
-    fn()
-  }
 
   const toggleCatchup = () => {
     const next = !catchupEnabled
@@ -103,84 +77,74 @@ function MoreMenu() {
     )
   }
 
+  // Non-modal: the page behind stays usable and a press outside just closes the menu.
   return (
-    <div ref={rootRef} className="relative">
-      <button
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls="more-menu"
-        aria-label="More actions"
-        title="More actions"
-        onClick={() => setOpen((o) => !o)}
-        className={NEUTRAL}
-      >
+    <DropdownMenu.Root modal={false}>
+      <DropdownMenu.Trigger aria-label="More actions" title="More actions" className={NEUTRAL}>
         <LineIcon name="more" />
-      </button>
-      {open && (
-        <div
-          id="more-menu"
-          role="menu"
-          className="fixed right-4 top-14 z-50 w-60 rounded-xl border border-sand-border bg-white p-1 shadow-lg"
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="end"
+          sideOffset={8}
+          // Escape closes the menu only, not relax mode or the selection (global handler on window).
+          onEscapeKeyDown={(e) => e.stopPropagation()}
+          className="z-50 w-60 rounded-xl border border-sand-border bg-white p-1 shadow-lg"
         >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={run(rebuildFalls)}
+          <DropdownMenu.Item
+            onSelect={rebuildFalls}
             className={`${MENU_ITEM} text-ink-deep hover:bg-linen`}
           >
             <LineIcon name="dice" />
             Rebuild the Falls Lake paludarium
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={run(clearAll)}
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
+            onSelect={clearAll}
             className={`${MENU_ITEM} text-rose-700 hover:bg-rose-50`}
           >
             <LineIcon name="trash" />
             Clear all specimens
-          </button>
-          <div role="group" aria-labelledby="time-away-label">
+          </DropdownMenu.Item>
+          <DropdownMenu.Group aria-labelledby="time-away-label">
             <div className="mt-1 border-t border-sand-border px-3 pb-1 pt-2">
-              <p
+              <DropdownMenu.Label
                 id="time-away-label"
                 className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft"
               >
                 Time away
-              </p>
+              </DropdownMenu.Label>
             </div>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={run(showLastSummary)}
+            <DropdownMenu.Item
+              onSelect={showLastSummary}
               className={`${MENU_ITEM} text-ink-deep hover:bg-linen`}
             >
               Show the last summary
-            </button>
-            <div role="group" aria-labelledby="preview-gap-label" className="px-3 py-1">
-              <p id="preview-gap-label" className="mb-1 text-xs font-medium text-ink-deep">
+            </DropdownMenu.Item>
+            <DropdownMenu.Group aria-labelledby="preview-gap-label" className="px-3 py-1">
+              <DropdownMenu.Label
+                id="preview-gap-label"
+                className="mb-1 text-xs font-medium text-ink-deep"
+              >
                 Preview a gap
-              </p>
+              </DropdownMenu.Label>
               <div className="flex gap-1">
                 {GAPS.map((g) => (
-                  <button
+                  <DropdownMenu.Item
                     key={g.hours}
-                    type="button"
                     aria-label={`Preview a gap of ${g.label}`}
-                    onClick={run(() => previewGap(g.hours))}
-                    className="flex-1 rounded-lg bg-sand-pale px-1 py-1 text-[11px] font-medium text-ink-soft transition hover:bg-sand-track"
+                    onSelect={() => previewGap(g.hours)}
+                    className="flex-1 rounded-lg bg-sand-pale px-1 py-1 text-center text-[11px] font-medium text-ink-soft transition hover:bg-sand-track"
                   >
                     {g.label}
-                  </button>
+                  </DropdownMenu.Item>
                 ))}
               </div>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={catchupEnabled}
-              onClick={toggleCatchup}
+            </DropdownMenu.Group>
+            <DropdownMenu.CheckboxItem
+              checked={catchupEnabled}
+              onCheckedChange={toggleCatchup}
+              // Keep the menu open so the switch visibly flips.
+              onSelect={(e) => e.preventDefault()}
               className={`${MENU_ITEM} justify-between text-ink-deep hover:bg-linen`}
             >
               Grow while I&apos;m away
@@ -192,11 +156,11 @@ function MoreMenu() {
                   className={`h-3 w-3 rounded-full bg-white transition ${catchupEnabled ? 'translate-x-3' : ''}`}
                 />
               </span>
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+            </DropdownMenu.CheckboxItem>
+          </DropdownMenu.Group>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   )
 }
 

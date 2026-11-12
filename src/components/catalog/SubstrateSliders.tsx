@@ -5,6 +5,7 @@ import { getTotalSubstrateDepth, hasPool } from '@/engine/geometry'
 import { selectSubstrates, selectWaterSplit } from '@/store/selectors'
 import { showToast } from '@/store/toastStore'
 import { useStudioStore } from '@/store/useStudioStore'
+import { Slider } from '@/components/ui/Slider'
 
 type SliderLayerId = (typeof LAND_LAYER_IDS)[number] | 'rivergravel' | 'water'
 
@@ -50,15 +51,12 @@ function SliderRow({ id, max }: { id: SliderLayerId; max: number }) {
         </span>
         <span className="tabular-nums text-[11px] text-stone">{val} mm</span>
       </div>
-      <input
-        type="range"
+      <Slider
         min={0}
         max={max}
-        step={1}
         value={val}
         aria-label={layer.name}
-        onChange={(e) => changeLayer(id, parseInt(e.target.value, 10))}
-        className="w-full"
+        onValueChange={(mm) => changeLayer(id, mm)}
       />
     </div>
   )
@@ -113,15 +111,12 @@ export function SubstrateSliders() {
           <span className="font-medium text-ink-soft">Pool width</span>
           <span className="tabular-nums text-[11px] text-stone">{splitLabel(waterSplit)}</span>
         </div>
-        <input
-          type="range"
+        <Slider
           min={0}
           max={60}
-          step={1}
           value={Math.round((waterSplit || 0) * 100)}
           aria-label="Pool width"
-          onChange={(e) => changePoolWidth(parseInt(e.target.value, 10))}
-          className="w-full"
+          onValueChange={changePoolWidth}
         />
         <div className="text-[10px] text-[#5b665e]">
           Crab builds run about 70/30; fish builds give the pool more room.
