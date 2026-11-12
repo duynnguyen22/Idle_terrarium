@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "e2e": "playwright test"
   },
   "dependencies": {
