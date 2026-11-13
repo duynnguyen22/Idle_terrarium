@@ -36,9 +36,9 @@ test('studio journey: biome, 5x, relax, persistence', async ({ page }) => {
   await page.getByRole('menuitem', { name: /Rebuild the Falls Lake/ }).click()
   await expect.poll(() => liveItemCount(page)).toBeGreaterThan(0)
 
-  const fiveX = page.getByRole('button', { name: /5×/ })
+  const fiveX = page.getByRole('radio', { name: /5×/ })
   await fiveX.click()
-  await expect(fiveX).toHaveAttribute('aria-pressed', 'true')
+  await expect(fiveX).toHaveAttribute('aria-checked', 'true')
 
   await page.keyboard.press('r')
   await expect(page.locator('body')).toHaveClass(/relax-active/)
@@ -127,7 +127,11 @@ for (const size of [
     for (const n of [/More actions/, /Snapshot/, /Ambient sound/, /Relax/, /\+1 day/])
       await expect(nav.getByRole('button', { name: n })).toBeVisible()
     // Every rendered control (speed pills, utilities; lighting sits on the canvas); drawer toggles are display:none from lg up.
-    const buttons = await nav.getByRole('button').filter({ visible: true }).all()
+    const buttons = await nav
+      .getByRole('button')
+      .or(nav.getByRole('radio'))
+      .filter({ visible: true })
+      .all()
     expect(buttons.length).toBeGreaterThanOrEqual(9)
     for (const btn of buttons) {
       const box = await btn.boundingBox()

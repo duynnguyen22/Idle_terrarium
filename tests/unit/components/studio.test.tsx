@@ -66,26 +66,23 @@ afterEach(() => {
 })
 
 describe('TopNav speed controls', () => {
-  it('updates timeSpeed/realTimeMode and aria-pressed', async () => {
+  it('updates timeSpeed/realTimeMode and the checked speed', async () => {
     render(<TopNav />)
     const u = user()
-    expect(screen.getByRole('button', { name: /real-time/i })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-    await u.click(screen.getByRole('button', { name: /5×/ }))
+    const speed = (name: string | RegExp) => screen.getByRole('radio', { name })
+    expect(speed(/real-time/i)).toHaveAttribute('aria-checked', 'true')
+    await u.click(speed(/5×/))
     expect(appStore.get(studioStateAtom)).toMatchObject({ timeSpeed: 5, realTimeMode: false })
-    expect(screen.getByRole('button', { name: /5×/ })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: /real-time/i })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    )
-    await u.click(screen.getByRole('button', { name: 'Pause' }))
+    expect(speed(/5×/)).toHaveAttribute('aria-checked', 'true')
+    expect(speed(/real-time/i)).toHaveAttribute('aria-checked', 'false')
+    await u.click(speed('Pause'))
     expect(appStore.get(studioStateAtom)).toMatchObject({ timeSpeed: 0, realTimeMode: false })
-    expect(screen.getByRole('button', { name: 'Pause' })).toHaveAttribute('aria-pressed', 'true')
-    await u.click(screen.getByRole('button', { name: '1×' }))
+    expect(speed('Pause')).toHaveAttribute('aria-checked', 'true')
+    await u.click(speed('Pause')) // pressing the active speed again keeps it selected
+    expect(speed('Pause')).toHaveAttribute('aria-checked', 'true')
+    await u.click(speed('1×'))
     expect(appStore.get(studioStateAtom)).toMatchObject({ timeSpeed: 1, realTimeMode: false })
-    await u.click(screen.getByRole('button', { name: /real-time/i }))
+    await u.click(speed(/real-time/i))
     expect(appStore.get(studioStateAtom)).toMatchObject({ timeSpeed: 1, realTimeMode: true })
   })
 
@@ -195,7 +192,7 @@ describe('lighting', () => {
   it('Night sets lighting and turns Auto off; Auto turns it back on', async () => {
     render(<LightingControls />)
     const u = user()
-    await u.click(screen.getByRole('button', { name: 'Night' }))
+    await u.click(screen.getByRole('radio', { name: 'Night' }))
     expect(appStore.get(studioStateAtom)).toMatchObject({ lighting: 'night', autoLightSync: false })
     await u.click(screen.getByRole('button', { name: 'Auto' }))
     expect(appStore.get(autoLightSyncAtom)).toBe(true)

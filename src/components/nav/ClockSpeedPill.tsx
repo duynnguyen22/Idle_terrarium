@@ -1,5 +1,9 @@
 import { atom, useAtomValue, useSetAtom } from 'jotai'
+import { ClockIcon, PauseIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { LineIcon, type IconName } from '@/components/ui/LineIcon'
+import { Separator } from '@/components/ui/separator'
 import type { LightingId } from '@/data/types'
 import { useLocalClock } from '@/hooks/useLocalClock'
 import { plusOneDay } from '@/store/awayFlow'
@@ -20,9 +24,18 @@ const PHASE_BADGES: Record<LightingId, string> = {
   night: 'Night · respiration',
 }
 
-const BTN = 'h-8 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition'
-const ACTIVE = 'bg-forest-deep text-white'
-const IDLE = 'text-ink-brown hover:bg-white/60'
+type SpeedId = 'rt' | 'pause' | '1x' | '5x'
+
+const SPEEDS: Record<SpeedId, { rt: boolean; v: number; toast: string }> = {
+  rt: { rt: true, v: 1, toast: 'Running at real-world speed' },
+  pause: { rt: false, v: 0, toast: 'Simulation paused' },
+  '1x': { rt: false, v: 1, toast: 'Standard 1× speed' },
+  '5x': { rt: false, v: 5, toast: 'Fast-forward: 5× growth and creature speed' },
+}
+
+const ITEM = 'text-xs font-semibold'
+/** Compact items (pause, 1×, 5×) keep the old tight padding so the nav fits at 900 px. */
+const COMPACT = `${ITEM} min-w-0 px-2`
 
 const speedKeyAtom = atom((get) => `${get(realTimeModeAtom) ? 'rt' : 'm'}:${get(timeSpeedAtom)}`)
 
@@ -39,10 +52,15 @@ export function ClockSpeedPill() {
   const realTime = mode === 'rt'
   const dateLabel = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
-  const setSpeed = (rt: boolean, v: number, toast: string) => {
-    setRealTimeMode(rt)
-    setTimeSpeed(v)
-    showToast(toast)
+  const active: SpeedId | '' =
+    speed === 0 ? 'pause' : speed === 5 ? '5x' : speed === 1 ? (realTime ? 'rt' : '1x') : ''
+
+  const setSpeed = (id: string) => {
+    const next = SPEEDS[id as SpeedId]
+    if (!next) return // pressing the active item again keeps it selected
+    setRealTimeMode(next.rt)
+    setTimeSpeed(next.v)
+    showToast(next.toast)
   }
 
   const plusDay = () => showToast(plusOneDay())
@@ -54,69 +72,46 @@ export function ClockSpeedPill() {
           <LineIcon name={PHASE_ICONS[lighting]} />
         </span>
         <span className="text-xs font-semibold text-forest-deep">{`${dateLabel} · Day ${Math.floor(dayCount)}`}</span>
-        <span className="h-3.5 w-px bg-sand-border" />
+        <Separator orientation="vertical" className="h-3.5" />
         <span className="font-mono-clock text-xs font-semibold text-ink-bark">{clock}</span>
         <span className="hidden text-[11px] text-stone 2xl:inline">{PHASE_BADGES[lighting]}</span>
       </div>
 
-      <button
-        type="button"
-        aria-pressed={realTime && speed === 1}
-        aria-label="Real-time"
-        title="Run at real-world speed"
-        onClick={() => setSpeed(true, 1, 'Running at real-world speed')}
-        className={`${BTN} inline-flex items-center gap-1.5 px-2.5 ${realTime && speed === 1 ? ACTIVE : IDLE}`}
+      <ToggleGroup
+        type="single"
+        variant="solid"
+        spacing={1.5}
+        aria-label="Simulation speed"
+        value={active}
+        onValueChange={setSpeed}
       >
-        <svg
-          className="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          aria-hidden="true"
+        <ToggleGroupItem
+          value="rt"
+          aria-label="Real-time"
+          title="Run at real-world speed"
+          className={ITEM}
         >
-          <circle cx="12" cy="12" r="9" />
-          <path d="M12 7v5l3 2" />
-        </svg>
-        <span className="hidden lg:inline">Real-time</span>
-      </button>
-      <button
-        type="button"
-        aria-label="Pause"
-        aria-pressed={speed === 0}
-        title="Pause"
-        onClick={() => setSpeed(false, 0, 'Simulation paused')}
-        className={`${BTN} inline-flex items-center justify-center px-2 ${speed === 0 ? ACTIVE : IDLE}`}
-      >
-        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <rect x="6" y="5" width="4" height="14" rx="1" />
-          <rect x="14" y="5" width="4" height="14" rx="1" />
-        </svg>
-      </button>
-      <button
-        type="button"
-        aria-pressed={!realTime && speed === 1}
-        onClick={() => setSpeed(false, 1, 'Standard 1× speed')}
-        className={`${BTN} inline-flex items-center justify-center px-2 ${!realTime && speed === 1 ? ACTIVE : IDLE}`}
-      >
-        1×
-      </button>
-      <button
-        type="button"
-        aria-pressed={speed === 5}
-        onClick={() => setSpeed(false, 5, 'Fast-forward: 5× growth and creature speed')}
-        className={`${BTN} inline-flex items-center px-2 ${speed === 5 ? ACTIVE : IDLE}`}
-      >
-        5×
-      </button>
-      <button
-        type="button"
+          <ClockIcon data-icon="inline-start" className="size-3.5" />
+          <span className="hidden lg:inline">Real-time</span>
+        </ToggleGroupItem>
+        <ToggleGroupItem value="pause" aria-label="Pause" title="Pause" className={COMPACT}>
+          <PauseIcon className="size-3.5 fill-current" />
+        </ToggleGroupItem>
+        <ToggleGroupItem value="1x" className={COMPACT}>
+          1×
+        </ToggleGroupItem>
+        <ToggleGroupItem value="5x" className={COMPACT}>
+          5×
+        </ToggleGroupItem>
+      </ToggleGroup>
+      <Button
+        variant="wheat"
         title="Advance the biosphere by 24 hours"
         onClick={plusDay}
-        className="inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-wheat px-2.5 text-xs font-semibold text-wheat-ink transition hover:bg-wheat-hover"
+        className="text-xs font-semibold"
       >
         +1 day
-      </button>
+      </Button>
     </div>
   )
 }

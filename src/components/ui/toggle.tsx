@@ -10,6 +10,12 @@ const toggleVariants = cva(
       variant: {
         default: 'bg-transparent',
         outline: 'border border-input bg-transparent hover:bg-muted',
+        // Botanical tones: `solid` fills with forest when on, `raised` lifts to a white chip.
+        solid:
+          'bg-transparent text-ink-brown hover:bg-white/60 aria-pressed:bg-primary aria-pressed:text-primary-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary data-[state=on]:hover:text-primary-foreground aria-pressed:hover:bg-primary aria-pressed:hover:text-primary-foreground',
+        raised:
+          'bg-transparent text-ink-umber hover:bg-white/70 aria-pressed:bg-white aria-pressed:text-forest-deep aria-pressed:shadow-sm data-[state=on]:bg-white data-[state=on]:text-forest-deep data-[state=on]:shadow-sm data-[state=on]:hover:bg-white data-[state=on]:hover:text-forest-deep',
+        mint: 'bg-transparent text-ink-umber hover:bg-white/70 aria-pressed:bg-mint-step aria-pressed:text-forest-deep data-[state=on]:bg-mint-step data-[state=on]:text-forest-deep data-[state=on]:hover:bg-mint-step data-[state=on]:hover:text-forest-deep',
       },
       size: {
         default:

@@ -67,7 +67,7 @@ describe('GrowthBoard', () => {
     expect(board.tagName).toBe('ASIDE')
     expect(board).toHaveAccessibleName('How your tank is growing')
     expect(screen.getByText('Growth board')).toBeInTheDocument()
-    const group = screen.getByRole('radiogroup')
+    const group = within(board).getByRole('radiogroup', { name: 'Tank pace' })
     expect(
       within(group)
         .getAllByRole('radio')

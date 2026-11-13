@@ -18,6 +18,10 @@ const buttonVariants = cva(
         destructive:
           'bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40',
         link: 'text-primary underline-offset-4 hover:underline',
+        // Botanical tones used across the studio chrome.
+        sand: 'bg-sand-pale text-ink-soft hover:bg-sand-track aria-expanded:bg-sand-track',
+        forest: 'bg-forest-mid text-white hover:bg-forest-deep',
+        wheat: 'bg-wheat text-wheat-ink hover:bg-wheat-hover',
       },
       size: {
         default:

@@ -1,10 +1,11 @@
+import { ChartNoAxesColumnIcon, MenuIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { ClockSpeedPill } from '@/components/nav/ClockSpeedPill'
 import { UtilityActions } from '@/components/nav/UtilityActions'
 
 export type DrawerSide = 'left' | 'right'
 
-const DRAWER_BTN =
-  'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-sand-border bg-sand-pale text-ink-soft transition hover:bg-sand-track lg:hidden'
+const DRAWER_BTN = 'border-sand-border lg:hidden'
 
 interface TopNavProps {
   /** Which slide-over drawer is open below the lg breakpoint. */
@@ -19,44 +20,28 @@ export function TopNav({ drawer = null, onToggleDrawer }: TopNavProps) {
       className="z-30 flex h-14 shrink-0 flex-nowrap items-center justify-between gap-1 border-b border-sand-border bg-paper/95 px-2 lg:gap-2 lg:px-3 backdrop-blur-md"
     >
       <div className="flex shrink-0 items-center gap-1.5 lg:gap-2.5">
-        <button
-          type="button"
+        <Button
+          variant="sand"
+          size="icon"
           aria-label="Toggle catalog panel"
           aria-expanded={drawer === 'left'}
           aria-controls="left-sidebar"
           onClick={() => onToggleDrawer?.('left')}
           className={DRAWER_BTN}
         >
-          <svg
-            className="h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
-            <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
-          </svg>
-        </button>
-        <button
-          type="button"
+          <MenuIcon />
+        </Button>
+        <Button
+          variant="sand"
+          size="icon"
           aria-label="Toggle telemetry panel"
           aria-expanded={drawer === 'right'}
           aria-controls="right-sidebar"
           onClick={() => onToggleDrawer?.('right')}
           className={DRAWER_BTN}
         >
-          <svg
-            className="h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
-            <path d="M4 20V10M10 20V4M16 20v-8M22 20H2" strokeLinecap="round" />
-          </svg>
-        </button>
+          <ChartNoAxesColumnIcon />
+        </Button>
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-forest-deep text-white shadow-sm">
           <svg
             className="h-5 w-5"

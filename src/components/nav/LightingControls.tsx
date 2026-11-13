@@ -1,5 +1,8 @@
 import { useAtomValue, useSetAtom } from 'jotai'
 import { LineIcon, type IconName } from '@/components/ui/LineIcon'
+import { Separator } from '@/components/ui/separator'
+import { Toggle } from '@/components/ui/toggle'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { LightingId } from '@/data/types'
 import { autoLightSyncAtom, lightingAtom } from '@/store/studio'
 import { showToast } from '@/store/toast'
@@ -11,8 +14,7 @@ const PHASES: { id: LightingId; icon: IconName; label: string }[] = [
   { id: 'night', icon: 'moon', label: 'Night' },
 ]
 
-const BTN =
-  'inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-xs transition'
+const ITEM = 'gap-1 px-2 text-xs font-medium data-[state=on]:font-semibold'
 
 /** Floating light switcher in the canvas corner (prototype #light-control); hidden in relax mode. */
 export function LightingControls() {
@@ -21,8 +23,9 @@ export function LightingControls() {
   const setLighting = useSetAtom(lightingAtom)
   const setAutoLightSync = useSetAtom(autoLightSyncAtom)
 
-  const choose = (id: LightingId) => {
-    setLighting(id)
+  const choose = (id: string) => {
+    if (!id) return // pressing the active phase again keeps it selected
+    setLighting(id as LightingId)
     setAutoLightSync(false)
   }
   const toggleAuto = () => {
@@ -38,40 +41,38 @@ export function LightingControls() {
       aria-label="Lighting"
       className="absolute right-3 top-3 z-20 flex items-center gap-0.5 rounded-xl border border-sand-border bg-paper/95 p-1 shadow-sm"
     >
-      {PHASES.map((p) => {
-        const active = p.id === lighting
-        return (
-          <button
+      <ToggleGroup
+        type="single"
+        variant="raised"
+        spacing={0.5}
+        aria-label="Lighting phase"
+        value={lighting}
+        onValueChange={choose}
+      >
+        {PHASES.map((p) => (
+          <ToggleGroupItem
             key={p.id}
-            type="button"
-            aria-pressed={active}
+            value={p.id}
             aria-label={p.label}
             title={p.label}
-            onClick={() => choose(p.id)}
-            className={`${BTN} ${
-              active
-                ? 'bg-white font-semibold text-forest-deep shadow-sm'
-                : 'font-medium text-ink-umber hover:bg-white/70'
-            }`}
+            className={ITEM}
           >
             <LineIcon name={p.icon} />
             <span className="hidden 2xl:inline">{p.label}</span>
-          </button>
-        )
-      })}
-      <span className="mx-0.5 h-5 w-px bg-sand-border" />
-      <button
-        type="button"
-        aria-pressed={autoSync}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+      <Separator orientation="vertical" className="mx-0.5 h-5" />
+      <Toggle
+        variant="mint"
+        pressed={autoSync}
+        onPressedChange={toggleAuto}
         title="Follow your local clock"
-        onClick={toggleAuto}
-        className={`${BTN} font-semibold ${
-          autoSync ? 'bg-[#dcebe0] text-forest-deep' : 'text-ink-umber hover:bg-white/70'
-        }`}
+        className="gap-1 px-2 text-xs font-semibold"
       >
         <LineIcon name="auto" />
         <span>Auto</span>
-      </button>
+      </Toggle>
     </div>
   )
 }
