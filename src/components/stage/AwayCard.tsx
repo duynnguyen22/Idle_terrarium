@@ -1,5 +1,7 @@
 import { useAtomValue, useSetAtom } from 'jotai'
+import { XIcon } from 'lucide-react'
 import { useEffect, useId } from 'react'
+import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import { tryGetWorld } from '@/engine/engineBridge'
 import { clearRings, pingItem, PING_MS, setRings } from '@/engine/marks'
@@ -42,13 +44,19 @@ function Dot({ colour }: { colour: string }) {
   return (
     <span
       aria-hidden="true"
-      className="mt-1 size-2 shrink-0 rounded-full"
+      className="mt-[0.45em] size-2 shrink-0 rounded-full"
       style={{ backgroundColor: colour }}
     />
   )
 }
 
-const GHOST = 'text-xs font-semibold text-forest-ink hover:bg-forest-ink/10 hover:text-forest-ink'
+/** A change line: the whole row is a button that selects the item on the stage. */
+const LINE =
+  'w-full items-start justify-start gap-3 rounded-lg px-2 py-1.5 text-left text-[13.5px] leading-normal font-normal whitespace-normal text-ink-deep hover:bg-forest-ink/5 hover:text-ink-deep'
+
+/** Earlier and Later in the footer. */
+const PAGER =
+  'text-[12.5px] font-semibold text-forest-ink hover:bg-forest-ink/5 hover:text-forest-ink disabled:text-stone-light'
 
 /** The time-away summary: what changed while the player was gone (or after a preview or "+1 day"). */
 export function AwayCard() {
@@ -103,23 +111,37 @@ export function AwayCard() {
       id="away-card"
       role="dialog"
       aria-labelledby={titleId}
-      className="absolute left-1/2 top-20 z-30 w-[22rem] max-w-[calc(100%-2rem)] -translate-x-1/2 flex flex-col gap-3 rounded-2xl border border-card-line bg-white p-3.5 shadow-lg"
+      className="absolute top-4 left-4 z-30 flex max-h-[calc(100%-2rem)] w-[21rem] max-w-[calc(100%-2rem)] flex-col gap-4 overflow-y-auto rounded-[22px] border border-sand-border bg-paper p-5 text-ink-deep shadow-[0_18px_44px_-20px_rgba(17,34,26,0.45)]"
     >
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-stone">
-          {eyebrowOf(report)}
-        </p>
-        <h2 id={titleId} className="mt-0.5 text-sm font-semibold text-forest-ink">
-          {titleOf(report)}
-        </h2>
-      </div>
+      <header className="flex items-start gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <p className="font-mono text-[11px] font-medium leading-normal tracking-[0.08em] text-stone uppercase">
+            {eyebrowOf(report)}
+          </p>
+          <h2
+            id={titleId}
+            className="font-heading text-[1.375rem] leading-[1.15] font-semibold tracking-[-0.01em] text-forest-ink"
+          >
+            {titleOf(report)}
+          </h2>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Close"
+          onClick={() => setAwayIndex(null)}
+          className="-mt-1 -mr-1.5 shrink-0 text-stone hover:bg-forest-ink/5 hover:text-forest-ink"
+        >
+          <XIcon />
+        </Button>
+      </header>
 
       {empty ? (
-        <p className="text-xs text-stone">
+        <p className="text-[13.5px] leading-normal text-ink-soft">
           The tank rested while you were away. Nothing needs doing.
         </p>
       ) : (
-        <ul className="flex flex-col gap-1.5">
+        <ul className="-mx-2 flex flex-col">
           {report.items.map((item) => (
             <li key={`${item.kind}|${item.id}`}>
               <Button
@@ -127,7 +149,7 @@ export function AwayCard() {
                 size="auto"
                 onMouseEnter={() => ping(item.uid)}
                 onClick={() => select(item.uid)}
-                className="w-full items-start justify-start gap-2 text-left text-xs font-normal whitespace-normal text-forest-ink hover:bg-forest-ink/5 hover:text-forest-ink"
+                className={LINE}
               >
                 <Dot colour={dotColour(item.kind)} />
                 <span>{item.text}</span>
@@ -135,7 +157,7 @@ export function AwayCard() {
             </li>
           ))}
           {report.rest.length > 0 && (
-            <li className="flex items-start gap-2 text-xs text-forest-ink">
+            <li className="flex items-start gap-3 px-2 py-1.5 text-[13.5px] leading-normal text-ink-soft">
               <Dot colour={dotColour('rest')} />
               <span>{restLine(report.rest)}</span>
             </li>
@@ -143,17 +165,17 @@ export function AwayCard() {
         </ul>
       )}
       {report.more > 0 && (
-        <p className="text-xs text-stone">
+        <p className="-mt-2 text-[13px] text-stone">
           {`And ${report.more} smaller change${report.more === 1 ? '' : 's'}.`}
         </p>
       )}
 
       {report.hints.length > 0 && (
-        <div>
-          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-stone">
+        <div className="flex flex-col gap-1.5 rounded-2xl bg-mint-pale px-4 py-3">
+          <h3 className="text-[11.5px] font-semibold tracking-[0.04em] text-forest-mid uppercase">
             Coming up, if it stays healthy
           </h3>
-          <ul className="mt-1 flex flex-col gap-1">
+          <ul className="-mx-1.5 flex flex-col">
             {report.hints.map((hint) => (
               <li key={hint.uid}>
                 <Button
@@ -161,7 +183,7 @@ export function AwayCard() {
                   size="auto"
                   onMouseEnter={() => ping(hint.uid)}
                   onClick={() => select(hint.uid)}
-                  className="w-full justify-start text-left text-xs font-normal whitespace-normal text-stone hover:bg-forest-ink/5 hover:text-stone"
+                  className="w-full justify-start rounded-lg px-1.5 py-1 text-left text-[13px] leading-normal font-normal whitespace-normal text-ink-soft hover:bg-forest-ink/5 hover:text-forest-ink"
                 >
                   {`${hint.text} ${etaLabel(hint.eta, msPerDay)}`}
                 </Button>
@@ -171,53 +193,55 @@ export function AwayCard() {
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-2">
-        {awayLog.length >= 2 ? (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="xs"
-              className={GHOST}
-              disabled={awayIndex >= awayLog.length - 1}
-              onClick={() => setAwayIndex(awayIndex + 1)}
-            >
-              ‹ Earlier
-            </Button>
-            <span className="text-[11px] text-stone">
-              {awayIndex === 0 ? 'Latest' : `${awayIndex + 1} of ${awayLog.length}`}
-            </span>
-            <Button
-              variant="ghost"
-              size="xs"
-              className={GHOST}
-              disabled={awayIndex <= 0}
-              onClick={() => setAwayIndex(awayIndex - 1)}
-            >
-              Later ›
-            </Button>
-          </div>
-        ) : (
-          <span />
-        )}
-        <div className="flex items-center gap-1.5">
-          {canVisit && (
-            <Button
-              variant="ghost"
-              onClick={() => startEveningVisit(report)}
-              className={`${GHOST} px-3`}
-            >
-              Start the evening visit
-            </Button>
-          )}
+      <div className="flex items-center gap-2">
+        {canVisit && (
           <Button
-            variant="wheat"
-            onClick={() => setAwayIndex(null)}
-            className="px-3 text-xs font-semibold"
+            onClick={() => startEveningVisit(report)}
+            className="h-10 flex-1 rounded-xl bg-forest-ink text-[13.5px] font-semibold text-white hover:bg-forest-deep"
           >
-            Got it
+            Start the evening visit
           </Button>
-        </div>
+        )}
+        <Button
+          variant="outline"
+          onClick={() => setAwayIndex(null)}
+          className={cn(
+            'h-10 rounded-xl border-sand-border bg-white px-5 text-[13.5px] font-semibold text-forest-ink hover:bg-linen hover:text-forest-ink',
+            !canVisit && 'flex-1',
+          )}
+        >
+          Got it
+        </Button>
       </div>
+
+      {awayLog.length >= 2 && (
+        <nav
+          aria-label="Away reports"
+          className="-mx-5 -mb-2 flex items-center justify-between border-t border-card-line px-3 pt-2"
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            className={PAGER}
+            disabled={awayIndex >= awayLog.length - 1}
+            onClick={() => setAwayIndex(awayIndex + 1)}
+          >
+            ‹ Earlier
+          </Button>
+          <span className="text-[12.5px] text-stone">
+            {awayIndex === 0 ? 'Latest' : `${awayIndex + 1} of ${awayLog.length}`}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={PAGER}
+            disabled={awayIndex <= 0}
+            onClick={() => setAwayIndex(awayIndex - 1)}
+          >
+            Later ›
+          </Button>
+        </nav>
+      )}
     </section>
   )
 }
