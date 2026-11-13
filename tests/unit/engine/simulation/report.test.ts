@@ -63,7 +63,7 @@ describe('tables', () => {
   it('marks the notable kinds', () => {
     const on = (Object.keys(NOTABLE) as EventKind[]).filter((k) => NOTABLE[k] === 1).sort()
     expect(on).toEqual(
-      ['open', 'seedling', 'hatch', 'frond', 'bud', 'spread', 'tendril', 'grown'].sort(),
+      ['open', 'seedling', 'hatch', 'frond', 'bud', 'spread', 'tendril', 'grown', 'eaten'].sort(),
     )
     expect([NOTABLE.fiddle, NOTABLE.fade, NOTABLE.rest]).toEqual([0, 0, 0])
   })
@@ -78,6 +78,7 @@ describe('tables', () => {
       'spread',
       'tendril',
       'grown',
+      'eaten',
       'fiddle',
       'fade',
       'rest',

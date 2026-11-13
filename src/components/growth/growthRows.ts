@@ -2,7 +2,7 @@ import { findCatalogDef } from '@/data/catalog'
 import type { PlacedItem } from '@/data/types'
 import { CYCLE_DAYS } from '@/engine/care'
 import { hasPool } from '@/engine/geometry'
-import { BREED, type BreedConditions } from '@/engine/simulation/breed'
+import { BREED, NO_BREED_NOTE, type BreedConditions } from '@/engine/simulation/breed'
 import {
   PUMP_OFF_CYCLE_FACTOR,
   SPROUT_RATE,
@@ -147,7 +147,7 @@ export function faunaRows(world: EngineWorld, cond: BreedConditions, pace: PaceI
       count: members.length,
       uids: members.map((m) => m.uid),
       chip: stressed ? { label: 'Stressed', tone: 'bad' } : { label: 'Calm', tone: 'good' },
-      next: 'Does not breed in this tank',
+      next: NO_BREED_NOTE[id] ?? 'Does not breed in this tank',
     }
     if (babies.length > 0) {
       row.young = Math.round(mean(babies.map((b) => Math.min(1, b.baby ?? 0))) * 100)
@@ -162,6 +162,8 @@ export function faunaRows(world: EngineWorld, cond: BreedConditions, pace: PaceI
         row.next = `Waiting for ${needs}`
       } else if (adults.length === 0) {
         row.next = 'Waiting for the young to grow up'
+      } else if (def.pair && adults.length < 2) {
+        row.next = 'Needs a second adult to breed'
       } else if (stressed) {
         row.next = 'Waiting until they settle down'
       } else {

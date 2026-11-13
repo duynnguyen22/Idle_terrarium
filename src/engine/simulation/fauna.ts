@@ -41,6 +41,7 @@ export function faunaZone(
   const pool = poolHasWater(terrain)
   const d = getDividerNormX(state.waterSplit)
   const habitat = def.habitat || 'land'
+  if (habitat === 'glass') return { minX: LAND_MIN_X, maxX: LAND_MAX_X }
   if (habitat === 'water' && pool) {
     return { minX: POOL_MIN_X, maxX: Math.max(POOL_MIN_X + 0.02, d - BANK_W - 0.01) }
   }
@@ -92,13 +93,16 @@ export function updateFauna(
     }
     if (def.category !== 'fauna') continue
 
-    const hiding = !!def.nocturnal && !dusky && def.habitat === 'land'
+    const climber = def.habitat === 'glass'
+    const hiding = !!def.nocturnal && !dusky && (def.habitat === 'land' || climber)
     // `??` rather than the prototype's `||`: an explicit 0 means "re-roll now".
     item.aiTimer = (item.aiTimer ?? 100) - speedMult * fs
     if (item.aiTimer <= 0) {
       item.aiState = hiding ? 'hiding' : AI_STATES[Math.floor(rng() * AI_STATES.length)]
       item.aiTimer = 90 + rng() * 140
       const spd = (def.speed || 0.25) * 0.0014
+      // Glass climbers pick a new height: tucked up high by day, roaming the middle of the pane at night.
+      if (climber) item.glassY = hiding ? 0.2 + rng() * 0.04 : 0.22 + rng() * 0.38
       item.vx = item.aiState === 'resting' || item.aiState === 'hiding' ? 0 : (rng() - 0.5) * spd
     }
     if (hiding && item.aiState !== 'hiding') {
@@ -124,10 +128,36 @@ export function updateFauna(
       item.flipX = (item.vx ?? 0) < 0
     }
 
+    if (climber) {
+      item.y += ((item.glassY ?? 0.4) - item.y) * Math.min(1, 0.015 * fs)
+      continue
+    }
+
     let ty: number
+    const still = !!state.reducedMotion
     if (def.habitat === 'water' && pool) {
-      const wave = state.reducedMotion ? 0 : 0.28 * Math.sin(timestamp * 0.0015 + item.x * 12)
-      ty = waterTop + (poolBed - waterTop) * (0.5 + wave)
+      const depth = poolBed - waterTop
+      if (def.zone === 'bed') {
+        // Nerites graze the floor and now and then climb to the waterline.
+        ty = item.aiState === 'exploring' ? waterTop + 0.012 : poolBed - 0.014
+      } else if (def.zone === 'surface') {
+        // Ramshorns sit on plants or float up to the surface film.
+        ty =
+          item.aiState === 'exploring'
+            ? waterTop + 0.006
+            : poolBed - 0.012 - (depth * 0.25 * (Math.sin(item.x * 40) + 1)) / 2
+      } else if (item.id === 'amano_shrimp') {
+        // Amanos keep low, darting along the lower third.
+        const wave = still ? 0 : 0.2 * Math.sin(timestamp * 0.0011 + item.x * 9)
+        ty = waterTop + depth * (0.7 + wave)
+      } else {
+        const wave = still ? 0 : 0.28 * Math.sin(timestamp * 0.0015 + item.x * 12)
+        ty = waterTop + depth * (0.5 + wave)
+      }
+    } else if (def.hops && item.vx && !still) {
+      // Dart frogs move in short hops.
+      const hop = Math.abs(Math.sin(timestamp * 0.009 + item.x * 50)) * 0.03
+      ty = getSoilSurfaceNormalizedY(terrain, item.x) - 0.021 * (item.scale || 0.8) - hop
     } else if (item.id === 'tree_frog' && !dusky) {
       ty = getSoilSurfaceNormalizedY(terrain, item.x) - 0.11
     } else {

@@ -45,6 +45,7 @@ export type EventKind =
   | 'seedling'
   | 'grown'
   | 'hatch'
+  | 'eaten'
   | 'rest'
 
 export interface LifeEvent {

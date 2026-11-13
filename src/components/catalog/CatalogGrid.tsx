@@ -1,4 +1,4 @@
-import { CATALOG } from '@/data/catalog'
+import { CATALOG, FAUNA_BY_ID, FAUNA_GROUPS } from '@/data/catalog'
 import { computeCareReport } from '@/engine/care'
 import { mutateWorld } from '@/engine/engineBridge'
 import { addItem } from '@/engine/items'
@@ -39,6 +39,28 @@ export function CatalogGrid({ category }: { category: CatalogCategory }) {
       play('repot')
     }
     if (issueText) showToast(issueText)
+  }
+  if (category === 'fauna') {
+    return (
+      <div className="grid grid-cols-2 gap-2.5" data-testid="catalog-fauna">
+        {FAUNA_GROUPS.map((group, i) => (
+          <section key={group.label} className="contents" aria-label={group.label}>
+            <h3
+              className={`col-span-2 mx-0.5 flex items-center gap-1.5 text-xs font-semibold text-forest-ink ${i ? 'mt-2.5' : ''}`}
+            >
+              {group.label}
+              <span className="rounded-full bg-[#e4e8e0] px-[7px] text-[10.5px] font-semibold text-[#5b665e]">
+                {group.ids.length}
+              </span>
+            </h3>
+            {group.ids.map((id) => {
+              const def = { ...FAUNA_BY_ID[id], id }
+              return <CatalogCard key={id} def={def} onSelect={() => place(id)} />
+            })}
+          </section>
+        ))}
+      </div>
+    )
   }
   return (
     <div className="grid grid-cols-2 gap-2.5" data-testid={`catalog-${category}`}>

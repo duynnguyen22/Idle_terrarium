@@ -34,6 +34,8 @@ const good: BreedConditions = {
   poolHasWater: true,
   cycleProgress: 1,
   poolScore: 100,
+  temperature: 24,
+  smallPrey: 0,
 }
 
 function setup(id: string, count = 1) {
@@ -63,6 +65,12 @@ describe('BREED table', () => {
       ['ducky_isopod', 7, 5],
       ['cherry_shrimp', 6, 6],
       ['garden_snail', 9, 3],
+      ['powder_orange', 3.5, 6],
+      ['dwarf_white', 3, 8],
+      ['bumblebee_millipede', 18, 3],
+      ['phantasmal_dart', 14, 4],
+      ['mourning_gecko', 10, 5],
+      ['ramshorn_snail', 4, 8],
     ])
   })
 })

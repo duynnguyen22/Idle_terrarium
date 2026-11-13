@@ -10,7 +10,7 @@ import {
 } from '@/store/studio'
 import { restoreWorld, snapshotWorld } from '../persistence'
 import type { EngineWorld } from '../world'
-import { breedConditions, breedStep } from './breed'
+import { breedConditions, breedStep, huntStep } from './breed'
 import { slowStep, type DayState } from './dayTick'
 import { ecologyStep } from './ecology'
 import {
@@ -84,6 +84,7 @@ export function advanceWorld(
     ecologyStep(world, dt, { away }, emit)
     lifeStep(world, dt, rng, emit, env)
     breedStep(world, dt, rng, emit, breedConditions(world, state))
+    huntStep(world, dt, rng, emit, { away })
     slowStep(world, dt, state, away ? { away, nutrientFloor, emit } : { away, emit })
   }
   // Whole days must land on whole `ecoTime` (24 additions of 1/24 fall just short of 1 and would hold the day back).

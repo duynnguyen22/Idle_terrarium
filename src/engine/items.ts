@@ -64,6 +64,9 @@ export function addItem(
     y ??= inWater
       ? (getWaterTopNormY(terrain) + getPoolBedNormY(terrain.substrates)) / 2
       : getWaterTopNormY(terrain)
+  } else if (def.category === 'fauna' && def.habitat === 'glass') {
+    x ??= 0.2 + rng() * 0.6
+    y ??= 0.3 + rng() * 0.2
   } else {
     x ??= randomLandX(terrain, rng)
     y ??= getSoilSurfaceNormalizedY(terrain, x) - (def.category === 'fauna' ? 0.03 : 0.05)

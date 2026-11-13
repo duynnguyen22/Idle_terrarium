@@ -122,7 +122,15 @@ export function envCareIssues(
   const out: CareIssue[] = []
   const names = (ids: string[]) => ids.filter(has).map((i) => findCatalogDef(i)?.name ?? i)
   if (m.chlorine >= 0.9) {
-    const hit = names(['cherry_shrimp', 'medaka_fish', 'tree_frog', 'vampire_crab'])
+    const hit = names([
+      'cherry_shrimp',
+      'medaka_fish',
+      'tree_frog',
+      'vampire_crab',
+      'amano_shrimp',
+      'phantasmal_dart',
+      'nerite_snail',
+    ])
     out.push({
       level: 'warn',
       text: `Untreated tap water carries chlorine${hit.length ? `, which harms ${hit.join(', ')}` : ' that burns moss tips'}.`,
@@ -168,6 +176,10 @@ export function envCareIssues(
       'cherry_shrimp',
       'garden_snail',
       'vampire_crab',
+      'powder_orange',
+      'dwarf_white',
+      'bumblebee_millipede',
+      'amano_shrimp',
     ])
     out.push({
       level: 'warn',
@@ -264,7 +276,7 @@ export function computeCareReport(s: CareInputs): CareIssue[] {
 
   // Predation and tankmates
   if (has('vampire_crab')) {
-    const prey = ['medaka_fish', 'garden_snail'].filter(has)
+    const prey = ['medaka_fish', 'garden_snail', 'ramshorn_snail'].filter(has)
     if (prey.length) {
       const names = prey.map((p) => findCatalogDef(p)?.name ?? p).join(' and ')
       issues.push({
@@ -346,8 +358,98 @@ export function computeCareReport(s: CareInputs): CareIssue[] {
       action: { id: 'feed', label: 'Add bio-feed' },
     })
   }
-  issues.push(...envCareIssues(envModel(s.room, s.hasLid), s.room, s.hasLid, s.mineralSpots, has))
+  const model = envModel(s.room, s.hasLid)
+  issues.push(...faunaMixIssues(s, has, water, model))
+  issues.push(...envCareIssues(model, s.room, s.hasLid, s.mineralSpots, has))
   return issues
+}
+
+/** Tankmate rules for the research species, taken from keepers' care sheets (prototype v8 faunaMixIssues). */
+function faunaMixIssues(
+  s: CareInputs,
+  has: (id: string) => boolean,
+  water: boolean,
+  m: EnvModel,
+): CareIssue[] {
+  const out: CareIssue[] = []
+  const count = (id: string) => s.items.filter((i) => i.id === id).length
+  if (has('phantasmal_dart')) {
+    if (!has('springtails') && !has('dwarf_white')) {
+      out.push({
+        level: 'warn',
+        species: ['phantasmal_dart'],
+        text: 'Dart frogs snack on springtails and dwarf white isopods between feedings. Add a colony so they can forage.',
+      })
+    } else if (count('springtails') + count('dwarf_white') <= 2) {
+      out.push({
+        level: 'info',
+        species: ['phantasmal_dart', 'springtails', 'dwarf_white'],
+        text: 'The dart frogs are eating the springtails faster than they breed. Add another culture.',
+      })
+    }
+    if (has('tree_frog')) {
+      out.push({
+        level: 'info',
+        species: ['phantasmal_dart', 'tree_frog'],
+        text: 'Dart frogs and red-eyed tree frogs are not a proven pairing. Watch for stress, or keep them in separate builds.',
+      })
+    }
+    if (!water) {
+      out.push({
+        level: 'info',
+        species: ['phantasmal_dart'],
+        text: 'Male dart frogs carry their tadpoles to water. Without a pool there will be no froglets.',
+        action: { id: 'widenPool', label: 'Add a pool' },
+      })
+    }
+  }
+  if (count('mourning_gecko') === 1) {
+    out.push({
+      level: 'info',
+      species: ['mourning_gecko'],
+      text: 'Mourning geckos live in groups. A single one stays shy; add a second.',
+    })
+  }
+  if (has('nerite_snail')) {
+    if (!s.hasLid) {
+      out.push({
+        level: 'warn',
+        species: ['nerite_snail'],
+        text: 'Nerite snails climb out at the waterline and dry out. Seal the lid.',
+        action: { id: 'closeLid', label: 'Seal the lid' },
+      })
+    }
+    if (m.ph < 7 || m.tds < 120) {
+      out.push({
+        level: 'warn',
+        species: ['nerite_snail'],
+        text: `Soft or acidic water (pH ${m.ph.toFixed(1)}, ${m.tds} ppm) wears holes in nerite shells. They need pH above 7 and harder water.`,
+      })
+    }
+  }
+  if (has('amano_shrimp') && has('cherry_shrimp')) {
+    out.push({
+      level: 'info',
+      species: ['amano_shrimp', 'cherry_shrimp'],
+      text: 'Amano shrimp grab the food first. Scatter the pinch so the cherry shrimp get some.',
+    })
+  }
+  if (has('bumblebee_millipede') && s.humidity < 70) {
+    out.push({
+      level: 'warn',
+      species: ['bumblebee_millipede'],
+      text: 'The air is too dry for the millipedes, so they are nibbling the ferns.',
+      action: { id: 'mist', label: 'Mist now' },
+    })
+  }
+  if (has('powder_orange') && has('isopod')) {
+    out.push({
+      level: 'info',
+      species: ['powder_orange', 'isopod'],
+      text: 'Powder orange and dairy cow isopods compete for the same leaf litter. Over time one will outnumber the other.',
+    })
+  }
+  return out
 }
 
 /**

@@ -50,6 +50,7 @@ export const NOTABLE: Record<EventKind, 0 | 1> = {
   spread: 1,
   tendril: 1,
   grown: 1,
+  eaten: 1,
   fiddle: 0,
   fade: 0,
   rest: 0,
@@ -66,6 +67,7 @@ export const EVENT_ORDER: EventKind[] = [
   'spread',
   'tendril',
   'grown',
+  'eaten',
   'fiddle',
   'fade',
   'rest',
@@ -77,6 +79,7 @@ export const DOT_COLOURS: Record<string, string> = {
   bud: '#e0789f',
   fade: '#e0789f',
   hatch: '#c2853f',
+  eaten: '#b4533c',
   rest: '#9aa79d',
   seedling: '#a3cf4f',
   grown: '#a3cf4f',
@@ -105,8 +108,34 @@ const EVENT_TEXT: Partial<Record<EventKind, (name: string, bloom: string) => str
   hatch: (n) => `The ${n} had young.`,
 }
 
+/** Species-specific hatch lines; others use the generic `hatch` copy. */
+const HATCH_TEXT: Readonly<Partial<Record<string, string>>> = {
+  springtails: 'New springtails hatched in the leaf litter.',
+  isopod: 'A baby isopod hatched under the bark.',
+  ducky_isopod: 'A baby ducky isopod hatched under the bark.',
+  cherry_shrimp: 'A baby cherry shrimp hatched in the moss.',
+  garden_snail: 'A baby snail hatched in the soil.',
+  powder_orange: 'A baby powder orange hatched in the leaf litter.',
+  dwarf_white: 'New dwarf whites hatched in the soil.',
+  bumblebee_millipede: 'A young millipede hatched from eggs in the soil.',
+  ramshorn_snail: 'A baby ramshorn hatched on the pool glass.',
+  phantasmal_dart:
+    'A dart froglet climbed out of the pool after its father carried it there as a tadpole.',
+  mourning_gecko: 'A gecko egg glued to the glass hatched.',
+}
+
+/** What a hunter caught, keyed by the prey species. */
+const EATEN_TEXT: Readonly<Partial<Record<string, string>>> = {
+  springtails: 'The dart frog caught a springtail.',
+  dwarf_white: 'The dart frog caught a dwarf white isopod.',
+  ramshorn_snail: 'The vampire crab caught a small ramshorn snail.',
+}
+
 /** The sentence for one event; kinds without copy (`seed`, `rest`) give ''. */
 export function eventText(kind: EventKind, id: string): string {
+  if (kind === 'hatch' && HATCH_TEXT[id]) return HATCH_TEXT[id]
+  if (kind === 'eaten')
+    return EATEN_TEXT[id] ?? `A hunter caught a ${speciesName(id).toLowerCase()}.`
   const make = EVENT_TEXT[kind]
   return make ? make(speciesName(id), LIFE[id]?.bloom ?? 'flowers') : ''
 }

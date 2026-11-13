@@ -61,7 +61,8 @@ describe('LeftSidebar panels', () => {
     click(screen.getByRole('tab', { name: /Hardscape/ }))
     expect(screen.getByText(/Living Moss Wall Cliff/)).toBeInTheDocument()
     click(screen.getByRole('tab', { name: /Fauna/ }))
-    expect(screen.getByText(/Cherry|Shrimp/i)).toBeInTheDocument()
+    expect(screen.getByText('Red Cherry Shrimp')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Cleanup crew/ })).toBeInTheDocument()
     expect(state().activeTab).toBe('fauna')
   })
 
