@@ -4,7 +4,7 @@ export type LightingId = 'dawn' | 'sunlight' | 'twilight' | 'night'
 export type SoundPresetId = 'stream' | 'rain' | 'forest' | 'night' | 'piano' | 'musicbox' | 'bowls'
 export type GrowthStage = 'sprout' | 'mature' | 'lush'
 export type PumpFlow = 'off' | 'gentle' | 'strong'
-export type FaunaHabitat = 'water' | 'shore' | 'land'
+export type FaunaHabitat = 'water' | 'shore' | 'land' | 'glass'
 export type AiState = 'wandering' | 'resting' | 'foraging' | 'exploring' | 'hiding'
 
 export interface Rect {
@@ -75,6 +75,12 @@ export interface FaunaDef extends BaseDef {
   aquatic?: boolean
   swimsInWater?: boolean
   preyOn?: readonly string[]
+  /** Land fauna that lives in the soil rather than on it. */
+  burrows?: boolean
+  /** Moves in short hops (dart frogs). */
+  hops?: boolean
+  /** Pool band a water creature keeps to: the bed, or plants up to the surface film. */
+  zone?: 'bed' | 'surface'
   idealHumidity?: readonly [number, number]
   idealTemp?: readonly [number, number]
   cleansMold?: boolean
@@ -135,6 +141,8 @@ export interface PlacedItem {
   vy?: number
   aiState?: AiState
   aiTimer?: number
+  /** Height on the pane a glass climber is heading for (normalized, like `y`). */
+  glassY?: number
 }
 
 export type WaterSourceId = 'tap' | 'tap_treated' | 'filtered' | 'ro' | 'rain'

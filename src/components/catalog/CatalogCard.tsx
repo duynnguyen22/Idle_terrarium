@@ -1,14 +1,34 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { CatalogId } from '@/data/catalog'
-import type { CatalogDef } from '@/data/types'
+import type { CatalogDef, FaunaDef } from '@/data/types'
 import { useSpriteThumbnail } from '@/hooks/useSpriteThumbnail'
 
 export type CatalogEntry = CatalogDef & { id: CatalogId }
 
 const TAG = 'h-auto rounded px-1.5 py-0.5 text-[9px] font-semibold'
 
+const ZONE_WORD = { land: 'Floor', glass: 'Glass', water: 'Pool', shore: 'Shore' } as const
+
+/** Where a creature lives, as a one-word chip: soil, floor, glass, pool or shore. */
+function faunaZoneWord(def: FaunaDef): string {
+  return def.habitat === 'land' && def.burrows ? 'Soil' : ZONE_WORD[def.habitat]
+}
+
 function CatalogTag({ def }: { def: CatalogDef }) {
+  if (def.category === 'fauna') {
+    const chip = `${TAG} border-transparent bg-[#eef1ea] text-[#3f4a42]`
+    return (
+      <span className="flex gap-1">
+        <Badge variant="outline" className={chip}>
+          {faunaZoneWord(def)}
+        </Badge>
+        <Badge variant="outline" className={chip}>
+          {def.nocturnal ? 'Night' : 'Day'}
+        </Badge>
+      </span>
+    )
+  }
   if (def.category === 'flora' && def.canMountOnRock) {
     return (
       <Badge

@@ -36,7 +36,11 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
   sorted.forEach((item) => {
     const def = findCatalogDef(item.id)
     if (!def) return
-    const sprite = getSprite(item.id as CatalogId)
+    // The millipede curls into a coil while it hides by day.
+    const sprite =
+      item.id === 'bumblebee_millipede' && item.aiState === 'hiding'
+        ? getSprite('bumblebee_millipede_curl')
+        : getSprite(item.id as CatalogId)
 
     const box = itemBox(R, item)
     if (!box) return
@@ -52,12 +56,21 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
     }
     ctx.rotate(((item.rotation || 0) * Math.PI) / 180 + sway)
     if (item.flipX) ctx.scale(-1, 1)
+    // Glass climbers hang head-up on the pane; by day they tuck away, half seen.
+    const climbing = def.category === 'fauna' && def.habitat === 'glass'
+    if (climbing) {
+      const wobble = state.reducedMotion ? 0 : Math.sin(timestamp * 0.002 + item.x * 30) * 0.05
+      ctx.rotate(-Math.PI / 2 + wobble)
+      if (item.aiState === 'hiding') ctx.globalAlpha = 0.5
+    }
 
     // Ground contact shadow
-    ctx.fillStyle = 'rgba(15, 23, 18, 0.18)'
-    ctx.beginPath()
-    ctx.ellipse(0, drawSize * 0.24, drawSize * 0.28, drawSize * 0.07, 0, 0, Math.PI * 2)
-    ctx.fill()
+    if (!climbing) {
+      ctx.fillStyle = 'rgba(15, 23, 18, 0.18)'
+      ctx.beginPath()
+      ctx.ellipse(0, drawSize * 0.24, drawSize * 0.28, drawSize * 0.07, 0, 0, Math.PI * 2)
+      ctx.fill()
+    }
 
     // Night bioluminescence glow for crystals & lanterns
     if (

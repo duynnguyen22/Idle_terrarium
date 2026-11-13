@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { ALL_CATALOG_DEFS, FAUNA, type CatalogId } from '@/data/catalog'
 import { FAUNA_SPRITES } from '@/engine/sprites/fauna'
+import { FAUNA_EXTRA_SPRITES, MILLIPEDE_CURL_SPRITE } from '@/engine/sprites/faunaExtra'
 import { record } from '../helpers/recordingContext'
 import { drawSprite } from '@/engine/sprites/drawSprite'
 import {
@@ -162,9 +163,14 @@ describe('fauna sprites', () => {
     const a = record((ctx) => FAUNA_SPRITES.isopod?.(ctx))
     const b = record((ctx) => FAUNA_SPRITES.ducky_isopod?.(ctx))
     expect(a.fillStyles).not.toEqual(b.fillStyles)
-    for (const id of FAUNA.map((f) => f.id)) {
-      const fills = record((ctx) => FAUNA_SPRITES[id]?.(ctx)).calls.filter((c) => c.name === 'fill')
-      expect(fills.length).toBeGreaterThan(3)
+    const all: Record<string, ((ctx: CanvasRenderingContext2D) => void) | undefined> = {
+      ...FAUNA_SPRITES,
+      ...FAUNA_EXTRA_SPRITES,
+      bumblebee_millipede_curl: MILLIPEDE_CURL_SPRITE,
+    }
+    for (const id of [...FAUNA.map((f) => f.id), 'bumblebee_millipede_curl']) {
+      const fills = record((ctx) => all[id]?.(ctx)).calls.filter((c) => c.name === 'fill')
+      expect(fills.length, id).toBeGreaterThan(3)
     }
   })
 })

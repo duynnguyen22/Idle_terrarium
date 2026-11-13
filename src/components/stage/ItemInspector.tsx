@@ -73,6 +73,7 @@ const HABITAT_NAMES: Record<string, string> = {
   water: 'in the pool',
   shore: 'pool and shore',
   land: 'on land',
+  glass: 'on the glass',
 }
 
 /** Sentence-case meta line under the name (prototype updateInspectorUI). */

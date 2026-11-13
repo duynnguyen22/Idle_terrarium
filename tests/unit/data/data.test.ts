@@ -55,7 +55,7 @@ describe('catalog data', () => {
   it('has prototype counts', () => {
     expect(FLORA).toHaveLength(12)
     expect(HARDSCAPE).toHaveLength(10)
-    expect(FAUNA).toHaveLength(8)
+    expect(FAUNA).toHaveLength(16)
     expect(CATALOG.flora).toBe(FLORA)
     expect(VESSELS).toHaveLength(9)
     expect(POUR_CONTAINERS).toHaveLength(8)
@@ -154,7 +154,7 @@ describe('v6 data model', () => {
       habitat: 'shore',
       nocturnal: true,
       needsWater: true,
-      preyOn: ['medaka_fish', 'garden_snail'],
+      preyOn: ['medaka_fish', 'garden_snail', 'ramshorn_snail'],
       idealHumidity: [75, 100],
       idealTemp: [22, 28],
       baseScale: 0.8,
@@ -172,7 +172,7 @@ describe('v6 data model', () => {
       idealTemp: [20, 26],
       baseScale: 0.95,
     })
-    for (const f of FAUNA) expect(['water', 'shore', 'land']).toContain(f.habitat)
+    for (const f of FAUNA) expect(['water', 'shore', 'land', 'glass']).toContain(f.habitat)
   })
   it('recipes use the v6 depths and pool split', () => {
     expect(BIOME_PRESETS[1]).toMatchObject({

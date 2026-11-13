@@ -6,7 +6,7 @@ import type { StudioState } from '@/store/studio'
 import { CYCLE_DAYS } from '../care'
 import { hasPool } from '../geometry'
 import type { EngineWorld } from '../world'
-import { breedConditions, breedStep } from './breed'
+import { breedConditions, breedStep, huntStep } from './breed'
 import { ecologyStep } from './ecology'
 import { lifeStep, lightDose, type Emit } from './life'
 import { countCleanupCrew } from './mold'
@@ -115,6 +115,7 @@ export function stepDays(
     terrain: { substrates: state.substrates, waterSplit: state.waterSplit },
   })
   breedStep(world, dtDay, rng, emit, breedConditions(world, state))
+  huntStep(world, dtDay, rng, emit, { away: false })
   slowStep(world, dtDay, state, { away: false, emit, onCycled })
 }
 

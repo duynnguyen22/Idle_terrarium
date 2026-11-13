@@ -1,5 +1,5 @@
 import type { CatalogId } from '@/data/catalog'
-import { drawSprite } from './drawSprite'
+import { drawSprite, type SpriteId } from './drawSprite'
 
 export const SPRITE_SIZE = 256
 
@@ -8,7 +8,7 @@ export type CreateCanvas = () => HTMLCanvasElement
 const defaultCreateCanvas: CreateCanvas = () => document.createElement('canvas')
 
 let createCanvas: CreateCanvas = defaultCreateCanvas
-const canvases = new Map<CatalogId, HTMLCanvasElement>()
+const canvases = new Map<SpriteId, HTMLCanvasElement>()
 const dataUrls = new Map<CatalogId, string>()
 
 /** Swap the canvas factory (tests) and clear all memoized sprites. Call with no argument to restore the default. */
@@ -18,7 +18,7 @@ export function configureSpriteCache(factory: CreateCanvas = defaultCreateCanvas
   dataUrls.clear()
 }
 
-export function getSprite(id: CatalogId): HTMLCanvasElement {
+export function getSprite(id: SpriteId): HTMLCanvasElement {
   const cached = canvases.get(id)
   if (cached) return cached
   const canvas = createCanvas()
@@ -30,7 +30,7 @@ export function getSprite(id: CatalogId): HTMLCanvasElement {
   return canvas
 }
 
-export function warmSpriteCache(ids: readonly CatalogId[]): void {
+export function warmSpriteCache(ids: readonly SpriteId[]): void {
   for (const id of ids) getSprite(id)
 }
 

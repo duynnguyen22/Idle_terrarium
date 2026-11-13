@@ -43,6 +43,8 @@ const GOOD: BreedConditions = {
   poolHasWater: true,
   cycleProgress: 1,
   poolScore: 100,
+  temperature: 24,
+  smallPrey: 0,
 }
 
 describe('healthChip', () => {

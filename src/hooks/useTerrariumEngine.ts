@@ -105,7 +105,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
         world: () => world,
         store: appStore,
       }
-    warmSpriteCache(ALL_CATALOG_DEFS.map((d) => d.id as CatalogId))
+    warmSpriteCache([...ALL_CATALOG_DEFS.map((d) => d.id as CatalogId), 'bumblebee_millipede_curl'])
 
     // External snapshot changes (e.g. a preset load) replace the world's persistable parts;
     // snapshots the bridge wrote itself are skipped so mid-interaction item objects are not replaced.
