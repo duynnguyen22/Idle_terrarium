@@ -1,5 +1,6 @@
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useId } from 'react'
+import { Button } from '@/components/ui/button'
 import { tryGetWorld } from '@/engine/engineBridge'
 import { clearRings, pingItem, PING_MS, setRings } from '@/engine/marks'
 import { paceMs } from '@/engine/simulation/pace'
@@ -47,8 +48,7 @@ function Dot({ colour }: { colour: string }) {
   )
 }
 
-const pagerBtn =
-  'rounded-lg px-2 py-1 text-xs font-semibold text-forest-ink transition hover:bg-forest-ink/10 disabled:cursor-default disabled:text-stone/50 disabled:hover:bg-transparent'
+const GHOST = 'text-xs font-semibold text-forest-ink hover:bg-forest-ink/10 hover:text-forest-ink'
 
 /** The time-away summary: what changed while the player was gone (or after a preview or "+1 day"). */
 export function AwayCard() {
@@ -103,7 +103,7 @@ export function AwayCard() {
       id="away-card"
       role="dialog"
       aria-labelledby={titleId}
-      className="absolute left-1/2 top-20 z-30 w-[22rem] max-w-[calc(100%-2rem)] -translate-x-1/2 space-y-3 rounded-2xl border border-card-line bg-white p-3.5 shadow-lg"
+      className="absolute left-1/2 top-20 z-30 w-[22rem] max-w-[calc(100%-2rem)] -translate-x-1/2 flex flex-col gap-3 rounded-2xl border border-card-line bg-white p-3.5 shadow-lg"
     >
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-wide text-stone">
@@ -119,18 +119,19 @@ export function AwayCard() {
           The tank rested while you were away. Nothing needs doing.
         </p>
       ) : (
-        <ul className="space-y-1.5">
+        <ul className="flex flex-col gap-1.5">
           {report.items.map((item) => (
             <li key={`${item.kind}|${item.id}`}>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="auto"
                 onMouseEnter={() => ping(item.uid)}
                 onClick={() => select(item.uid)}
-                className="flex w-full items-start gap-2 rounded-lg text-left text-xs text-forest-ink hover:bg-forest-ink/5"
+                className="w-full items-start justify-start gap-2 text-left text-xs font-normal whitespace-normal text-forest-ink hover:bg-forest-ink/5 hover:text-forest-ink"
               >
                 <Dot colour={dotColour(item.kind)} />
                 <span>{item.text}</span>
-              </button>
+              </Button>
             </li>
           ))}
           {report.rest.length > 0 && (
@@ -152,17 +153,18 @@ export function AwayCard() {
           <h3 className="text-[11px] font-semibold uppercase tracking-wide text-stone">
             Coming up, if it stays healthy
           </h3>
-          <ul className="mt-1 space-y-1">
+          <ul className="mt-1 flex flex-col gap-1">
             {report.hints.map((hint) => (
               <li key={hint.uid}>
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="auto"
                   onMouseEnter={() => ping(hint.uid)}
                   onClick={() => select(hint.uid)}
-                  className="w-full rounded-lg text-left text-xs text-stone hover:bg-forest-ink/5"
+                  className="w-full justify-start text-left text-xs font-normal whitespace-normal text-stone hover:bg-forest-ink/5 hover:text-stone"
                 >
                   {`${hint.text} ${etaLabel(hint.eta, msPerDay)}`}
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -172,46 +174,48 @@ export function AwayCard() {
       <div className="flex items-center justify-between gap-2">
         {awayLog.length >= 2 ? (
           <div className="flex items-center gap-1">
-            <button
-              type="button"
-              className={pagerBtn}
+            <Button
+              variant="ghost"
+              size="xs"
+              className={GHOST}
               disabled={awayIndex >= awayLog.length - 1}
               onClick={() => setAwayIndex(awayIndex + 1)}
             >
               ‹ Earlier
-            </button>
+            </Button>
             <span className="text-[11px] text-stone">
               {awayIndex === 0 ? 'Latest' : `${awayIndex + 1} of ${awayLog.length}`}
             </span>
-            <button
-              type="button"
-              className={pagerBtn}
+            <Button
+              variant="ghost"
+              size="xs"
+              className={GHOST}
               disabled={awayIndex <= 0}
               onClick={() => setAwayIndex(awayIndex - 1)}
             >
               Later ›
-            </button>
+            </Button>
           </div>
         ) : (
           <span />
         )}
         <div className="flex items-center gap-1.5">
           {canVisit && (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
               onClick={() => startEveningVisit(report)}
-              className="inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-lg px-3 text-xs font-semibold text-forest-ink transition hover:bg-forest-ink/10"
+              className={`${GHOST} px-3`}
             >
               Start the evening visit
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
+          <Button
+            variant="wheat"
             onClick={() => setAwayIndex(null)}
-            className="inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-lg bg-wheat px-3 text-xs font-semibold text-wheat-ink transition hover:bg-wheat-hover"
+            className="px-3 text-xs font-semibold"
           >
             Got it
-          </button>
+          </Button>
         </div>
       </div>
     </section>

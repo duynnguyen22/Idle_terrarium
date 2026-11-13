@@ -1,8 +1,12 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { RadioGroup } from 'radix-ui'
+import { cn } from 'cn'
 import { useEffect, useId, useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
 import { LineIcon, type IconName } from '@/components/ui/LineIcon'
+import { Separator } from '@/components/ui/separator'
 import { Slider } from '@/components/ui/slider'
+import { Toggle } from '@/components/ui/toggle'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { SOUND_PRESETS, type SoundPreset } from '@/data/soundPresets'
 import type { LightingId } from '@/data/types'
 import {
@@ -27,11 +31,13 @@ const SOUND_GROUPS: { kind: SoundPreset['kind']; label: string }[] = [
 
 /** Round icon button used for the light choices, mute and exit. */
 const ICON_BTN =
-  'inline-flex h-8 w-7 shrink-0 items-center justify-center rounded-full transition-colors duration-150 sm:w-8'
-const IDLE = 'text-white/65 hover:bg-white/10 hover:text-white active:bg-white/15'
-const ON = 'bg-sage text-forest-night'
+  'h-8 w-7 min-w-0 shrink-0 rounded-full px-0 text-white/65 transition-colors duration-150 hover:bg-white/10 hover:text-white active:bg-white/15 sm:w-8'
+const ON =
+  'data-[state=on]:bg-sage data-[state=on]:text-forest-night data-[state=on]:hover:bg-sage data-[state=on]:hover:text-forest-night'
 
-const Divider = () => <span aria-hidden="true" className="hidden h-6 w-px bg-white/10 sm:block" />
+const Divider = () => (
+  <Separator orientation="vertical" className="hidden h-6 self-center bg-white/10 sm:block" />
+)
 
 function VolumeSlider({
   volume,
@@ -109,8 +115,14 @@ function Dock() {
     setMusicVolume(v)
   }
   const toggleMute = () => setMusicVolume(muted ? lastVolume.current : 0)
-  const chooseLight = (id: LightingId) => {
-    setLighting(id)
+  // ToggleGroup sends '' when the chosen light is pressed again: keep it.
+  const chooseLight = (id: string) => {
+    if (!id) return
+    if (id === 'auto') {
+      setAutoLightSync(true)
+      return
+    }
+    setLighting(id as LightingId)
     setAutoLightSync(false)
   }
 
@@ -128,16 +140,14 @@ function Dock() {
       <Divider />
 
       <div className="relative">
-        <button
+        <Button
           ref={triggerRef}
-          type="button"
+          variant="ghost"
           aria-haspopup="true"
           aria-expanded={menuOpen}
           aria-controls={menuId}
           onClick={() => setMenuOpen((o) => !o)}
-          className={`flex h-10 max-w-28 items-center gap-1.5 rounded-full pl-3.5 pr-2.5 sm:gap-2 sm:pl-4 sm:pr-3 text-left transition-colors duration-150 sm:max-w-none ${
-            menuOpen ? 'bg-white/15' : 'hover:bg-white/10'
-          }`}
+          className="h-10 max-w-28 gap-1.5 rounded-full pr-2.5 pl-3.5 text-left font-normal text-white transition-colors duration-150 hover:bg-white/10 hover:text-white aria-expanded:bg-white/15 aria-expanded:text-white sm:max-w-none sm:gap-2 sm:pr-3 sm:pl-4"
         >
           <span className="flex min-w-0 flex-col leading-tight">
             <span className="text-[11px] text-white/50">Sound</span>
@@ -145,11 +155,12 @@ function Dock() {
           </span>
           <LineIcon
             name="chevronUp"
-            className={`h-3.5 w-3.5 text-white/50 transition-transform duration-200 ${
-              menuOpen ? '' : 'rotate-180'
-            }`}
+            className={cn(
+              'size-3.5 text-white/50 transition-transform duration-200',
+              !menuOpen && 'rotate-180',
+            )}
           />
-        </button>
+        </Button>
 
         {menuOpen && (
           <div
@@ -161,54 +172,57 @@ function Dock() {
               <VolumeSlider volume={musicVolume} onChange={changeVolume} className="flex-1" />
             </div>
             {SOUND_GROUPS.map((g) => (
-              <RadioGroup.Root
-                key={g.kind}
-                aria-label={`${g.label} sounds`}
-                value={soundPreset}
-                className="py-1"
-              >
-                <p className="px-3 pb-1 pt-2 text-xs text-white/50">{g.label}</p>
-                {SOUND_PRESETS.filter((p) => p.kind === g.kind).map((p) => {
-                  const active = p.id === soundPreset
-                  return (
-                    <RadioGroup.Item
-                      key={p.id}
-                      value={p.id}
-                      data-sound={p.id}
-                      onClick={() => setSoundPreset(p.id)}
-                      className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left transition-colors duration-150 ${
-                        active ? 'bg-white/10' : 'hover:bg-white/5'
-                      }`}
-                    >
-                      <span className="flex min-w-0 flex-1 flex-col leading-snug">
-                        <span
-                          className={`text-sm ${active ? 'font-semibold text-white' : 'text-white/85'}`}
-                        >
-                          {p.label}
+              <div key={g.kind} className="py-1">
+                <p className="px-3 pt-2 pb-1 text-xs text-white/50">{g.label}</p>
+                <ToggleGroup
+                  type="single"
+                  orientation="vertical"
+                  spacing={0}
+                  size="auto"
+                  aria-label={`${g.label} sounds`}
+                  value={soundPreset}
+                  // Pressing the playing sound again sends '': keep it.
+                  onValueChange={(id) => id && setSoundPreset(id as SoundPreset['id'])}
+                  className="w-full flex-col items-stretch"
+                >
+                  {SOUND_PRESETS.filter((p) => p.kind === g.kind).map((p) => {
+                    const active = p.id === soundPreset
+                    return (
+                      <ToggleGroupItem
+                        key={p.id}
+                        value={p.id}
+                        data-sound={p.id}
+                        className="w-full justify-start gap-3 rounded-2xl! px-3! py-2 text-left font-normal text-white transition-colors duration-150 hover:bg-white/5 hover:text-white data-[state=on]:bg-white/10 data-[state=on]:hover:bg-white/10"
+                      >
+                        <span className="flex min-w-0 flex-1 flex-col leading-snug">
+                          <span
+                            className={cn('text-sm', active ? 'font-semibold' : 'text-white/85')}
+                          >
+                            {p.label}
+                          </span>
+                          <span className="text-xs text-white/50">{p.hint}</span>
                         </span>
-                        <span className="text-xs text-white/50">{p.hint}</span>
-                      </span>
-                      {active && <LineIcon name="check" className="h-4 w-4 text-sage" />}
-                    </RadioGroup.Item>
-                  )
-                })}
-              </RadioGroup.Root>
+                        {active && <LineIcon name="check" className="size-4 text-sage" />}
+                      </ToggleGroupItem>
+                    )
+                  })}
+                </ToggleGroup>
+              </div>
             ))}
           </div>
         )}
       </div>
 
       <div className="flex items-center gap-1 sm:pr-2">
-        <button
-          type="button"
-          onClick={toggleMute}
+        <Toggle
+          pressed={muted}
+          onPressedChange={toggleMute}
           aria-label={muted ? 'Unmute music' : 'Mute music'}
-          aria-pressed={muted}
           title={muted ? 'Unmute' : 'Mute'}
-          className={`${ICON_BTN} ${IDLE}`}
+          className={cn(ICON_BTN, 'aria-pressed:bg-transparent')}
         >
           <LineIcon name={muted ? 'mute' : 'vol'} />
-        </button>
+        </Toggle>
         <VolumeSlider
           volume={musicVolume}
           onChange={changeVolume}
@@ -217,51 +231,47 @@ function Dock() {
       </div>
       <Divider />
 
-      <RadioGroup.Root
+      <ToggleGroup
+        type="single"
+        spacing={0.5}
         aria-label="Light"
-        orientation="horizontal"
         value={autoLight ? 'auto' : lighting}
-        className="flex items-center gap-0.5"
+        onValueChange={chooseLight}
       >
-        {LIGHTS.map((l) => {
-          const active = !autoLight && l.id === lighting
-          return (
-            <RadioGroup.Item
-              key={l.id}
-              value={l.id}
-              aria-label={l.label}
-              title={l.label}
-              data-weather={l.id}
-              onClick={() => chooseLight(l.id)}
-              className={`${ICON_BTN} ${active ? ON : IDLE}`}
-            >
-              <LineIcon name={l.icon} />
-            </RadioGroup.Item>
-          )
-        })}
-        <RadioGroup.Item
+        {LIGHTS.map((l) => (
+          <ToggleGroupItem
+            key={l.id}
+            value={l.id}
+            aria-label={l.label}
+            title={l.label}
+            data-weather={l.id}
+            className={cn(ICON_BTN, ON)}
+          >
+            <LineIcon name={l.icon} />
+          </ToggleGroupItem>
+        ))}
+        <ToggleGroupItem
           value="auto"
           aria-label="Follow my clock"
           title="Follow my clock"
-          onClick={() => setAutoLightSync(true)}
-          className={`${ICON_BTN} ${autoLight ? ON : IDLE}`}
+          className={cn(ICON_BTN, ON)}
         >
           <LineIcon name="auto" />
-        </RadioGroup.Item>
-      </RadioGroup.Root>
+        </ToggleGroupItem>
+      </ToggleGroup>
       <Divider />
 
-      <button
-        type="button"
+      <Button
+        variant="ghost"
         onClick={() => setRelaxMode(false)}
         aria-label="Exit relax mode"
         title="Exit (Esc)"
-        className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full px-2.5 text-[13px] font-medium text-white/80 transition-colors duration-150 hover:bg-white/10 hover:text-white sm:px-4"
+        className="h-10 gap-2 rounded-full px-2.5 text-[13px] font-medium text-white/80 transition-colors duration-150 hover:bg-white/10 hover:text-white sm:px-4"
       >
-        <LineIcon name="close" className="h-4 w-4 sm:hidden" />
+        <LineIcon name="close" className="size-4 sm:hidden" />
         <span className="hidden sm:inline">Exit</span>
         <span className="hidden text-xs text-white/40 sm:inline">Esc</span>
-      </button>
+      </Button>
     </div>
   )
 }

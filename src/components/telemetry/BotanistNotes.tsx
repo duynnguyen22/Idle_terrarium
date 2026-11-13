@@ -1,4 +1,5 @@
 import { useAtomValue } from 'jotai'
+import { Button } from '@/components/ui/button'
 import { computeCareReport, runCareAction, type CareIssue } from '@/engine/care'
 import { mutateWorld } from '@/engine/engineBridge'
 import { play } from '@/hooks/useAudio'
@@ -52,13 +53,12 @@ export function BotanistNotes() {
         {top ? top.text : allClearNote(condensation)}
       </p>
       {action && (
-        <button
-          type="button"
+        <Button
           onClick={() => runAction(action)}
-          className="mt-2.5 h-8 rounded-lg bg-forest-deep px-3 text-xs font-semibold text-white transition hover:bg-forest-dark"
+          className="mt-2.5 px-3 text-xs font-semibold hover:bg-forest-dark"
         >
           {action.label}
-        </button>
+        </Button>
       )}
     </div>
   )
@@ -70,7 +70,7 @@ export function CareList() {
   return (
     <div className="rounded-2xl border border-card-line bg-white p-3.5">
       <div className="mb-2 text-xs font-semibold text-forest-ink">Inhabitants</div>
-      <ul className="space-y-2 text-xs leading-snug text-ink-soft">
+      <ul className="flex flex-col gap-2 text-xs leading-snug text-ink-soft">
         {careIssues.length === 0 ? (
           <li className="flex gap-2">
             <span

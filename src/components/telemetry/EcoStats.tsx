@@ -1,4 +1,5 @@
 import { useAtomValue } from 'jotai'
+import { Button } from '@/components/ui/button'
 import { CYCLE_DAYS, cycleChemistry, cycleDay } from '@/engine/care'
 import { mutateWorld } from '@/engine/engineBridge'
 import { hasPool } from '@/engine/geometry'
@@ -36,7 +37,7 @@ export function EcoStats() {
   }
 
   return (
-    <div className="space-y-2.5 rounded-2xl border border-card-line bg-white p-3.5 text-xs">
+    <div className="flex flex-col gap-2.5 rounded-2xl border border-card-line bg-white p-3.5 text-xs">
       <div className="flex items-start justify-between gap-3">
         <span className="shrink-0 text-stone">Glass</span>
         <span className="text-right font-semibold text-forest-ink">{glassText(condensation)}</span>
@@ -64,14 +65,15 @@ export function EcoStats() {
           <span className="font-semibold text-forest-ink">
             {moldCount ? `${moldCount} patch${moldCount > 1 ? 'es' : ''}` : 'None'}
           </span>
-          <button
-            type="button"
+          <Button
+            variant="wheat"
+            size="auto"
             onClick={spawnSpore}
             title="Add a mold spore to watch the cleanup crew work"
-            className="rounded bg-wheat px-1.5 py-0.5 text-[11px] font-semibold text-wheat-ink transition hover:bg-wheat-hover"
+            className="rounded px-1.5 py-0.5 text-[11px] font-semibold"
           >
             + Spore
-          </button>
+          </Button>
         </div>
       </div>
       <div className="flex items-center justify-between">

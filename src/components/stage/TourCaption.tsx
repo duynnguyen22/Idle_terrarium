@@ -1,4 +1,5 @@
 import { useAtom } from 'jotai'
+import { Button } from '@/components/ui/button'
 import { isEvening } from '@/hooks/useTour'
 import { tourAtom } from '@/store/overlay'
 
@@ -29,13 +30,13 @@ export function TourCaption() {
           {step ? step.text : 'Nothing new to look at yet. Enjoy the quiet.'}
         </p>
       </div>
-      <button
-        type="button"
+      <Button
+        variant="ghost"
         onClick={() => setTour(null)}
-        className="pointer-events-auto inline-flex h-8 shrink-0 items-center rounded-full bg-white/10 px-3 text-xs font-semibold text-white transition hover:bg-white/20"
+        className="pointer-events-auto rounded-full bg-white/10 px-3 text-xs font-semibold text-white hover:bg-white/20 hover:text-white"
       >
         Skip
-      </button>
+      </Button>
     </section>
   )
 }

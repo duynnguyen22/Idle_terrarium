@@ -1,6 +1,8 @@
 import { useAtomValue, useSetAtom } from 'jotai'
-import { RadioGroup } from 'radix-ui'
 import { useEffect, useId, useState } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { tryGetWorld } from '@/engine/engineBridge'
 import { PING_MS, pingItem } from '@/engine/marks'
 import { breedConditions } from '@/engine/simulation/breed'
@@ -48,15 +50,13 @@ const FILLS: Record<HealthChip['tone'], string> = {
 }
 
 const ROW =
-  'flex w-full flex-col gap-[5px] rounded-xl border border-card-line bg-white px-[11px] py-[9px] text-left transition hover:border-[#9fbfa9] focus-visible:border-[#9fbfa9] focus-visible:outline-none'
+  'w-full flex-col items-stretch gap-[5px] rounded-xl px-[11px] py-[9px] hover:border-[#9fbfa9] hover:bg-white focus-visible:border-[#9fbfa9]'
 
 function Chip({ label, tone }: HealthChip) {
   return (
-    <span
-      className={`shrink-0 rounded-full px-2 py-px text-[10.5px] font-bold tabular-nums ${TONES[tone]}`}
-    >
+    <Badge className={`h-auto px-2 py-px text-[10.5px] font-bold tabular-nums ${TONES[tone]}`}>
       {label}
-    </span>
+    </Badge>
   )
 }
 
@@ -116,9 +116,9 @@ const Empty = ({ children }: { children: string }) => (
 const SectionTitle = ({ children, count }: { children: string; count: number }) => (
   <h3 className="mx-0.5 mb-1.5 mt-2.5 flex items-center gap-1.5 text-xs font-semibold text-forest-ink">
     {children}
-    <span className="rounded-full bg-sand-light px-[7px] text-[11px] font-semibold text-stone">
+    <Badge className="h-auto bg-sand-light px-[7px] py-0 text-[11px] font-semibold text-stone">
       {count}
-    </span>
+    </Badge>
   </h3>
 )
 
@@ -208,14 +208,14 @@ export function GrowthBoard() {
             How your tank is growing
           </h2>
         </div>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon-sm"
           aria-label="Close the growth board"
           onClick={closeGrowthBoard}
-          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-forest-ink transition hover:bg-sand-pale focus-visible:outline-2 focus-visible:outline-forest-mid"
+          className="text-forest-ink hover:bg-sand-pale hover:text-forest-ink"
         >
           <svg
-            className="h-4 w-4"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -225,30 +225,29 @@ export function GrowthBoard() {
           >
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
-        </button>
+        </Button>
       </div>
 
-      <RadioGroup.Root
+      <ToggleGroup
+        type="single"
+        variant="raised"
+        spacing={0.75}
         aria-label="Tank pace"
-        orientation="horizontal"
         value={pace}
-        className="grid grid-cols-4 gap-[3px] rounded-[11px] bg-sand-light p-[3px]"
+        // Pressing the chosen pace again sends '': keep it.
+        onValueChange={(id) => id && choosePace(id as PaceId)}
+        className="grid w-full grid-cols-4 rounded-[11px] bg-sand-light p-[3px]"
       >
         {PACE_IDS.map((id) => (
-          <RadioGroup.Item
+          <ToggleGroupItem
             key={id}
             value={id}
-            onClick={() => choosePace(id)}
-            className={`h-[30px] whitespace-nowrap rounded-lg text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-forest-mid ${
-              pace === id
-                ? 'bg-white text-forest-deep shadow-[0_1px_2px_rgba(20,40,28,.12)]'
-                : 'text-ink-umber hover:bg-white/50'
-            }`}
+            className="h-[30px] min-w-0 rounded-lg text-xs font-semibold data-[state=on]:shadow-[0_1px_2px_rgba(20,40,28,.12)]"
           >
             {PACE_LABELS[id]}
-          </RadioGroup.Item>
+          </ToggleGroupItem>
         ))}
-      </RadioGroup.Root>
+      </ToggleGroup>
       <p className="-mt-1 mx-0.5 text-[11.5px] text-stone">{`${PACE_SUBTITLES[pace]}. ${watching}`}</p>
 
       {stats && (
@@ -284,8 +283,9 @@ export function GrowthBoard() {
             <ul className="flex flex-col gap-1.5">
               {plants.map((row) => (
                 <li key={row.uid}>
-                  <button
-                    type="button"
+                  <Button
+                    variant="tile"
+                    size="auto"
                     onMouseEnter={() => ping([row.uid])}
                     onFocus={() => ping([row.uid])}
                     onClick={() => select(row.uid)}
@@ -308,7 +308,7 @@ export function GrowthBoard() {
                       label={`${row.name} progress`}
                     />
                     <span className="text-[11.5px] leading-snug text-stone">{row.next}</span>
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -323,8 +323,9 @@ export function GrowthBoard() {
             <ul className="flex flex-col gap-1.5">
               {animals.map((row) => (
                 <li key={row.id}>
-                  <button
-                    type="button"
+                  <Button
+                    variant="tile"
+                    size="auto"
                     onMouseEnter={() => ping(row.uids)}
                     onFocus={() => ping(row.uids)}
                     onClick={() => select(row.uids[0])}
@@ -347,7 +348,7 @@ export function GrowthBoard() {
                       </>
                     )}
                     <span className="text-[11.5px] leading-snug text-stone">{row.next}</span>
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>

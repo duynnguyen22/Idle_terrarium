@@ -1,8 +1,11 @@
 import { atom, useAtomValue } from 'jotai'
+import { cn } from 'cn'
 import { useMemo } from 'react'
 import { BotanistNotes, CareList } from '@/components/telemetry/BotanistNotes'
 import { EcoStats } from '@/components/telemetry/EcoStats'
 import { GaugeBar } from '@/components/telemetry/GaugeBar'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import type { PlacedItem } from '@/data/types'
 import { idealRange } from '@/engine/care'
 import { envModel, qualityWord } from '@/engine/room'
@@ -48,18 +51,17 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
       id="right-sidebar"
       tabIndex={-1}
       data-drawer-open={drawerOpen}
-      className={`z-20 max-lg:z-40 flex w-72 shrink-0 flex-col gap-3.5 overflow-y-auto border-l border-sand-border bg-paper p-4 max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:max-w-[85vw] max-lg:shadow-xl max-lg:transition-[transform,visibility] motion-reduce:max-lg:transition-none ${
-        drawerOpen ? '' : 'max-lg:invisible max-lg:translate-x-full'
-      }`}
+      className={cn(
+        'z-20 flex w-72 shrink-0 flex-col gap-3.5 overflow-y-auto border-l border-sand-border bg-paper p-4 max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:z-40 max-lg:max-w-[85vw] max-lg:shadow-xl max-lg:transition-[transform,visibility] motion-reduce:max-lg:transition-none',
+        !drawerOpen && 'max-lg:invisible max-lg:translate-x-full',
+      )}
     >
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-forest-ink">Biosphere health</h2>
-        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeCls}`}>
-          {badgeLabel}
-        </span>
+        <Badge className={cn('text-[11px] font-semibold', badgeCls)}>{badgeLabel}</Badge>
       </div>
       <BotanistNotes />
-      <div className="space-y-3.5 rounded-2xl border border-card-line bg-white p-3.5">
+      <div className="flex flex-col gap-3.5 rounded-2xl border border-card-line bg-white p-3.5">
         <GaugeBar
           gaugeKey="humidity"
           label="Air humidity"
@@ -145,9 +147,12 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
       </div>
       <CareList />
       <EcoStats />
-      <div className="mt-auto flex items-center justify-between border-t border-sand-border pt-3 text-[11px] text-stone">
-        <span>Nothing dies here; plants recover</span>
-        <span className="font-semibold text-forest-deep">{items.length} specimens</span>
+      <div className="mt-auto flex flex-col gap-3">
+        <Separator className="bg-sand-border" />
+        <div className="flex items-center justify-between text-[11px] text-stone">
+          <span>Nothing dies here; plants recover</span>
+          <span className="font-semibold text-forest-deep">{items.length} specimens</span>
+        </div>
       </div>
     </aside>
   )

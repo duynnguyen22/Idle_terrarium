@@ -1,5 +1,7 @@
 import { useAtom } from 'jotai'
+import { Button } from '@/components/ui/button'
 import { LineIcon, type IconName } from '@/components/ui/LineIcon'
+import { Toggle } from '@/components/ui/toggle'
 import { SUBSTRATES_BY_ID, type SubstrateId } from '@/data/substrates'
 import { activePourMaterialAtom, activeToolAtom } from '@/store/studio'
 
@@ -11,8 +13,7 @@ const TOOLS: readonly { id: string; icon: IconName; label: string }[] = [
   { id: 'scrub', icon: 'eraser', label: 'Scrub Mold' },
 ]
 
-const BASE =
-  'inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-xl px-3 text-xs font-semibold transition'
+const TOOL = 'h-9 gap-1.5 rounded-xl px-3 text-xs font-semibold'
 
 function pourLabel(material: string): string {
   const layer = SUBSTRATES_BY_ID[material as SubstrateId] as
@@ -39,39 +40,38 @@ export function CareToolbar() {
       className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-2xl border border-sand-border bg-paper/95 px-3 py-2 shadow-lg backdrop-blur-md"
     >
       {TOOLS.map((t, i) => {
-        const active = activeTool === t.id
-        const button = (
-          <button
+        // Pressing the active tool again keeps it chosen: one tool is always in hand.
+        const tool = (
+          <Toggle
             key={t.id}
-            type="button"
-            aria-pressed={active}
-            onClick={() => pick(t.id)}
-            className={`${BASE} ${active ? 'bg-forest-deep text-white' : 'text-ink-soft hover:bg-white'}`}
+            variant="solid"
+            pressed={activeTool === t.id}
+            onPressedChange={() => pick(t.id)}
+            className={`${TOOL} text-ink-soft hover:bg-white`}
           >
             <LineIcon name={t.icon} />
             <span>{t.label}</span>
-          </button>
+          </Toggle>
         )
         // The pour indicator sits right after Move / Mount, as in the prototype markup.
         if (i === 0 && pouring) {
           return [
-            button,
-            <button
+            tool,
+            <Button
               key="pour"
-              type="button"
               aria-pressed
               onClick={() => {
                 setActiveTool('select')
                 setActivePourMaterial(null)
               }}
-              className={`${BASE} bg-amber-700 text-white`}
+              className={`${TOOL} bg-amber-700 text-white hover:bg-amber-800`}
             >
               <LineIcon name="jar" />
               <span>{pourLabel(activePourMaterial)}</span>
-            </button>,
+            </Button>,
           ]
         }
-        return button
+        return tool
       })}
     </div>
   )

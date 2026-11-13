@@ -1,5 +1,9 @@
 import { useAtomValue } from 'jotai'
+import { cn } from 'cn'
 import { useReducer, type ReactNode } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 import { findCatalogDef } from '@/data/catalog'
 import type { CatalogDef, PlacedItem } from '@/data/types'
 import { mutateWorld, tryGetWorld } from '@/engine/engineBridge'
@@ -40,8 +44,6 @@ function Icon({ children }: { children: ReactNode }) {
   )
 }
 
-const BTN = 'inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white'
-
 function InspectorButton({
   title,
   onClick,
@@ -54,15 +56,16 @@ function InspectorButton({
   children: ReactNode
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="icon"
       title={title}
       aria-label={title}
       onClick={onClick}
-      className={`${BTN} ${className}`}
+      className={cn('hover:bg-white', className)}
     >
       <Icon>{children}</Icon>
-    </button>
+    </Button>
   )
 }
 
@@ -134,23 +137,25 @@ export function ItemInspector() {
   return (
     <div
       id="item-inspector"
-      className="absolute left-1/2 top-4 z-30 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-sand-border bg-paper/95 px-3.5 py-2 shadow-xl backdrop-blur-md"
+      className="absolute left-1/2 top-4 z-30 flex -translate-x-1/2 items-center gap-2.5 rounded-2xl border border-sand-border bg-paper/95 px-3.5 py-2 shadow-xl backdrop-blur-md"
     >
-      <div className="whitespace-nowrap border-r border-sand-border pr-2">
+      <div className="whitespace-nowrap">
         <div className="flex items-center gap-1.5">
           <span data-testid="insp-name" className="text-xs font-bold text-forest-ink">
             {def ? def.name : 'Specimen'}
           </span>
           {item.parentUid && (
-            <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+            <Badge className="h-auto rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
               🪨 Mounted
-            </span>
+            </Badge>
           )}
         </div>
         <div data-testid="insp-meta" className="text-[10px] font-semibold text-stone-light">
           {meta}
         </div>
       </div>
+
+      <Separator orientation="vertical" className="bg-sand-border" />
 
       <div className="flex items-center gap-1">
         <InspectorButton title="Smaller" onClick={() => apply((w) => scaleItem(w, item.uid, -1))}>
@@ -203,7 +208,9 @@ export function ItemInspector() {
         </InspectorButton>
       </div>
 
-      <div className="flex items-center gap-1 border-l border-sand-border pl-2">
+      <Separator orientation="vertical" className="bg-sand-border" />
+
+      <div className="flex items-center gap-1">
         {item.category === 'flora' && (
           <InspectorButton
             title="Advance Growth Stage"
