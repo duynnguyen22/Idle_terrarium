@@ -1,6 +1,8 @@
 import { useAtomValue } from 'jotai'
 import { useRef, type ClipboardEvent, type KeyboardEvent } from 'react'
 import { textPatch, useAuthEnv, type TextKey } from './authEnv'
+import { Field, FieldError } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
 import { viewDataAtom } from '@/store/account'
 
 const LEN = 6
@@ -84,20 +86,20 @@ export function OtpInput({
   }
 
   return (
-    <div className="auth-field">
+    <Field data-invalid={err ? true : undefined} className="gap-1.5">
       <div
-        className={`auth-otp${err ? ' has-error' : ''}`}
+        className="grid grid-cols-6 gap-2"
         role="group"
         aria-label="Verification code"
         aria-describedby={err ? errId : undefined}
       >
         {digits.map((d, i) => (
-          <input
+          <Input
             key={i}
             ref={(el) => {
               boxes.current[i] = el
             }}
-            className="auth-otp-box tabular-nums"
+            className="h-12 min-w-0 bg-white text-center text-xl font-semibold text-forest-ink tabular-nums md:text-xl"
             inputMode="numeric"
             autoComplete={i === 0 ? 'one-time-code' : 'off'}
             maxLength={1}
@@ -113,10 +115,10 @@ export function OtpInput({
         ))}
       </div>
       {err && (
-        <p id={errId} className="auth-err">
+        <FieldError id={errId} className="text-xs">
           {err}
-        </p>
+        </FieldError>
       )}
-    </div>
+    </Field>
   )
 }

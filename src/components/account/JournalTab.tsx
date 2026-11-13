@@ -2,8 +2,19 @@ import { atom, useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useAuthEnv } from '@/components/account/auth/authEnv'
 import type { JournalEntry } from '@/auth/backend'
+import { cn } from 'cn'
+import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
 import { qualityTier } from '@/engine/room'
 import { activeIdAtom, gardensAtom, journalAtom } from '@/store/account'
+import {
+  ACCT_H,
+  ACCT_MUTED,
+  ACCT_NOTE,
+  ACCT_ROW,
+  AccountButton,
+  AccountCard,
+} from './AccountPieces'
 
 const DRAFT_KEY = 'botanica_journal_draft'
 
@@ -32,6 +43,10 @@ function clearDraft() {
   }
 }
 
+/** A reading chip, tinted by quality tier (fair, bad) when it has one. */
+const CHIP =
+  'j-chip h-auto rounded-full bg-linen px-[7px] py-0.5 text-[10.5px] font-normal text-[#3f4a42] tabular-nums data-[q=bad]:bg-[#fde2dd] data-[q=bad]:text-[#9b1c12] data-[q=fair]:bg-[#fbf0cc] data-[q=fair]:text-[#7a5300]'
+
 function JournalItem({ entry }: { entry: JournalEntry }) {
   const m = entry.metrics
   const chips: [string, number | null][] = [
@@ -50,28 +65,37 @@ function JournalItem({ entry }: { entry: JournalEntry }) {
   })
 
   return (
-    <div className="journal-item">
-      <div className="acct-row">
-        <b>{`Day ${entry.day}`}</b>
-        <span className="acct-muted">{when}</span>
+    <div className="journal-item grid gap-1.5 border-t border-[#edf0ea] pt-2.5">
+      <div className={ACCT_ROW}>
+        <b className="text-xs text-forest-ink">{`Day ${entry.day}`}</b>
+        <span className={ACCT_MUTED}>{when}</span>
       </div>
-      {entry.note && <p className="journal-note">{entry.note}</p>}
+      {entry.note && (
+        <p className="journal-note text-xs leading-[1.45] whitespace-pre-wrap text-ink-soft">
+          {entry.note}
+        </p>
+      )}
       {entry.events && entry.events.length > 0 && (
-        <ul className="journal-events">
+        <ul className="pl-4 text-[11.5px] leading-[1.45] text-[#3f4a42]">
           {entry.events.map((ev, i) => (
             <li key={`${i}:${ev.text}`}>{ev.text}</li>
           ))}
         </ul>
       )}
-      <div className="journal-chips">
+      <div className="flex flex-wrap gap-1">
         {chips.map(([text, q]) => (
-          <span key={text} className="j-chip" data-q={q == null ? undefined : qualityTier(q)}>
+          <Badge
+            key={text}
+            variant="secondary"
+            className={CHIP}
+            data-q={q == null ? undefined : qualityTier(q)}
+          >
             {text}
-          </span>
+          </Badge>
         ))}
       </div>
       {entry.issues.map((text, i) => (
-        <p key={`${i}:${text}`} className="journal-issue">
+        <p key={`${i}:${text}`} className="journal-issue text-[11px] leading-snug text-[#9a3412]">
           {text}
         </p>
       ))}
@@ -109,16 +133,16 @@ export function JournalTab() {
   }
 
   return (
-    <div className="acct-card">
-      <h3 className="acct-h">{`Growth journal${active ? ` · ${active.name}` : ''}`}</h3>
-      <p className="acct-note acct-muted">
+    <AccountCard>
+      <h3 className={ACCT_H}>{`Growth journal${active ? ` · ${active.name}` : ''}`}</h3>
+      <p className={cn(ACCT_NOTE, ACCT_MUTED)}>
         An entry is added after each time away and each &quot;+1 day&quot;, listing what changed.
         Add notes about what you see.
       </p>
-      <div className="journal-compose">
-        <textarea
+      <div className="flex items-end gap-2">
+        <Textarea
           id="journal-note"
-          className="journal-input"
+          className="min-h-0 min-w-0 flex-1 resize-y bg-[#fbfcfa] p-2 text-xs text-forest-ink md:text-xs"
           rows={2}
           maxLength={600}
           placeholder="New fern frond unfurling, springtails busy near the waterfall…"
@@ -130,14 +154,14 @@ export function JournalTab() {
             writeDraft(e.target.value)
           }}
         />
-        <button type="button" className="g-btn primary" onClick={logToday}>
+        <AccountButton tone="primary" onClick={logToday}>
           Log today
-        </button>
+        </AccountButton>
       </div>
-      {!journal.length && <p className="acct-note acct-muted">No entries yet.</p>}
+      {!journal.length && <p className={cn(ACCT_NOTE, ACCT_MUTED)}>No entries yet.</p>}
       {journal.map((j) => (
         <JournalItem key={j.id} entry={j} />
       ))}
-    </div>
+    </AccountCard>
   )
 }

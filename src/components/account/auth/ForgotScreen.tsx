@@ -3,7 +3,16 @@ import { useStore } from 'jotai'
 import { busyAtom, viewDataAtom } from '@/store/account'
 import { RESEND_WINDOW_MS, useAuthEnv } from './authEnv'
 import { AuthField } from './AuthField'
-import { AuthHeader, FormError, LinkButton, SubmitButton } from './AuthPieces'
+import {
+  AUTH_FORM,
+  AUTH_SCREEN,
+  AuthFoot,
+  AuthHeader,
+  FormError,
+  LinkButton,
+  SubmitButton,
+} from './AuthPieces'
+import { FieldGroup } from '@/components/ui/field'
 
 /** Asks for the account email and sends a password reset code (spec Screens.forgot). */
 export function ForgotScreen() {
@@ -25,26 +34,28 @@ export function ForgotScreen() {
   }
 
   return (
-    <div className="auth-screen">
+    <div className={AUTH_SCREEN}>
       <AuthHeader
         title="Reset your password"
         sub="Enter the email you signed up with. We’ll send a code to set a new password."
       />
-      <form className="auth-form" noValidate onSubmit={onSubmit}>
-        <AuthField
-          name="email"
-          label="Email"
-          type="email"
-          autoComplete="email"
-          placeholder="you@example.com"
-          autoFocus
-        />
-        <FormError />
-        <SubmitButton>Send reset code</SubmitButton>
+      <form noValidate onSubmit={onSubmit}>
+        <FieldGroup className={AUTH_FORM}>
+          <AuthField
+            name="email"
+            label="Email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            autoFocus
+          />
+          <FormError />
+          <SubmitButton>Send reset code</SubmitButton>
+        </FieldGroup>
       </form>
-      <p className="auth-foot">
+      <AuthFoot>
         <LinkButton onClick={() => account.goView('signin')}>Back to sign in</LinkButton>
-      </p>
+      </AuthFoot>
     </div>
   )
 }

@@ -1,8 +1,12 @@
-import { Dialog } from 'radix-ui'
+import { Dialog as DialogPrimitive } from 'radix-ui'
+import { XIcon } from 'lucide-react'
+import { cn } from 'cn'
 import { useEffect, useRef } from 'react'
 import { atom, useAtomValue } from 'jotai'
 import { useAccountActions } from '@/components/account/auth/authEnv'
 import { AuthScreen } from '@/components/account/auth/AuthScreen'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogClose, DialogOverlay, DialogPortal } from '@/components/ui/dialog'
 import { panelOpenAtom, phaseAtom, viewAtom, type AuthView } from '@/store/account'
 
 /** Which screen shows for the current phase and requested view (spec renderAuth, 5121-5122). */
@@ -44,18 +48,25 @@ export function AccountDialog() {
   }, [panelOpen, view])
 
   return (
-    <Dialog.Root
+    <Dialog
       open={panelOpen}
       onOpenChange={(open) => {
         if (!open) closePanel()
       }}
     >
-      <Dialog.Portal>
-        <Dialog.Overlay id="acct-scrim" className="acct-scrim" onClick={closePanel} />
-        <Dialog.Content
+      <DialogPortal>
+        <DialogOverlay
+          id="acct-scrim"
+          className="bg-[rgb(17_34_26/0.45)] supports-backdrop-filter:backdrop-blur-none"
+          onClick={closePanel}
+        />
+        <DialogPrimitive.Content
           id="acct-panel"
           ref={panelRef}
-          className={`acct-panel${view === 'account' ? ' wide' : ''}`}
+          className={cn(
+            'fixed top-1/2 left-1/2 z-50 flex max-h-[min(86vh,780px)] w-[min(440px,calc(100%-32px))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[18px] bg-paper text-foreground shadow-[0_24px_64px_rgb(17_34_26/0.32)] outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-[0.98] data-open:slide-in-from-bottom-2.5 motion-reduce:animate-none',
+            view === 'account' && 'wide w-[min(560px,calc(100%-32px))]',
+          )}
           aria-modal="true"
           aria-labelledby="acct-title"
           aria-describedby={undefined}
@@ -71,26 +82,26 @@ export function AccountDialog() {
           }}
         >
           {!onboarding && (
-            <Dialog.Close id="acct-close" className="acct-x" aria-label="Close">
-              <svg
-                className="h-4 w-4 shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.8}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
+            <DialogClose asChild>
+              <Button
+                id="acct-close"
+                variant="ghost"
+                size="icon"
+                className="absolute top-3 right-3 z-10 text-ink-soft"
+                aria-label="Close"
               >
-                <path d="M6 6l12 12M18 6L6 18" />
-              </svg>
-            </Dialog.Close>
+                <XIcon />
+              </Button>
+            </DialogClose>
           )}
-          <div id="acct-body" className="acct-body">
+          <div
+            id="acct-body"
+            className="grid flex-1 content-start gap-3.5 overflow-y-auto px-7 pt-7 pb-[calc(24px+env(safe-area-inset-bottom,0px))]"
+          >
             <AuthScreen view={view} />
           </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    </Dialog>
   )
 }

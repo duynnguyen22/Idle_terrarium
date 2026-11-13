@@ -9,8 +9,17 @@ import {
   viewDataAtom,
 } from '@/store/account'
 import { useAuthEnv } from './authEnv'
-import { AuthField } from './AuthField'
-import { AuthHeader, FormError, LinkButton, SubmitButton } from './AuthPieces'
+import { AUTH_LABEL, AuthField } from './AuthField'
+import {
+  AUTH_FORM,
+  AUTH_SCREEN,
+  AuthFoot,
+  AuthHeader,
+  FormError,
+  LinkButton,
+  SubmitButton,
+} from './AuthPieces'
+import { Field, FieldGroup, FieldTitle } from '@/components/ui/field'
 
 const START_OPTIONS: EnvOption<GardenStart>[] = [
   { id: 'current', name: 'What’s on screen now', sub: 'Keep the build you’ve been working on' },
@@ -65,29 +74,36 @@ export function OnboardingScreen() {
     })
 
   return (
-    <div className="auth-screen">
+    <div className={AUTH_SCREEN}>
       <AuthHeader
         title={`Welcome, ${first}`}
         sub="Your email is confirmed. Set up your first terrarium; you can add more any time."
       />
-      <form className="auth-form" noValidate onSubmit={onSubmit}>
-        <AuthField name="gname" label="Name your terrarium" placeholder="My terrarium" autoFocus />
-        <div className="auth-field">
-          <span className="auth-label">Start from</span>
-          <EnvOptionList
-            label="Start from"
-            options={START_OPTIONS}
-            value={start}
-            onChange={(id) => account.setViewData({ start: id })}
+      <form noValidate onSubmit={onSubmit}>
+        <FieldGroup className={AUTH_FORM}>
+          <AuthField
+            name="gname"
+            label="Name your terrarium"
+            placeholder="My terrarium"
+            autoFocus
           />
-        </div>
-        <FormError />
-        <SubmitButton>Start growing</SubmitButton>
+          <Field className="gap-1.5">
+            <FieldTitle className={AUTH_LABEL}>Start from</FieldTitle>
+            <EnvOptionList
+              label="Start from"
+              options={START_OPTIONS}
+              value={start}
+              onChange={(id) => account.setViewData({ start: id })}
+            />
+          </Field>
+          <FormError />
+          <SubmitButton>Start growing</SubmitButton>
+        </FieldGroup>
       </form>
       {failed && (
-        <p className="auth-foot">
+        <AuthFoot>
           <LinkButton onClick={signOut}>Sign out for now</LinkButton>
-        </p>
+        </AuthFoot>
       )}
     </div>
   )

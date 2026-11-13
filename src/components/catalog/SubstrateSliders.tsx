@@ -41,7 +41,7 @@ function SliderRow({ id, max }: { id: SliderLayerId; max: number }) {
   const layer = SUBSTRATES_BY_ID[id]
   const val = Math.round(useAtomValue(substratesAtom)[id] || 0)
   return (
-    <div className="space-y-1">
+    <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between text-xs">
         <span className="inline-flex items-center gap-1.5 font-medium text-ink-soft">
           <span
@@ -94,7 +94,7 @@ function changePoolWidth(percent: number) {
 export function SubstrateSliders() {
   const waterSplit = useAtomValue(waterSplitAtom)
   return (
-    <div className="space-y-2.5 rounded-2xl border border-card-line bg-white p-3">
+    <div className="flex flex-col gap-2.5 rounded-2xl border border-card-line bg-white p-3">
       <div className={SUBHEAD}>Land, top to bottom</div>
       {LAND_TOP_DOWN.map((id) => (
         <Fragment key={id}>
@@ -108,7 +108,7 @@ export function SubstrateSliders() {
         </Fragment>
       ))}
       <div className={`${SUBHEAD} pt-2`}>Pool</div>
-      <div className="space-y-1">
+      <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between text-xs">
           <span className="font-medium text-ink-soft">Pool width</span>
           <span className="tabular-nums text-[11px] text-stone">{splitLabel(waterSplit)}</span>

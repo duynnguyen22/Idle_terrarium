@@ -4,6 +4,9 @@ import { RESEND_WINDOW_MS, useAuthEnv } from './authEnv'
 import { busyAtom, phaseAtom, viewDataAtom } from '@/store/account'
 import { AuthField } from './AuthField'
 import {
+  AUTH_FORM,
+  AUTH_SCREEN,
+  AuthFoot,
   AuthHeader,
   Banner,
   Divider,
@@ -13,6 +16,8 @@ import {
   Providers,
   SubmitButton,
 } from './AuthPieces'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 
 /** Email and password sign-in (spec Screens.signin). */
 export function SignInScreen() {
@@ -52,51 +57,57 @@ export function SignInScreen() {
   const go = account.goView
 
   return (
-    <div className="auth-screen">
+    <div className={AUTH_SCREEN}>
       <AuthHeader title="Welcome back" sub="Sign in to keep your terrariums in sync." />
       <Banner />
       <Providers mode="signin" />
       <Divider>or sign in with email</Divider>
-      <form className="auth-form" noValidate onSubmit={onSubmit}>
-        <AuthField
-          name="email"
-          label="Email"
-          type="email"
-          autoComplete="email"
-          placeholder="you@example.com"
-          autoFocus={!hasEmail}
-        />
-        <AuthField
-          name="password"
-          label="Password"
-          type="password"
-          autoComplete="current-password"
-          autoFocus={hasEmail}
-        />
-        <div className="auth-row">
-          <label className="auth-check">
-            <input
-              type="checkbox"
-              id="auth-remember"
-              checked={remember}
-              onChange={(e) => account.setViewData({ remember: e.target.checked })}
-            />
-            Keep me signed in
-          </label>
-          <LinkButton onClick={() => go('forgot', { email: store.get(viewDataAtom).email })}>
-            Forgot password?
+      <form noValidate onSubmit={onSubmit}>
+        <FieldGroup className={AUTH_FORM}>
+          <AuthField
+            name="email"
+            label="Email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            autoFocus={!hasEmail}
+          />
+          <AuthField
+            name="password"
+            label="Password"
+            type="password"
+            autoComplete="current-password"
+            autoFocus={hasEmail}
+          />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Field orientation="horizontal" className="w-auto gap-2">
+              <Checkbox
+                id="auth-remember"
+                checked={remember}
+                onCheckedChange={(c) => account.setViewData({ remember: c === true })}
+              />
+              <FieldLabel
+                htmlFor="auth-remember"
+                className="text-[12.5px] font-normal text-ink-soft"
+              >
+                Keep me signed in
+              </FieldLabel>
+            </Field>
+            <LinkButton onClick={() => go('forgot', { email: store.get(viewDataAtom).email })}>
+              Forgot password?
+            </LinkButton>
+          </div>
+          <FormError />
+          <SubmitButton>Sign in</SubmitButton>
+          <LinkButton className="self-center" onClick={sendLink}>
+            Email me a sign-in link instead
           </LinkButton>
-        </div>
-        <FormError />
-        <SubmitButton>Sign in</SubmitButton>
-        <LinkButton className="center" onClick={sendLink}>
-          Email me a sign-in link instead
-        </LinkButton>
+        </FieldGroup>
       </form>
-      <p className="auth-foot">
+      <AuthFoot>
         {'New to Botanica? '}
         <LinkButton onClick={() => go('signup', { banner: null })}>Create an account</LinkButton>
-      </p>
+      </AuthFoot>
       <ProtoNote />
     </div>
   )

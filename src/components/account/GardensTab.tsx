@@ -2,6 +2,7 @@ import { useAtomValue, useStore } from 'jotai'
 import { useEffect, useRef, type KeyboardEvent } from 'react'
 import { useAuthEnv } from '@/components/account/auth/authEnv'
 import type { GardenRecord } from '@/auth/backend'
+import { Input } from '@/components/ui/input'
 import { VESSELS_BY_ID } from '@/data/vessels'
 import {
   activeIdAtom,
@@ -12,6 +13,19 @@ import {
   renamingAtom,
   timeAgo,
 } from '@/store/account'
+import {
+  ACCT_ACTIONS,
+  ACCT_H,
+  ACCT_MUTED,
+  ACCT_ROW,
+  AccountBadge,
+  AccountButton,
+  AccountCard,
+  AccountRow,
+  ROW_INFO,
+  ROW_META,
+  ROW_NAME,
+} from './AccountPieces'
 
 /** The inline name editor: Enter or leaving the field saves, Escape cancels. */
 function RenameInput({ garden }: { garden: GardenRecord }) {
@@ -33,10 +47,10 @@ function RenameInput({ garden }: { garden: GardenRecord }) {
   }
 
   return (
-    <input
+    <Input
       ref={ref}
       id="garden-rename-input"
-      className="garden-rename"
+      className="h-7 bg-white px-1.5 text-[12.5px] md:text-[12.5px]"
       defaultValue={garden.name}
       maxLength={60}
       aria-label="Terrarium name"
@@ -56,54 +70,42 @@ function GardenRow({ garden, active }: { garden: GardenRecord; active: boolean }
   const actions = account
 
   return (
-    <li className={`garden-row${active ? ' is-active' : ''}`}>
-      <div className="garden-info">
-        {renaming ? <RenameInput garden={garden} /> : <b>{garden.name || 'Untitled'}</b>}
-        <small>{meta}</small>
+    <AccountRow active={active}>
+      <div className={ROW_INFO}>
+        {renaming ? (
+          <RenameInput garden={garden} />
+        ) : (
+          <b className={ROW_NAME}>{garden.name || 'Untitled'}</b>
+        )}
+        <small className={ROW_META}>{meta}</small>
       </div>
-      <div className="garden-acts">
+      <div className="flex shrink-0 flex-wrap justify-end gap-1">
         {confirming ? (
           <>
-            <button
-              type="button"
-              className="g-btn danger"
-              onClick={() => void actions.deleteGarden(garden.id)}
-            >
+            <AccountButton tone="danger" onClick={() => void actions.deleteGarden(garden.id)}>
               Delete
-            </button>
-            <button type="button" className="g-btn" onClick={() => actions.setConfirmDelete(null)}>
-              Keep
-            </button>
+            </AccountButton>
+            <AccountButton onClick={() => actions.setConfirmDelete(null)}>Keep</AccountButton>
           </>
         ) : (
           <>
             {active ? (
-              <span className="g-badge">Open</span>
+              <AccountBadge>Open</AccountBadge>
             ) : (
-              <button
-                type="button"
-                className="g-btn primary"
-                onClick={() => void actions.openGarden(garden.id)}
-              >
+              <AccountButton tone="primary" onClick={() => void actions.openGarden(garden.id)}>
                 Open
-              </button>
+              </AccountButton>
             )}
-            <button type="button" className="g-btn" onClick={() => actions.setRenaming(garden.id)}>
-              Rename
-            </button>
+            <AccountButton onClick={() => actions.setRenaming(garden.id)}>Rename</AccountButton>
             {!active && (
-              <button
-                type="button"
-                className="g-btn"
-                onClick={() => actions.setConfirmDelete(garden.id)}
-              >
+              <AccountButton onClick={() => actions.setConfirmDelete(garden.id)}>
                 Delete
-              </button>
+              </AccountButton>
             )}
           </>
         )}
       </div>
-    </li>
+    </AccountRow>
   )
 }
 
@@ -131,34 +133,27 @@ export function GardensTab() {
   }
 
   return (
-    <div className="acct-card">
-      <div className="acct-row">
-        <h3 className="acct-h">My terrariums</h3>
-        <span className="acct-muted">{`${n} saved`}</span>
+    <AccountCard>
+      <div className={ACCT_ROW}>
+        <h3 className={ACCT_H}>My terrariums</h3>
+        <span className={ACCT_MUTED}>{`${n} saved`}</span>
       </div>
-      <ul className="garden-list">
+      <ul className="grid gap-1.5">
         {gardens.map((g) => (
           <GardenRow key={g.id} garden={g} active={g.id === activeId} />
         ))}
       </ul>
-      <div className="acct-row gap">
-        <button
-          type="button"
-          className="g-btn"
+      <div className={ACCT_ACTIONS}>
+        <AccountButton
           disabled={busy}
           onClick={() => void startNew('falls', `Falls Lake ${n + 1}`)}
         >
           New Falls Lake build
-        </button>
-        <button
-          type="button"
-          className="g-btn"
-          disabled={busy}
-          onClick={() => void startNew('empty', `Terrarium ${n + 1}`)}
-        >
+        </AccountButton>
+        <AccountButton disabled={busy} onClick={() => void startNew('empty', `Terrarium ${n + 1}`)}>
           New empty tank
-        </button>
+        </AccountButton>
       </div>
-    </div>
+    </AccountCard>
   )
 }

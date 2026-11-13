@@ -66,7 +66,7 @@ export function RoomTab() {
     : 'Open top: the tank breathes room air'
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-5">
       <p className="text-[11px] leading-relaxed text-stone">
         What surrounds the tank shapes how it grows. Set the water you mist and fill with, and the
         air in the room.
@@ -90,8 +90,8 @@ export function RoomTab() {
           value={room.water}
           onChange={(water) => setRoom({ water })}
         />
-        <div className="mt-2 space-y-2.5 rounded-2xl border border-sand-border bg-white p-3">
-          <div className="space-y-1">
+        <div className="mt-2 flex flex-col gap-2.5 rounded-2xl border border-sand-border bg-white p-3">
+          <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between text-xs">
               <span id="env-tds-label" className="font-medium text-ink-soft">
                 Hardness (TDS)
@@ -108,7 +108,7 @@ export function RoomTab() {
               onValueChange={([tds]) => setRoom({ tds: tds! })}
             />
           </div>
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between text-xs">
               <span id="env-ph-label" className="font-medium text-ink-soft">
                 pH

@@ -2,9 +2,10 @@ import { useAtomValue, useStore } from 'jotai'
 import { useEffect, useLayoutEffect, useRef, type FormEvent } from 'react'
 import type { PublicUser } from '@/auth'
 import { useAuthEnv } from '@/components/account/auth/authEnv'
-import { AuthField } from '@/components/account/auth/AuthField'
+import { AUTH_LABEL, AuthField } from '@/components/account/auth/AuthField'
 import { FormError } from '@/components/account/auth/AuthPieces'
 import { StrengthBlock } from '@/components/account/auth/StrengthBlock'
+import { Field, FieldGroup, FieldTitle } from '@/components/ui/field'
 import {
   backendAtom,
   busyAtom,
@@ -14,11 +15,28 @@ import {
   userAtom,
   viewDataAtom,
 } from '@/store/account'
+import {
+  ACCT_ACTIONS,
+  ACCT_H,
+  ACCT_NOTE,
+  ACCT_OK,
+  AccountBadge,
+  AccountButton,
+  AccountCard,
+  AccountRow,
+  ROW_INFO,
+  ROW_META,
+  ROW_NAME,
+  VerifiedBadge,
+} from './AccountPieces'
 
 const SIGNED_OUT_EVERYWHERE_TEXT =
   'You’re signed out everywhere. Sign in again on the devices you use.'
 const DELETED_TEXT = 'Your account and its data were deleted.'
 const MISMATCH_TEXT = 'That doesn’t match your email.'
+
+/** The fields and actions inside a card's form. */
+const CARD_FORM = 'gap-2.5'
 
 function ProfileCard({ user }: { user: PublicUser }) {
   const { account, auth } = useAuthEnv()
@@ -43,23 +61,27 @@ function ProfileCard({ user }: { user: PublicUser }) {
   }
 
   return (
-    <form className="acct-card" noValidate onSubmit={onSubmit}>
-      <h3 className="acct-h">Profile</h3>
-      <AuthField name="name" label="Display name" autoComplete="name" />
-      <div className="auth-field">
-        <span className="auth-label">Email</span>
-        <p className="acct-static">
-          <span>{user.email}</span>
-          {user.verified && <span className="acct-verified">Verified</span>}
-        </p>
-      </div>
-      <div className="acct-row gap">
-        <button type="submit" className="g-btn primary" disabled={busy}>
-          Save profile
-        </button>
-        {saved && <span className="acct-ok">Saved</span>}
-      </div>
-    </form>
+    <AccountCard>
+      <form noValidate onSubmit={onSubmit}>
+        <FieldGroup className={CARD_FORM}>
+          <h3 className={ACCT_H}>Profile</h3>
+          <AuthField name="name" label="Display name" autoComplete="name" />
+          <Field className="gap-1.5">
+            <FieldTitle className={AUTH_LABEL}>Email</FieldTitle>
+            <p className="acct-static flex items-center gap-2 text-[13px] text-forest-ink">
+              <span>{user.email}</span>
+              {user.verified && <VerifiedBadge />}
+            </p>
+          </Field>
+          <div className={ACCT_ACTIONS}>
+            <AccountButton type="submit" tone="primary" disabled={busy}>
+              Save profile
+            </AccountButton>
+            {saved && <span className={ACCT_OK}>Saved</span>}
+          </div>
+        </FieldGroup>
+      </form>
+    </AccountCard>
   )
 }
 
@@ -71,10 +93,12 @@ function PasswordCard({ user }: { user: PublicUser }) {
 
   if (user.provider !== 'password') {
     return (
-      <div className="acct-card">
-        <h3 className="acct-h">Password</h3>
-        <p className="acct-note">{`You sign in with ${user.provider}, so there’s no Botanica password to manage.`}</p>
-      </div>
+      <AccountCard>
+        <h3 className={ACCT_H}>Password</h3>
+        <p
+          className={ACCT_NOTE}
+        >{`You sign in with ${user.provider}, so there’s no Botanica password to manage.`}</p>
+      </AccountCard>
     )
   }
 
@@ -88,23 +112,27 @@ function PasswordCard({ user }: { user: PublicUser }) {
   }
 
   return (
-    <form className="acct-card" noValidate onSubmit={onSubmit}>
-      <h3 className="acct-h">Password</h3>
-      <AuthField
-        name="current"
-        label="Current password"
-        type="password"
-        autoComplete="current-password"
-      />
-      <AuthField name="next" label="New password" type="password" autoComplete="new-password" />
-      <StrengthBlock name="next" />
-      <div className="acct-row gap">
-        <button type="submit" className="g-btn primary" disabled={busy}>
-          Change password
-        </button>
-        {saved && <span className="acct-ok">Password changed</span>}
-      </div>
-    </form>
+    <AccountCard>
+      <form noValidate onSubmit={onSubmit}>
+        <FieldGroup className={CARD_FORM}>
+          <h3 className={ACCT_H}>Password</h3>
+          <AuthField
+            name="current"
+            label="Current password"
+            type="password"
+            autoComplete="current-password"
+          />
+          <AuthField name="next" label="New password" type="password" autoComplete="new-password" />
+          <StrengthBlock name="next" />
+          <div className={ACCT_ACTIONS}>
+            <AccountButton type="submit" tone="primary" disabled={busy}>
+              Change password
+            </AccountButton>
+            {saved && <span className={ACCT_OK}>Password changed</span>}
+          </div>
+        </FieldGroup>
+      </form>
+    </AccountCard>
   )
 }
 
@@ -131,21 +159,25 @@ function SessionsCard({ user }: { user: PublicUser }) {
 
   const kept = session?.remember ? 'stays signed in for 30 days' : 'until you close the browser'
   return (
-    <div className="acct-card">
-      <h3 className="acct-h">Where you’re signed in</h3>
-      <div className="garden-row is-active">
-        <div className="garden-info">
-          <b>{session?.device || 'This device'}</b>
-          <small>{`This device · signed in ${timeAgo(session?.createdAt ?? 0)} · ${kept}`}</small>
-        </div>
-        <span className="g-badge">Current</span>
-      </div>
-      <div className="acct-row gap">
-        <button type="button" className="g-btn" disabled={busy} onClick={signOutEverywhere}>
+    <AccountCard>
+      <h3 className={ACCT_H}>Where you’re signed in</h3>
+      <ul>
+        <AccountRow active>
+          <div className={ROW_INFO}>
+            <b className={ROW_NAME}>{session?.device || 'This device'}</b>
+            <small className={ROW_META}>
+              {`This device · signed in ${timeAgo(session?.createdAt ?? 0)} · ${kept}`}
+            </small>
+          </div>
+          <AccountBadge>Current</AccountBadge>
+        </AccountRow>
+      </ul>
+      <div className={ACCT_ACTIONS}>
+        <AccountButton disabled={busy} onClick={signOutEverywhere}>
           Sign out of all devices
-        </button>
+        </AccountButton>
       </div>
-    </div>
+    </AccountCard>
   )
 }
 
@@ -198,13 +230,11 @@ function ConfirmDelete({ user, onCancel }: { user: PublicUser; onCancel: () => v
         type="email"
         autoComplete="off"
       />
-      <div className="acct-row gap">
-        <button type="button" className="g-btn danger" disabled={busy} onClick={onDelete}>
+      <div className={ACCT_ACTIONS}>
+        <AccountButton tone="danger" disabled={busy} onClick={onDelete}>
           Delete my account
-        </button>
-        <button type="button" className="g-btn" onClick={onCancel}>
-          Cancel
-        </button>
+        </AccountButton>
+        <AccountButton onClick={onCancel}>Cancel</AccountButton>
       </div>
     </>
   )
@@ -228,26 +258,25 @@ function DangerZone({ user }: { user: PublicUser }) {
   }
 
   return (
-    <div className="acct-card danger-zone">
-      <h3 className="acct-h">Delete account</h3>
-      <p className="acct-note">
+    <AccountCard className="ring-[#f2cfc8]">
+      <h3 className={ACCT_H}>Delete account</h3>
+      <p className={ACCT_NOTE}>
         This removes your account, every terrarium and every journal entry. It can’t be undone.
       </p>
       {confirming ? (
         <ConfirmDelete user={user} onCancel={cancel} />
       ) : (
         <div>
-          <button
+          <AccountButton
             ref={openRef}
-            type="button"
-            className="g-btn danger-outline"
+            tone="danger-outline"
             onClick={() => account.setViewData({ confirmDeleteAccount: true })}
           >
             Delete account…
-          </button>
+          </AccountButton>
         </div>
       )}
-    </div>
+    </AccountCard>
   )
 }
 
@@ -256,7 +285,7 @@ export function ProfileTab() {
   const user = useAtomValue(userAtom)
   if (!user) return null
   return (
-    <div className="acct-stack">
+    <div className="grid gap-3">
       <FormError />
       <ProfileCard user={user} />
       <PasswordCard user={user} />

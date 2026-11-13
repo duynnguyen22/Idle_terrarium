@@ -1,4 +1,5 @@
 import { AccountScreen } from '@/components/account/AccountScreen'
+import { AUTH_SCREEN, AuthSub, AuthTitle } from './AuthPieces'
 import type { AuthView } from '@/store/account'
 import { ForgotScreen } from './ForgotScreen'
 import { MagicSentScreen } from './MagicSentScreen'
@@ -13,12 +14,10 @@ import { VerifyScreen } from './VerifyScreen'
 /** The first card shown while the stored session is being read (spec Screens.checking). */
 function Checking() {
   return (
-    <div className="auth-screen">
-      <div className="auth-head">
-        <h2 id="acct-title" className="auth-title">
-          One moment
-        </h2>
-        <p className="auth-sub">Checking your session…</p>
+    <div className={AUTH_SCREEN}>
+      <div className="grid justify-items-center gap-2 text-center">
+        <AuthTitle>One moment</AuthTitle>
+        <AuthSub>Checking your session…</AuthSub>
       </div>
     </div>
   )

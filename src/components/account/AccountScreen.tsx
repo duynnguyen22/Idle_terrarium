@@ -1,5 +1,4 @@
 import { useAtomValue, useSetAtom } from 'jotai'
-import { Tabs } from 'radix-ui'
 import { useAuthEnv } from '@/components/account/auth/authEnv'
 import {
   type AccountTab,
@@ -12,6 +11,8 @@ import {
   tabAtom,
   userAtom,
 } from '@/store/account'
+import { ACCT_MUTED, AccountButton, VerifiedBadge } from './AccountPieces'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { GardensTab } from './GardensTab'
 import { JournalTab } from './JournalTab'
 import { ProfileTab } from './ProfileTab'
@@ -55,50 +56,54 @@ export function AccountScreen() {
     })
 
   return (
-    <Tabs.Root asChild value={tab} onValueChange={(id) => selectTab(id as AccountTab)}>
-      <div className="auth-screen wide">
-        <div className="acct-head">
-          <span className="acct-big-avatar" style={{ background: avatarColor(user.id) }}>
-            {initialsOf(user.name)}
-          </span>
-          <div className="min-w-0">
-            <h2 id="acct-title" className="auth-title left">
-              {user.name}
-            </h2>
-            <p className="acct-email">
-              <span>{user.email}</span>
-              {user.verified && <span className="acct-verified">Verified</span>}
-            </p>
-          </div>
-        </div>
-        <Tabs.List className="acct-tabs">
-          {TABS.map(([id, label]) => (
-            <Tabs.Trigger
-              key={id}
-              value={id}
-              className="acct-tab"
-              data-autofocus={tab === id ? '1' : undefined}
-              // Radix selects on mousedown and keyboard; a plain click (assistive tech) selects too.
-              onClick={() => tab !== id && selectTab(id)}
-            >
-              {label}
-            </Tabs.Trigger>
-          ))}
-        </Tabs.List>
-        <Tabs.Content value={tab}>
-          {tab === 'terrariums' && <GardensTab />}
-          {tab === 'journal' && <JournalTab />}
-          {tab === 'profile' && <ProfileTab />}
-        </Tabs.Content>
-        <div className="acct-foot">
-          <span className="acct-muted">
-            {cloud ? 'Saved to your account' : 'Saved in this browser (prototype backend)'}
-          </span>
-          <button type="button" className="g-btn" disabled={busy} onClick={signOut}>
-            Sign out
-          </button>
+    <Tabs value={tab} onValueChange={(id) => selectTab(id as AccountTab)} className="gap-4">
+      <div className="flex items-center gap-3.5 pr-8">
+        <span
+          className="acct-big-avatar inline-flex size-13 shrink-0 items-center justify-center rounded-full text-lg font-bold tracking-wide text-white"
+          style={{ background: avatarColor(user.id) }}
+        >
+          {initialsOf(user.name)}
+        </span>
+        <div className="min-w-0">
+          <h2
+            id="acct-title"
+            className="truncate font-heading text-lg font-semibold text-forest-ink"
+          >
+            {user.name}
+          </h2>
+          <p className="flex flex-wrap items-center gap-2 text-[12.5px] text-ink-soft">
+            <span className="truncate">{user.email}</span>
+            {user.verified && <VerifiedBadge />}
+          </p>
         </div>
       </div>
-    </Tabs.Root>
+      <TabsList className="grid h-auto! w-full grid-cols-3 gap-0.5 rounded-[11px] bg-sand-pale">
+        {TABS.map(([id, label]) => (
+          <TabsTrigger
+            key={id}
+            value={id}
+            className="h-8 rounded-lg text-[12.5px] text-ink-soft data-active:font-semibold data-active:text-forest-ink"
+            data-autofocus={tab === id ? '1' : undefined}
+            // Radix selects on mousedown and keyboard; a plain click (assistive tech) selects too.
+            onClick={() => tab !== id && selectTab(id)}
+          >
+            {label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      <TabsContent value={tab}>
+        {tab === 'terrariums' && <GardensTab />}
+        {tab === 'journal' && <JournalTab />}
+        {tab === 'profile' && <ProfileTab />}
+      </TabsContent>
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <span className={ACCT_MUTED}>
+          {cloud ? 'Saved to your account' : 'Saved in this browser (prototype backend)'}
+        </span>
+        <AccountButton disabled={busy} onClick={signOut}>
+          Sign out
+        </AccountButton>
+      </div>
+    </Tabs>
   )
 }

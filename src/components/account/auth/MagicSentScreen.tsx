@@ -1,7 +1,19 @@
 import { useAtomValue, useStore } from 'jotai'
 import { useAuthEnv } from './authEnv'
 import { busyAtom, phaseAtom, viewDataAtom } from '@/store/account'
-import { Banner, FormError, LinkButton, MailIcon, ResendRow } from './AuthPieces'
+import { Button } from '@/components/ui/button'
+import {
+  AUTH_SCREEN,
+  AuthFoot,
+  AuthSub,
+  AuthTitle,
+  Banner,
+  DoneMark,
+  FormError,
+  InboxCard,
+  LinkButton,
+  ResendRow,
+} from './AuthPieces'
 
 /** The sign-in link was sent; the prototype inbox opens it (spec Screens.magicSent). */
 export function MagicSentScreen() {
@@ -23,41 +35,31 @@ export function MagicSentScreen() {
     })
 
   return (
-    <div className="auth-screen">
-      <div className="auth-done mail">
-        <MailIcon />
-      </div>
-      <h2 id="acct-title" className="auth-title">
-        Check your inbox
-      </h2>
-      <p className="auth-sub center">
+    <div className={AUTH_SCREEN}>
+      <DoneMark mail />
+      <AuthTitle>Check your inbox</AuthTitle>
+      <AuthSub center>
         {'We sent a sign-in link to '}
         <b>{email}</b>. It works once and expires in 10 minutes.
-      </p>
+      </AuthSub>
       <Banner />
-      <div className="auth-inbox">
-        <div className="auth-inbox-h">
-          <span>
-            <MailIcon />
-          </span>
-          Prototype inbox
-        </div>
+      <InboxCard>
         <p>Botanica: Your sign-in link</p>
-        <button
+        <Button
           type="button"
-          className="auth-btn primary small"
+          className="h-8.5 px-3.5 text-[12.5px] font-semibold"
           disabled={busy}
           data-autofocus="1"
           onClick={openLink}
         >
           Open the link
-        </button>
-      </div>
+        </Button>
+      </InboxCard>
       <FormError />
       <ResendRow email={email} purpose="magic" />
-      <p className="auth-foot">
+      <AuthFoot>
         <LinkButton onClick={() => account.goView('signin')}>Back to sign in</LinkButton>
-      </p>
+      </AuthFoot>
     </div>
   )
 }

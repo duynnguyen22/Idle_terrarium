@@ -2,9 +2,13 @@ import { useAtomValue, useStore } from 'jotai'
 import type { FormEvent } from 'react'
 import { useAuthEnv } from './authEnv'
 import { busyAtom, viewDataAtom } from '@/store/account'
-import { AuthField } from './AuthField'
+import { AUTH_LABEL, AuthField } from './AuthField'
 import {
+  AUTH_FORM,
+  AUTH_SCREEN,
+  AuthFoot,
   AuthHeader,
+  AuthSub,
   Banner,
   FormError,
   LinkButton,
@@ -12,6 +16,7 @@ import {
   ResendRow,
   SubmitButton,
 } from './AuthPieces'
+import { FieldGroup, FieldTitle } from '@/components/ui/field'
 import { OtpInput } from './OtpInput'
 import { StrengthBlock } from './StrengthBlock'
 
@@ -36,31 +41,33 @@ export function ResetScreen() {
   }
 
   return (
-    <div className="auth-screen">
+    <div className={AUTH_SCREEN}>
       <AuthHeader title="Set a new password" />
-      <p className="auth-sub center">
+      <AuthSub center>
         {'If an account exists for '}
         <b>{email}</b>, a code is on its way.
-      </p>
+      </AuthSub>
       <Banner />
       <ProtoInbox email={email} purpose="reset" />
-      <form className="auth-form" noValidate onSubmit={onSubmit}>
-        <p className="auth-label">Code from the email</p>
-        <OtpInput name="code" />
-        <AuthField
-          name="password"
-          label="New password"
-          type="password"
-          autoComplete="new-password"
-        />
-        <StrengthBlock name="password" />
-        <FormError />
-        <SubmitButton>Update password</SubmitButton>
+      <form noValidate onSubmit={onSubmit}>
+        <FieldGroup className={AUTH_FORM}>
+          <FieldTitle className={AUTH_LABEL}>Code from the email</FieldTitle>
+          <OtpInput name="code" />
+          <AuthField
+            name="password"
+            label="New password"
+            type="password"
+            autoComplete="new-password"
+          />
+          <StrengthBlock name="password" />
+          <FormError />
+          <SubmitButton>Update password</SubmitButton>
+        </FieldGroup>
       </form>
       <ResendRow email={email} purpose="reset" />
-      <p className="auth-foot">
+      <AuthFoot>
         <LinkButton onClick={() => account.goView('signin')}>Back to sign in</LinkButton>
-      </p>
+      </AuthFoot>
     </div>
   )
 }
