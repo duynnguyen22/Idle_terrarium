@@ -1,4 +1,5 @@
 import { useAtom } from 'jotai'
+import { Toggle } from '@/components/ui/toggle'
 import { VESSELS_FOR_PICKER } from '@/data/vessels'
 import { getVesselPreviewSVG } from '@/lib/vesselPreview'
 import { vesselAtom } from '@/store/studio'
@@ -10,27 +11,22 @@ export function VesselGrid() {
       {VESSELS_FOR_PICKER.map((v) => {
         const active = v.id === vessel
         return (
-          <button
+          <Toggle
             key={v.id}
-            type="button"
-            aria-pressed={active}
-            onClick={() => setVessel(v.id)}
-            className={`flex min-w-0 items-center gap-2 rounded-2xl border p-2 text-left transition ${
-              active
-                ? 'border-forest-deep bg-forest-deep text-white shadow-sm'
-                : 'border-sand-border bg-white text-ink-deep hover:bg-sand-warm'
-            }`}
+            variant="card"
+            size="auto"
+            pressed={active}
+            onPressedChange={() => setVessel(v.id)}
+            className="min-w-0"
           >
             <span dangerouslySetInnerHTML={{ __html: getVesselPreviewSVG(v.id, active) }} />
             <span className="min-w-0">
               <span className="block truncate text-xs font-bold">{v.name}</span>
-              <span
-                className={`block truncate text-[10px] ${active ? 'text-emerald-100' : 'text-stone-light'}`}
-              >
+              <span className="block truncate text-[10px] text-stone-light group-aria-pressed/toggle:text-emerald-100">
                 {v.desc}
               </span>
             </span>
-          </button>
+          </Toggle>
         )
       })}
     </div>

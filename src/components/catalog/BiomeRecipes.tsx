@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button'
 import { LineIcon, type IconName } from '@/components/ui/LineIcon'
 import { BIOME_PRESETS, type BiomePreset } from '@/data/presets'
 import { mutateWorld } from '@/engine/engineBridge'
@@ -18,9 +19,10 @@ export function BiomeRecipes() {
       {BIOME_PRESETS.map((p) => {
         const c = CARD[p.id]
         return (
-          <button
+          <Button
             key={p.id}
-            type="button"
+            variant="tile"
+            size="auto"
             onClick={() => {
               let message = ''
               mutateWorld((w) => {
@@ -28,14 +30,14 @@ export function BiomeRecipes() {
               })
               showToast(message)
             }}
-            className="flex items-center gap-2 rounded-xl border border-card-line bg-white px-2.5 py-2 text-left text-forest-deep transition-colors hover:bg-linen"
+            className="gap-2 rounded-xl px-2.5 py-2"
           >
             <LineIcon name={c.icon} />
             <span className="min-w-0">
               <b className="block text-xs font-semibold">{c.name}</b>
               <small className="block text-[10.5px] text-stone">{c.sub}</small>
             </span>
-          </button>
+          </Button>
         )
       })}
     </div>

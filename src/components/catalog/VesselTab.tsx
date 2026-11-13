@@ -1,4 +1,8 @@
+import { useId } from 'react'
 import { useAtomValue, useSetAtom } from 'jotai'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import { mutateWorld } from '@/engine/engineBridge'
 import { toggleHardwareAtom, hasLidAtom } from '@/store/studio'
 import { showToast } from '@/store/toast'
@@ -14,6 +18,7 @@ const H2 = 'text-xs font-semibold text-forest-deep'
 export function VesselTab() {
   const hasLid = useAtomValue(hasLidAtom)
   const toggleHardware = useSetAtom(toggleHardwareAtom)
+  const lidId = useId()
 
   const levelTerrain = () => {
     mutateWorld((w) => {
@@ -24,19 +29,21 @@ export function VesselTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <section>
         <div className="mb-2.5 flex items-center justify-between">
           <h2 className={H2}>Enclosure</h2>
-          <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-forest-deep">
-            <input
-              type="checkbox"
+          <div className="flex items-center gap-1.5">
+            <Checkbox
+              id={lidId}
               checked={hasLid}
-              onChange={() => toggleHardware('hasLid')}
-              className="h-3.5 w-3.5 rounded accent-forest-deep"
+              onCheckedChange={() => toggleHardware('hasLid')}
+              className="size-3.5"
             />
-            <span>Lid sealed</span>
-          </label>
+            <Label htmlFor={lidId} className="cursor-pointer text-xs text-forest-deep">
+              Lid sealed
+            </Label>
+          </div>
         </div>
         <VesselGrid />
         <HardwarePanel />
@@ -60,13 +67,14 @@ export function VesselTab() {
       <section>
         <div className="mb-1.5 flex items-center justify-between">
           <h2 className={H2}>Scatter &amp; pour</h2>
-          <button
-            type="button"
+          <Button
+            variant="link"
+            size="auto"
             onClick={levelTerrain}
-            className="text-[11px] font-semibold text-forest-mid hover:underline"
+            className="p-0 text-[11px] font-semibold text-forest-mid"
           >
             Level terrain
-          </button>
+          </Button>
         </div>
         <p className="mb-2.5 text-[11px] leading-snug text-stone">
           Pick a container, then click and hold inside the tank. Gravel dropped in the pool settles

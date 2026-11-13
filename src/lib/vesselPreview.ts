@@ -7,7 +7,7 @@ export function getVesselPreviewSVG(vesselId: string, active: boolean): string {
   const soilCol = active ? '#d6b899' : '#7c5841'
   const mossCol = active ? '#a3e635' : '#65a30d'
   const lidCol = active ? '#fde68a' : '#a47551'
-  const open = '<svg viewBox="0 0 64 64" class="w-11 h-11 shrink-0" aria-hidden="true">'
+  const open = '<svg viewBox="0 0 64 64" class="size-11 shrink-0" aria-hidden="true">'
 
   switch (vesselId) {
     case 'paludarium_tank':
@@ -79,7 +79,7 @@ export function getContainerVectorSVG(
   active: boolean,
 ): string {
   const stroke = active ? '#ffffff' : '#1b3b2b'
-  const open = '<svg viewBox="0 0 44 44" class="w-9 h-9 shrink-0" aria-hidden="true">'
+  const open = '<svg viewBox="0 0 44 44" class="size-9 shrink-0" aria-hidden="true">'
   if (layer.id === 'water') {
     return `${open}
       <path d="M12,10 L30,10 L28,34 C28,37 25,38 21,38 C17,38 14,37 14,34 Z" fill="rgba(56,189,248,0.25)" stroke="${stroke}" stroke-width="2"/>

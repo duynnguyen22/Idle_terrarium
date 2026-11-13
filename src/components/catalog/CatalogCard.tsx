@@ -1,22 +1,29 @@
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import type { CatalogId } from '@/data/catalog'
 import type { CatalogDef } from '@/data/types'
 import { useSpriteThumbnail } from '@/hooks/useSpriteThumbnail'
 
 export type CatalogEntry = CatalogDef & { id: CatalogId }
 
-function Badge({ def }: { def: CatalogDef }) {
+const TAG = 'h-auto rounded px-1.5 py-0.5 text-[9px] font-semibold'
+
+function CatalogTag({ def }: { def: CatalogDef }) {
   if (def.category === 'flora' && def.canMountOnRock) {
     return (
-      <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
+      <Badge
+        variant="outline"
+        className={`${TAG} border-emerald-200 bg-emerald-50 text-emerald-700`}
+      >
         Mountable
-      </span>
+      </Badge>
     )
   }
   if (def.category === 'hardscape' && def.mountPoints) {
     return (
-      <span className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">
+      <Badge variant="outline" className={`${TAG} border-amber-200 bg-amber-50 text-amber-800`}>
         {def.mountPoints.length} Ledges
-      </span>
+      </Badge>
     )
   }
   return null
@@ -25,16 +32,17 @@ function Badge({ def }: { def: CatalogDef }) {
 export function CatalogCard({ def, onSelect }: { def: CatalogEntry; onSelect: () => void }) {
   const src = useSpriteThumbnail(def.id)
   return (
-    <button
-      type="button"
+    <Button
+      variant="tile"
+      size="auto"
       onClick={onSelect}
-      className="group flex flex-col items-center rounded-2xl border border-sand-border bg-white p-2.5 text-left shadow-2xs transition hover:bg-linen"
+      className="group flex-col items-center gap-0 rounded-2xl border-sand-border p-2.5 shadow-2xs"
     >
       <span
         data-testid="catalog-thumb"
         className="mb-2 flex aspect-square w-full max-w-[104px] items-center justify-center rounded-xl bg-thumb-tile p-2.5 transition group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
       >
-        <img src={src} alt="" className="pointer-events-none h-full w-full object-contain" />
+        <img src={src} alt="" className="pointer-events-none size-full object-contain" />
       </span>
       <span className="w-full">
         <span className="block truncate text-xs font-bold text-forest-ink">{def.name}</span>
@@ -42,9 +50,9 @@ export function CatalogCard({ def, onSelect }: { def: CatalogEntry; onSelect: ()
           {def.desc}
         </span>
         <span className="mt-1.5 block">
-          <Badge def={def} />
+          <CatalogTag def={def} />
         </span>
       </span>
-    </button>
+    </Button>
   )
 }

@@ -1,6 +1,8 @@
 import { useId, type ReactNode } from 'react'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { RadioGroup, Switch } from 'radix-ui'
+import { cn } from 'cn'
+import { Switch } from '@/components/ui/switch'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { PumpFlow } from '@/data/types'
 import { hasPool } from '@/engine/geometry'
 import { isLampOn } from '@/engine/simulation/clock'
@@ -25,15 +27,15 @@ const FLOWS: { flow: PumpFlow; label: string }[] = [
 ]
 
 const ICON_BASE =
-  'inline-flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg transition-colors'
-export const ICON_OFF = 'bg-[#eef1ea] text-[#8a948c]'
+  'inline-flex size-[30px] shrink-0 items-center justify-center rounded-lg transition-colors'
+export const ICON_OFF = 'bg-linen text-[#8a948c]'
 export const ICON_ON = 'bg-[#dcebe0] text-[#1b5e3b]'
 const ICON_LIT = 'bg-[#fbf0cc] text-[#9a6a00]'
 
 export function Glyph({ d }: { d: string }) {
   return (
     <svg
-      className="h-[17px] w-[17px]"
+      className="size-[17px]"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -50,14 +52,15 @@ export function Glyph({ d }: { d: string }) {
 function HwText({ label, sub, subId }: { label: string; sub: string; subId?: string }) {
   return (
     <span className="flex min-w-0 flex-1 flex-col">
-      <span className="text-[12.5px] font-semibold text-[#163022]">{label}</span>
-      <span id={subId} className="text-[11px] leading-snug text-[#5b665e]">
+      <span className="text-[12.5px] font-semibold text-forest-ink">{label}</span>
+      <span id={subId} className="text-[11px] leading-snug text-stone">
         {sub}
       </span>
     </span>
   )
 }
 
+/** A hardware row: the whole row is the click target for its shadcn Switch. */
 export function SwitchRow({
   label,
   sub,
@@ -75,24 +78,16 @@ export function SwitchRow({
 }) {
   const subId = useId()
   return (
-    <Switch.Root
-      checked={checked}
-      aria-label={label}
-      aria-describedby={subId}
-      onCheckedChange={onToggle}
-      className="flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-[9px] text-left transition-colors hover:bg-[#f1f4ef]"
-    >
-      <span className={`${ICON_BASE} ${iconClass}`}>{icon}</span>
+    <label className="flex w-full cursor-pointer items-center gap-2.5 rounded-[10px] px-2.5 py-[9px] transition-colors hover:bg-[#f1f4ef]">
+      <span className={cn(ICON_BASE, iconClass)}>{icon}</span>
       <HwText label={label} sub={sub} subId={subId} />
-      <span
-        aria-hidden="true"
-        className={`relative h-5 w-[34px] shrink-0 rounded-full transition-colors ${checked ? 'bg-[#1b3b2b]' : 'bg-[#cfd5cb]'}`}
-      >
-        <span
-          className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${checked ? 'translate-x-[14px]' : ''}`}
-        />
-      </span>
-    </Switch.Root>
+      <Switch
+        checked={checked}
+        aria-label={label}
+        aria-describedby={subId}
+        onCheckedChange={onToggle}
+      />
+    </label>
   )
 }
 
@@ -125,7 +120,7 @@ export function HardwarePanel() {
     <div
       role="group"
       aria-label="Enclosure hardware"
-      className="mt-2.5 rounded-[14px] border border-[#e1e5dc] bg-white p-1"
+      className="mt-2.5 rounded-[14px] border border-card-line bg-white p-1"
     >
       <SwitchRow
         label="Grow lamp"
@@ -147,37 +142,37 @@ export function HardwarePanel() {
         }
         onToggle={() => setHasFogger(!hasFogger)}
       />
-      <div className="mt-0.5 flex w-full items-center gap-2.5 px-2.5 pb-1.5 pt-[9px]">
-        <span className={`${ICON_BASE} ${pool && pumpFlow !== 'off' ? ICON_ON : ICON_OFF}`}>
+      <div className="mt-0.5 flex w-full items-center gap-2.5 px-2.5 pt-[9px] pb-1.5">
+        <span className={cn(ICON_BASE, pool && pumpFlow !== 'off' ? ICON_ON : ICON_OFF)}>
           <Glyph d="M12 3v4M8 7h8l-1 6H9zM12 13v3M6 21c2-3 10-3 12 0" />
         </span>
         <HwText label="Waterfall pump" sub={pumpSub} />
       </div>
-      <RadioGroup.Root
+      <ToggleGroup
+        type="single"
+        variant="raised"
+        size="sm"
+        spacing={0.5}
         aria-label="Waterfall pump"
-        orientation="horizontal"
         value={pumpFlow}
         disabled={!pool}
-        className="mb-2 ml-[50px] mr-2.5 grid grid-cols-3 gap-0.5 rounded-[9px] bg-[#e7eae3] p-0.5"
+        onValueChange={(flow) => flow && setPumpFlow(flow as PumpFlow)}
+        className="mr-2.5 mb-2 ml-[50px] grid w-auto grid-cols-3 rounded-[9px] bg-sand-pale p-0.5"
       >
-        {FLOWS.map(({ flow, label }) => {
-          const checked = pumpFlow === flow
-          return (
-            <RadioGroup.Item
-              key={flow}
-              value={flow}
-              onClick={() => setPumpFlow(flow)}
-              className={`h-[26px] rounded-[7px] text-[11.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-                checked
-                  ? `bg-white font-semibold ${flow === 'strong' ? 'text-[#9a3412]' : 'text-[#163022]'}`
-                  : 'font-medium text-[#4f5a52] hover:text-[#163022]'
-              }`}
-            >
-              {label}
-            </RadioGroup.Item>
-          )
-        })}
-      </RadioGroup.Root>
+        {FLOWS.map(({ flow, label }) => (
+          <ToggleGroupItem
+            key={flow}
+            value={flow}
+            className={cn(
+              'h-[26px] rounded-[7px] text-[11.5px] hover:bg-transparent hover:text-forest-ink data-[state=on]:font-semibold data-[state=on]:text-forest-ink data-[state=on]:shadow-none disabled:opacity-60',
+              flow === 'strong' &&
+                'data-[state=on]:text-[#9a3412] data-[state=on]:hover:text-[#9a3412]',
+            )}
+          >
+            {label}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { useAtomValue } from 'jotai'
-import { RadioGroup } from 'radix-ui'
 import { StageIcon } from '@/components/ui/StudioIcons'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { GrowthStage } from '@/data/types'
 import { mutateWorld } from '@/engine/engineBridge'
 import { setFloraStage } from '@/engine/items'
@@ -29,42 +29,48 @@ export function PlantingStageToggle() {
   const stage = useAtomValue(plantingStageAtom)
   const isSprout = stage === 'sprout'
 
-  const choose = (next: ToggleStage, toast: string) => {
-    appStore.set(plantingStageAtom, next)
+  const choose = (next: string) => {
+    const option = OPTIONS.find((o) => o.stage === next)
+    // Pressing the chosen stage again reports '' — keep the current stage.
+    if (!option) return
+    appStore.set(plantingStageAtom, option.stage)
     const selectedId = appStore.get(selectedIdAtom)
     // A selected flora specimen is converted immediately (prototype 2896-2920).
     if (selectedId) {
-      mutateWorld((w) => setFloraStage(w, selectedId, next))
+      mutateWorld((w) => setFloraStage(w, selectedId, option.stage))
       appStore.set(selectedIdAtom, selectedId)
     }
-    showToast(toast)
+    showToast(option.toast)
   }
 
   return (
-    <div className="stage-card">
-      <div className="mb-2 text-xs font-semibold text-[#163022]">Plant as</div>
-      <RadioGroup.Root
-        className="stage-seg"
+    <div className="rounded-[14px] border border-card-line bg-white p-2.5">
+      <div className="mb-2 text-xs font-semibold text-forest-ink">Plant as</div>
+      <ToggleGroup
+        type="single"
+        variant="raised"
+        size="auto"
+        spacing={1}
         aria-label="Planting stage"
-        orientation="horizontal"
         value={isSprout ? 'sprout' : 'mature'}
+        onValueChange={choose}
+        className="grid w-full grid-cols-2 rounded-[11px] bg-sand-pale p-[3px]"
       >
         {OPTIONS.map((o) => (
-          <RadioGroup.Item
+          <ToggleGroupItem
             key={o.stage}
             value={o.stage}
-            onClick={() => choose(o.stage, o.toast)}
-            className="stage-opt"
+            className="stage-opt justify-start gap-[7px] rounded-lg px-1.5 py-[7px] text-left text-stone hover:bg-transparent hover:text-forest-ink data-[state=on]:text-[#1b5e3b] data-[state=on]:shadow-none"
           >
             <StageIcon stage={o.stage} />
-            <span className="stage-txt">
-              <b>{o.label}</b>
-              <small>{o.hint}</small>
+            <span className="flex min-w-0 flex-col leading-[1.2]">
+              <b className="text-[12.5px] font-semibold text-forest-ink">{o.label}</b>
+              <small className="truncate text-[10.5px] font-normal text-stone">{o.hint}</small>
             </span>
-          </RadioGroup.Item>
+          </ToggleGroupItem>
         ))}
-      </RadioGroup.Root>
-      <div className="mt-2 text-[11px] leading-snug text-[#4a6b56]">
+      </ToggleGroup>
+      <div className="mt-2 text-[11px] leading-snug text-forest-grey">
         {isSprout
           ? 'Places seedlings at 62% size. They grow into mature plants over a few in-game days.'
           : 'Places full-sized, established plants.'}

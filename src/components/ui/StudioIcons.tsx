@@ -12,7 +12,7 @@ const SOIL = <path className="soil" d="M3.5 20.5h17" />
 
 export function TabIcon({ name }: { name: TabIconName }) {
   return (
-    <svg className="tab-ic" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className="tab-ic size-6" viewBox="0 0 24 24" aria-hidden="true">
       {name === 'vessel' && (
         <>
           <path
@@ -80,7 +80,7 @@ export function TabIcon({ name }: { name: TabIconName }) {
 
 export function StageIcon({ stage }: { stage: 'sprout' | 'mature' }) {
   return (
-    <svg className="stage-ic" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className="stage-ic size-[26px]" viewBox="0 0 24 24" aria-hidden="true">
       {SOIL}
       {stage === 'sprout' ? (
         <>

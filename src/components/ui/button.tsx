@@ -22,6 +22,8 @@ const buttonVariants = cva(
         sand: 'bg-sand-pale text-ink-soft hover:bg-sand-track aria-expanded:bg-sand-track',
         forest: 'bg-forest-mid text-white hover:bg-forest-deep',
         wheat: 'bg-wheat text-wheat-ink hover:bg-wheat-hover',
+        // White picker card (recipes, catalog items). Pair with size="auto".
+        tile: 'justify-start border-card-line bg-white text-left font-normal whitespace-normal text-forest-deep hover:bg-linen',
       },
       size: {
         default:
@@ -35,6 +37,8 @@ const buttonVariants = cva(
         'icon-sm':
           'size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg',
         'icon-lg': 'size-9',
+        // Content-sized: the caller sets padding.
+        auto: 'h-auto',
       },
     },
     defaultVariants: {

@@ -1,6 +1,9 @@
 import { useId, useMemo, useRef, useSyncExternalStore, type ChangeEvent } from 'react'
 import { useAtom } from 'jotai'
-import { RadioGroup } from 'radix-ui'
+import { Button } from '@/components/ui/button'
+import { LineIcon } from '@/components/ui/LineIcon'
+import { Slider } from '@/components/ui/slider'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { BACKDROPS } from '@/data/backdrops'
 import type { BackdropId } from '@/data/types'
 import { paintBackdrop } from '@/engine/render/backdrop'
@@ -13,8 +16,6 @@ import {
 import { MAX_BACKDROP_HAZE } from '@/store/migrations'
 import { backdropAtom, backdropHazeAtom } from '@/store/studio'
 import { showToast } from '@/store/toast'
-import { LineIcon } from '../ui/LineIcon'
-import { Slider } from '@/components/ui/slider'
 
 const THUMB_W = 144
 const THUMB_H = 96
@@ -57,14 +58,15 @@ function sceneThumb(id: BackdropId): string {
   return url
 }
 
+const IMG = 'block aspect-[3/2] w-full rounded-[7px] bg-cover bg-center'
+const PHOTO_LINK = 'p-0 text-[11px] font-semibold'
+
 /** "Miniature landscape backdrop" section of the Vessel tab: scene grid, photo upload and removal, depth haze. */
 export function BackdropSection() {
   const [backdrop, setBackdrop] = useAtom(backdropAtom)
   const [haze, setBackdropHaze] = useAtom(backdropHazeAtom)
   const photo = useSyncExternalStore(subscribeCustomBackdrop, getCustomBackdrop)
   const fileRef = useRef<HTMLInputElement>(null)
-  // Radix clicks a radio that arrow keys move focus onto; that click must not open the file picker.
-  const arrowNav = useRef(false)
   const hazeId = useId()
 
   const photoThumb = useMemo(
@@ -73,9 +75,12 @@ export function BackdropSection() {
   )
   const openFilePicker = () => fileRef.current?.click()
 
-  const choose = (id: BackdropId) => {
+  // ToggleGroup sends '' when the chosen tile is pressed again; arrow keys only move focus.
+  const choose = (next: string) => {
+    if (!next) return
+    const id = next as BackdropId
     if (id === 'custom' && !photo) {
-      if (!arrowNav.current) openFilePicker()
+      openFilePicker()
       return
     }
     setBackdrop(id)
@@ -105,63 +110,66 @@ export function BackdropSection() {
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-xs font-semibold text-forest-deep">Miniature landscape backdrop</h2>
         {photo && (
-          <span className="flex shrink-0 items-center gap-2.5 whitespace-nowrap">
-            <button
-              type="button"
+          <span className="flex shrink-0 items-center gap-2.5">
+            <Button
+              variant="link"
+              size="auto"
               onClick={openFilePicker}
-              className="text-[11px] font-semibold text-forest-mid hover:underline"
+              className={`${PHOTO_LINK} text-forest-mid`}
             >
               Change photo
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="link"
+              size="auto"
               onClick={removePhoto}
-              className="text-[11px] font-semibold text-stone hover:text-ink-soft hover:underline"
+              className={`${PHOTO_LINK} text-stone hover:text-ink-soft`}
             >
               Remove photo
-            </button>
+            </Button>
           </span>
         )}
       </div>
-      <RadioGroup.Root
-        value={backdrop}
+      <ToggleGroup
+        type="single"
+        variant="tile"
+        size="auto"
+        spacing={1.5}
         aria-label="Backdrop"
-        orientation="horizontal"
-        className="grid grid-cols-4 gap-1.5"
-        onKeyDownCapture={(e) => {
-          arrowNav.current = e.key.startsWith('Arrow')
-        }}
-        onKeyUpCapture={() => {
-          arrowNav.current = false
-        }}
+        value={backdrop}
+        onValueChange={choose}
+        className="grid w-full grid-cols-4"
       >
         {BACKDROPS.map((b) => {
           const thumb = b.id === 'custom' ? photoThumb : sceneThumb(b.id)
           const upload = b.id === 'custom' && !photo
           return (
-            <RadioGroup.Item
+            <ToggleGroupItem
               key={b.id}
               value={b.id}
               aria-label={b.name}
-              onClick={() => choose(b.id)}
-              className="bd-tile"
+              className="min-w-0 text-forest-ink hover:text-forest-ink"
             >
               {upload ? (
-                <span className="bd-img bd-upload">
+                <span
+                  className={`${IMG} flex flex-col items-center justify-center gap-0.5 bg-[#eef1ea] text-[10px] font-semibold text-[#2d5a43]`}
+                >
                   <LineIcon name="camera" />
                   <span>Upload</span>
                 </span>
               ) : (
                 <span
-                  className="bd-img"
+                  className={IMG}
                   style={thumb ? { backgroundImage: `url('${thumb}')` } : undefined}
                 />
               )}
-              <span className="bd-name">{b.name}</span>
-            </RadioGroup.Item>
+              <span className="truncate px-0.5 pb-0.5 text-[10.5px] leading-tight font-semibold">
+                {b.name}
+              </span>
+            </ToggleGroupItem>
           )
         })}
-      </RadioGroup.Root>
+      </ToggleGroup>
       <input
         ref={fileRef}
         type="file"
@@ -171,12 +179,12 @@ export function BackdropSection() {
         onChange={onFile}
       />
       {backdrop !== 'none' && (
-        <div className="mt-2.5 space-y-1">
+        <div className="mt-2.5 flex flex-col gap-1">
           <div className="flex items-center justify-between text-xs">
             <span id={hazeId} className="font-medium text-ink-soft">
               Depth haze
             </span>
-            <span className="tabular-nums text-[11px] text-stone">{haze}%</span>
+            <span className="text-[11px] text-stone tabular-nums">{haze}%</span>
           </div>
           <Slider
             aria-labelledby={hazeId}

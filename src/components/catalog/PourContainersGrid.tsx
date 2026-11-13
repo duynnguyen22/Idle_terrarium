@@ -1,4 +1,5 @@
 import { useAtomValue } from 'jotai'
+import { Toggle } from '@/components/ui/toggle'
 import { POUR_CONTAINERS } from '@/data/substrates'
 import { getContainerVectorSVG } from '@/lib/vesselPreview'
 import { appStore } from '@/store/appStore'
@@ -33,27 +34,22 @@ export function PourContainersGrid() {
       {POUR_CONTAINERS.map((layer) => {
         const active = activeTool === 'pour' && activePourMaterial === layer.id
         return (
-          <button
+          <Toggle
             key={layer.id}
-            type="button"
-            aria-pressed={active}
-            onClick={() => select(layer.id)}
-            className={`flex min-w-0 items-center gap-2 rounded-2xl border p-2 text-left transition ${
-              active
-                ? 'scale-[1.01] border-forest-deep bg-forest-deep text-white shadow-sm'
-                : 'border-sand-border bg-white text-ink-deep hover:bg-sand-warm'
-            }`}
+            variant="card"
+            size="auto"
+            pressed={active}
+            onPressedChange={() => select(layer.id)}
+            className="min-w-0 aria-pressed:scale-[1.01]"
           >
             <span dangerouslySetInnerHTML={{ __html: getContainerVectorSVG(layer, active) }} />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[11px] font-bold">{layer.containerName}</span>
-              <span
-                className={`block truncate text-[10px] ${active ? 'text-emerald-200' : 'text-stone-light'}`}
-              >
+              <span className="block truncate text-[10px] text-stone-light group-aria-pressed/toggle:text-emerald-200">
                 {layer.name}
               </span>
             </span>
-          </button>
+          </Toggle>
         )
       })}
     </div>
