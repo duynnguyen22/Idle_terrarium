@@ -16,4 +16,9 @@ export default tseslint.config(
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
+  {
+    // shadcn/ui primitives export cva variant helpers next to their components by design.
+    files: ['src/components/ui/[a-z]*.tsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 )

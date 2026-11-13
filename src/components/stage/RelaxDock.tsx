@@ -2,7 +2,7 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { RadioGroup } from 'radix-ui'
 import { useEffect, useId, useRef, useState } from 'react'
 import { LineIcon, type IconName } from '@/components/ui/LineIcon'
-import { Slider } from '@/components/ui/Slider'
+import { Slider } from '@/components/ui/slider'
 import { SOUND_PRESETS, type SoundPreset } from '@/data/soundPresets'
 import type { LightingId } from '@/data/types'
 import {
@@ -48,12 +48,13 @@ function VolumeSlider({
       min={0}
       max={100}
       step={5}
-      value={pct}
-      onValueChange={(v) => onChange(v / 100)}
+      value={[pct]}
+      onValueChange={([v]) => onChange(v! / 100)}
       aria-label="Music volume"
       aria-valuetext={`${pct}%`}
       title={`Volume ${pct}%`}
-      className={`slider-thin ${className}`}
+      size="sm"
+      className={className}
     />
   )
 }

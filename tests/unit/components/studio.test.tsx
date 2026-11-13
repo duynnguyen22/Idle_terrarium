@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Toast } from '@/components/stage/Toast'
+import { Toaster } from '@/components/ui/sonner'
 import { RightTelemetry } from '@/components/layout/RightTelemetry'
 import { TopNav } from '@/components/layout/TopNav'
 import { LightingControls } from '@/components/nav/LightingControls'
@@ -492,19 +492,17 @@ describe('RightTelemetry', () => {
 })
 
 describe('Toast', () => {
-  it('appears and disappears after the timeout', () => {
-    render(<Toast />)
-    expect(screen.getByRole('status')).toHaveAttribute('data-visible', 'false')
-    act(() => showToast('Hello'))
-    expect(screen.getByRole('status')).toHaveTextContent('Hello')
-    expect(screen.getByRole('status')).toHaveAttribute('data-visible', 'true')
+  it('shows the message in the shadcn Toaster and tracks visibility in the atom', () => {
+    render(<Toaster />)
     act(() => {
-      vi.advanceTimersByTime(2199)
+      showToast('Hello')
+      vi.advanceTimersByTime(0) // sonner delivers on a timer
     })
-    expect(screen.getByRole('status')).toHaveAttribute('data-visible', 'true')
+    expect(screen.getByText('Hello')).toBeInTheDocument()
+    expect(appStore.get(toastAtom)).toEqual({ message: 'Hello', visible: true })
     act(() => {
-      vi.advanceTimersByTime(2)
+      vi.advanceTimersByTime(2201)
     })
-    expect(screen.getByRole('status')).toHaveAttribute('data-visible', 'false')
+    expect(appStore.get(toastAtom).visible).toBe(false)
   })
 })

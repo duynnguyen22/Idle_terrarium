@@ -7,7 +7,7 @@ import { CareToolbar } from '@/components/stage/CareToolbar'
 import { ItemInspector } from '@/components/stage/ItemInspector'
 import { TourCaption } from '@/components/stage/TourCaption'
 import { RelaxDock } from '@/components/stage/RelaxDock'
-import { Toast } from '@/components/stage/Toast'
+import { Toaster } from '@/components/ui/sonner'
 import { useAccountLifecycle } from '@/hooks/useAccountLifecycle'
 import { useAudio } from '@/hooks/useAudio'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
@@ -78,13 +78,13 @@ export function StudioLayout({ children }: { children: ReactNode }) {
           <CareToolbar />
           <ItemInspector />
           <RelaxDock />
-          <Toast />
           <AwayCard />
           <GrowthBoard />
           <TourCaption />
           <AccountDialog />
         </main>
         <RightTelemetry drawerOpen={drawer === 'right'} />
+        <Toaster position="top-center" offset={64} />
       </div>
     </div>
   )

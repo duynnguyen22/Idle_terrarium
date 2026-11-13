@@ -14,7 +14,7 @@ import { MAX_BACKDROP_HAZE } from '@/store/migrations'
 import { backdropAtom, backdropHazeAtom } from '@/store/studio'
 import { showToast } from '@/store/toast'
 import { LineIcon } from '../ui/LineIcon'
-import { Slider } from '../ui/Slider'
+import { Slider } from '@/components/ui/slider'
 
 const THUMB_W = 144
 const THUMB_H = 96
@@ -182,8 +182,8 @@ export function BackdropSection() {
             aria-labelledby={hazeId}
             min={0}
             max={MAX_BACKDROP_HAZE}
-            value={haze}
-            onValueChange={setBackdropHaze}
+            value={[haze]}
+            onValueChange={([v]) => setBackdropHaze(v!)}
           />
           <p className="text-[10.5px] text-stone">
             More haze pushes the scene further back behind your plants.

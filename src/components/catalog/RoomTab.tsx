@@ -12,7 +12,7 @@ import {
   qualityWord,
 } from '@/engine/room'
 import { hasLidAtom, roomAtom } from '@/store/studio'
-import { Slider } from '@/components/ui/Slider'
+import { Slider } from '@/components/ui/slider'
 
 const WATER_OPTIONS = (Object.keys(WATER_SOURCES) as WaterSourceId[]).map((id) => ({
   id,
@@ -103,9 +103,9 @@ export function RoomTab() {
               min={TDS_RANGE[0]}
               max={TDS_RANGE[1]}
               step={10}
-              value={room.tds}
+              value={[room.tds]}
               disabled={fixed}
-              onValueChange={(tds) => setRoom({ tds })}
+              onValueChange={([tds]) => setRoom({ tds: tds! })}
             />
           </div>
           <div className="space-y-1">
@@ -119,9 +119,9 @@ export function RoomTab() {
               aria-labelledby="env-ph-label"
               min={PH_RANGE[0] * 10}
               max={PH_RANGE[1] * 10}
-              value={Math.round(room.ph * 10)}
+              value={[Math.round(room.ph * 10)]}
               disabled={fixed}
-              onValueChange={(v) => setRoom({ ph: v / 10 })}
+              onValueChange={([v]) => setRoom({ ph: v! / 10 })}
             />
           </div>
           <p className="text-[10.5px] text-stone">

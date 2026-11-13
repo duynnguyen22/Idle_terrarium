@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 
 @theme {
   --font-display: 'Fraunces', serif;
@@ -69,6 +71,38 @@
   --forest-mid: var(--color-forest-mid);
   --moss-accent: var(--color-moss);
   --sand-border: var(--color-sand-border);
+  --background: var(--color-cream);
+  --foreground: var(--color-ink-deep);
+  --card: var(--color-white);
+  --card-foreground: var(--color-ink-deep);
+  --popover: var(--color-white);
+  --popover-foreground: var(--color-ink-deep);
+  --primary: var(--color-forest-deep);
+  --primary-foreground: var(--color-white);
+  --secondary: var(--color-mint-pale);
+  --secondary-foreground: var(--color-forest-deep);
+  --muted: var(--color-linen);
+  --muted-foreground: var(--color-stone);
+  --accent: var(--color-mint-mist);
+  --accent-foreground: var(--color-forest-deep);
+  --destructive: var(--color-blood);
+  --border: var(--color-sand-border);
+  --input: var(--color-sand-border);
+  --ring: var(--color-moss);
+  --chart-1: var(--color-moss);
+  --chart-2: var(--color-forest-mid);
+  --chart-3: var(--color-sage);
+  --chart-4: var(--color-amber-glow);
+  --chart-5: var(--color-forest-grey);
+  --radius: 0.625rem;
+  --sidebar: var(--color-paper);
+  --sidebar-foreground: var(--color-ink-deep);
+  --sidebar-primary: var(--color-forest-deep);
+  --sidebar-primary-foreground: var(--color-white);
+  --sidebar-accent: var(--color-mint-mist);
+  --sidebar-accent-foreground: var(--color-forest-deep);
+  --sidebar-border: var(--color-sand-border);
+  --sidebar-ring: var(--color-moss);
 }
 
 @layer base {
@@ -76,14 +110,14 @@
     box-sizing: border-box;
     user-select: none;
     -webkit-user-select: none;
+    @apply border-border outline-ring/50;
   }
 
   body {
     font-family: var(--font-sans);
-    background-color: var(--bg-cream);
-    color: var(--color-ink-deep);
     margin: 0;
     padding: 0;
+    @apply bg-background text-foreground;
   }
 
   /* Keyboard focus ring (tokens only); mouse clicks do not show it. */
@@ -112,51 +146,12 @@
     background: rgba(45, 90, 67, 0.6);
   }
 
-  /* Slider (Radix): same look as the old native range input */
-  .slider {
-    position: relative;
-    display: flex;
-    align-items: center;
-    width: 100%;
-    height: 16px;
-    touch-action: none;
-    user-select: none;
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
     cursor: pointer;
   }
-  .slider-track {
-    position: relative;
-    flex-grow: 1;
-    height: 6px;
-    background: var(--color-sand-track);
-    border-radius: 999px;
-  }
-  .slider-range {
-    position: absolute;
-    height: 100%;
-  }
-  .slider-thumb {
-    display: block;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: var(--color-forest-deep);
-    border: 2px solid var(--color-white);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-    cursor: pointer;
-    transition: transform 0.15s ease;
-  }
-  .slider-thumb:hover {
-    transform: scale(1.15);
-  }
-  .slider.slider-thin .slider-track {
-    height: 4px;
-  }
-  .slider[data-disabled] {
-    cursor: default;
-  }
-  .slider[data-disabled] .slider-thumb {
-    cursor: default;
-    transform: none;
+  html {
+    @apply font-sans;
   }
 }
 
@@ -513,10 +508,6 @@
   font-size: 10.5px;
   color: #5b665e;
   line-height: 1.35;
-}
-/* sits outside the base layer so it beats layered rules, like the old :disabled rule */
-.slider[data-disabled] {
-  opacity: 0.45;
 }
 .bd-tile {
   display: flex;
@@ -1533,4 +1524,46 @@
 .auth-done.mail {
   background: #e6eff4;
   color: #1d4a63;
+}
+
+@theme inline {
+  --font-heading: var(--font-display);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }

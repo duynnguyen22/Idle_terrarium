@@ -11,7 +11,9 @@ async function signInAsDemo(page: Page) {
   await dialog.getByRole('button', { name: 'Sign in' }).click()
   await expect(dialog.getByRole('heading', { name: 'Welcome, Demo' })).toBeVisible()
   await dialog.getByRole('button', { name: 'Start growing' }).click()
-  await expect(page.getByRole('status')).toHaveText('My terrarium is saved to your account')
+  await expect(page.locator('[data-sonner-toast]')).toHaveText(
+    'My terrarium is saved to your account',
+  )
 }
 
 test('first visit prompts to create an account; demo sign-in reaches onboarding and saves a garden', async ({

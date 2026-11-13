@@ -6,7 +6,7 @@ import { getTotalSubstrateDepth, hasPool } from '@/engine/geometry'
 import { appStore } from '@/store/appStore'
 import { cycleProgressAtom, setSubstrateAtom, substratesAtom, waterSplitAtom } from '@/store/studio'
 import { showToast } from '@/store/toast'
-import { Slider } from '@/components/ui/Slider'
+import { Slider } from '@/components/ui/slider'
 
 type SliderLayerId = (typeof LAND_LAYER_IDS)[number] | 'rivergravel' | 'water'
 
@@ -55,9 +55,9 @@ function SliderRow({ id, max }: { id: SliderLayerId; max: number }) {
       <Slider
         min={0}
         max={max}
-        value={val}
+        value={[val]}
         aria-label={layer.name}
-        onValueChange={(mm) => changeLayer(id, mm)}
+        onValueChange={([mm]) => changeLayer(id, mm!)}
       />
     </div>
   )
@@ -116,9 +116,9 @@ export function SubstrateSliders() {
         <Slider
           min={0}
           max={60}
-          value={Math.round((waterSplit || 0) * 100)}
+          value={[Math.round((waterSplit || 0) * 100)]}
           aria-label="Pool width"
-          onValueChange={changePoolWidth}
+          onValueChange={([v]) => changePoolWidth(v!)}
         />
         <div className="text-[10px] text-[#5b665e]">
           Crab builds run about 70/30; fish builds give the pool more room.
