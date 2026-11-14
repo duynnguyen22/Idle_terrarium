@@ -1,6 +1,8 @@
+import type { ViewState } from '@/engine/view'
+
 /**
- * Frame-time sampling for the frame-rate readout (prototype `perfTick`, v9 8086). The resolution
- * steps that read this state arrive later; for now it only measures.
+ * Frame-time sampling and adaptive drawing resolution (prototype `perfTick`, v9 8086). `sampleFrame`
+ * measures; `perfStep` moves `view.renderScale` through `RENDER_STEPS` when frames run slow or fast.
  */
 
 export interface PerfState {
@@ -21,6 +23,20 @@ export interface PerfState {
 const KEEP = 90
 /** A longer gap is a backgrounded tab or a breakpoint, not a slow frame. */
 const MAX_DT = 250
+
+/** Fractions of the full backing-store resolution, highest first (prototype 8084). */
+export const RENDER_STEPS = [1, 0.85, 0.72, 0.6] as const
+
+const SLOW_MS = 21
+const FAST_MS = 17.4
+const SLOW_FRAMES = 90
+const FAST_FRAMES = 480
+const TRIAL_FRAMES = 120
+/** A trial must cut the average frame time by at least 8 %. */
+const TRIAL_GAIN = 0.92
+const LOCK_ALL_MS = 300_000
+const RAISE_WINDOW_MS = 20_000
+const LOCK_UP_MS = 120_000
 
 export function createPerf(): PerfState {
   return {
@@ -58,4 +74,53 @@ export function perfSummary(p: PerfState): { fps: number; slowest: number } | nu
     if (v > max) max = v
   }
   return { fps: Math.round(1000 / (sum / d.length)), slowest: Math.round(max) }
+}
+
+/**
+ * Steps `view.renderScale` for the frame at `ts` (prototype `perfTick` 8094-8115). Call it after a
+ * `sampleFrame` that kept its sample. With smooth drawing off the resolution is pinned to full.
+ */
+export function perfStep(p: PerfState, view: ViewState, ts: number): void {
+  if (!view.fastDraw) {
+    view.renderScale = 1
+    p.trial = null
+    return
+  }
+  // After lowering the resolution, check that it actually helped; if not, something else is the limit.
+  if (p.trial) {
+    if (++p.trial.n >= TRIAL_FRAMES) {
+      if (p.ema > p.trial.ema * TRIAL_GAIN) {
+        view.renderScale = p.trial.scale
+        p.lockAll = ts + LOCK_ALL_MS
+      }
+      p.trial = null
+      p.slow = 0
+      p.fast = 0
+    }
+    return
+  }
+  if (ts < p.lockAll) return
+  const steps: readonly number[] = RENDER_STEPS
+  const i = steps.indexOf(view.renderScale)
+  if (p.ema > SLOW_MS) {
+    p.slow++
+    p.fast = 0
+  } else if (p.ema < FAST_MS) {
+    p.fast++
+    p.slow = 0
+  } else {
+    p.slow = 0
+    p.fast = 0
+  }
+  if (p.slow > SLOW_FRAMES && i < steps.length - 1) {
+    p.trial = { scale: view.renderScale, ema: p.ema, n: 0 }
+    view.renderScale = steps[i + 1]!
+    p.slow = 0
+    // It just went up and dropped again: stay down for a while.
+    if (ts - p.lastRaise < RAISE_WINDOW_MS) p.lockUp = ts + LOCK_UP_MS
+  } else if (p.fast > FAST_FRAMES && i > 0 && ts > p.lockUp) {
+    view.renderScale = steps[i - 1]!
+    p.fast = 0
+    p.lastRaise = ts
+  }
 }

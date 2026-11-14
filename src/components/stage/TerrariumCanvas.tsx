@@ -24,7 +24,7 @@ import {
   type PinchState,
 } from '@/engine/viewInput'
 import type { EngineWorld, Point } from '@/engine/world'
-import { registerTerrariumCanvas } from '@/lib/terrariumCanvas'
+import { getCanvasCssSize, registerTerrariumCanvas, setCanvasCssSize } from '@/lib/terrariumCanvas'
 import { play } from '@/hooks/useAudio'
 import { useTerrariumEngine } from '@/hooks/useTerrariumEngine'
 import { appStore } from '@/store/appStore'
@@ -72,6 +72,17 @@ function localPoint(canvas: HTMLCanvasElement | null, clientX: number, clientY: 
   return rect ? { x: clientX - rect.left, y: clientY - rect.top } : { x: 0, y: 0 }
 }
 
+/**
+ * The canvas's CSS size: the one the engine hook laid the frame out in, so pointer maths and drawing agree.
+ * Falls back to the element's rect before the ResizeObserver has recorded one.
+ */
+function cssSize(canvas: HTMLCanvasElement): { w: number; h: number } {
+  const s = getCanvasCssSize()
+  if (s) return s
+  const rect = canvas.getBoundingClientRect()
+  return { w: rect.width, h: rect.height }
+}
+
 /** The vessel rect for a canvas of this CSS size. */
 function vesselRect(w: number, h: number) {
   return computeVesselRect(w, h, appStore.get(relaxModeAtom), vesselKX(appStore.get(vesselAtom)))
@@ -89,15 +100,15 @@ function normalize(
 ): { nx: number; ny: number } {
   if (!canvas) return { nx: 0, ny: 0 }
   const rect = canvas.getBoundingClientRect()
+  const { w, h } = cssSize(canvas)
   const sx = clientX - rect.left
   const sy = clientY - rect.top
-  if (rect.width > 0 && rect.height > 0)
-    world.view.pointerScreen = { x: (sx / rect.width) * 2 - 1, y: (sy / rect.height) * 2 - 1 }
-  const b = camToBase(world.view.cam, sx, sy, rect.width, rect.height)
-  return toNormalized(b.x, b.y, { left: 0, top: 0 }, vesselRect(rect.width, rect.height))
+  if (w > 0 && h > 0) world.view.pointerScreen = { x: (sx / w) * 2 - 1, y: (sy / h) * 2 - 1 }
+  const b = camToBase(world.view.cam, sx, sy, w, h)
+  return toNormalized(b.x, b.y, { left: 0, top: 0 }, vesselRect(w, h))
 }
 
-/** Full-size canvas; the backing store follows the element size at DPR capped to 2. */
+/** Full-size canvas. It records its CSS size; the engine hook sizes the backing store from it each frame. */
 export function TerrariumCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [dragging, setDragging] = useState(false)
@@ -119,14 +130,11 @@ export function TerrariumCanvas() {
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const resize = (width: number, height: number) => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
-      canvas.width = Math.floor(width * dpr)
-      canvas.height = Math.floor(height * dpr)
-    }
+    // Only records the size: setting the backing store clears the canvas, so the hook does it at the
+    // start of a frame.
     const observer = new ResizeObserver((entries) => {
       const box = entries[0]?.contentRect
-      if (box) resize(box.width, box.height)
+      if (box) setCanvasCssSize(box.width, box.height)
     })
     observer.observe(canvas)
     return () => observer.disconnect()
@@ -299,10 +307,11 @@ export function TerrariumCanvas() {
     const canvas = canvasRef.current
     if (!world || !canvas) return
     const rect = canvas.getBoundingClientRect()
+    const { w, h } = cssSize(canvas)
     doubleClick(
       world.view,
       world,
-      vesselRect(rect.width, rect.height),
+      vesselRect(w, h),
       vesselKX(appStore.get(vesselAtom)),
       e.clientX - rect.left,
       e.clientY - rect.top,

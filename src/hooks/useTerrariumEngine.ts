@@ -12,7 +12,7 @@ import {
 import { seedWorldEnv } from '@/engine/envSeed'
 import { seedInitialScene } from '@/engine/presets'
 import { ecoTimeFromDayCount, restoreWorld } from '@/engine/persistence'
-import { createPerf, perfSummary, sampleFrame } from '@/engine/render/perf'
+import { createPerf, perfStep, perfSummary, sampleFrame } from '@/engine/render/perf'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
 import { runCatchUpIfDue } from '@/engine/simulation/catchup'
 import { flushEnvSeed, flushTelemetry } from '@/engine/simulation/telemetry'
@@ -20,6 +20,7 @@ import { tick } from '@/engine/simulation/tick'
 import { warmSpriteCache } from '@/engine/sprites/spriteCache'
 import { updateCamera } from '@/engine/view'
 import { createWorld, type EngineWorld } from '@/engine/world'
+import { getCanvasCssSize } from '@/lib/terrariumCanvas'
 import { play } from '@/hooks/useAudio'
 import { recordReport } from '@/store/awayFlow'
 import { phaseAtom } from '@/store/account'
@@ -55,14 +56,12 @@ declare global {
   }
 }
 
-/** The app has given the canvas a backing size (the width and height properties reflect to attributes). */
-function isCanvasSized(canvas: HTMLCanvasElement): boolean {
-  return canvas.hasAttribute('width') && canvas.hasAttribute('height')
-}
-
 /**
  * Owns the EngineWorld and the single rAF loop for `canvasRef`. The hot path reads the studio state
- * once per frame for rendering. The canvas backing size is owned by the component.
+ * once per frame for rendering. It also owns the canvas backing store: at the top of each frame it sizes
+ * it from the CSS size TerrariumCanvas records (`getCanvasCssSize`), the DPR (capped at 2) and, with
+ * smooth drawing on, the adaptive `view.renderScale`. Setting width or height clears the canvas, so it
+ * is only written when the size changes, and only here.
  */
 export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null>): void {
   useEffect(() => {
@@ -142,10 +141,10 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       rafId = requestAnimationFrame(frame)
       const dt = Math.min(timestamp - (last || timestamp), MAX_DT_MS)
       last = timestamp
-      sampleFrame(perf, timestamp)
 
       world.view.fastDraw = appStore.get(smoothDrawingAtom)
       world.view.depthOn = appStore.get(depthOnAtom)
+      if (sampleFrame(perf, timestamp) !== null) perfStep(perf, world.view, timestamp)
 
       // Read before tick: this frame renders the state the frame started with.
       const state = appStore.get(studioStateAtom)
@@ -158,12 +157,21 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
         })
       }
 
-      const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR)
-      const W = canvas.width / dpr
-      const H = canvas.height / dpr
-      // Until the app sizes the backing store (setting width/height adds the attributes), the canvas is the
-      // browser's 300 x 150 default: the camera's one-time phone start would latch a close-up on it.
-      if (W <= 0 || H <= 0 || !isCanvasSized(canvas)) return
+      // Until TerrariumCanvas records the element's CSS size, the canvas is the browser's 300 x 150
+      // default: the camera's one-time phone start would latch a close-up on it.
+      const css = getCanvasCssSize()
+      if (!css || css.w <= 0 || css.h <= 0) return
+      const W = css.w
+      const H = css.h
+      const scale =
+        Math.min(window.devicePixelRatio || 1, MAX_DPR) *
+        (world.view.fastDraw ? world.view.renderScale : 1)
+      const bw = Math.floor(W * scale)
+      const bh = Math.floor(H * scale)
+      if (canvas.width !== bw || canvas.height !== bh) {
+        canvas.width = bw
+        canvas.height = bh
+      }
 
       const R = computeVesselRect(W, H, state.relaxMode, vesselKX(state.vessel))
       const pointerLive = world.pointerInCanvas && !document.body.classList.contains('relax-idle')
@@ -175,7 +183,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       }
 
       ctx.save()
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.setTransform(scale, 0, 0, scale, 0, 0)
       ctx.imageSmoothingEnabled = true
       ctx.imageSmoothingQuality = world.view.fastDraw ? 'low' : 'high'
       renderFrame(ctx, world, state, R, timestamp, { w: W, h: H })
@@ -184,10 +192,12 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       if (world.frame % 20 === 0 && appStore.get(perfHudAtom)) {
         const sum = perfSummary(perf)
         if (sum) {
-          const smooth = appStore.get(smoothDrawingAtom) ? 'on' : 'off'
+          // The view's values, which this frame drew with, not the atoms.
+          const smooth = world.view.fastDraw ? 'on' : 'off'
+          const detail = Math.round(world.view.renderScale * 100)
           appStore.set(
             perfTextAtom,
-            `${sum.fps} fps · slowest ${sum.slowest} ms · ${canvas.width}×${canvas.height} · detail 100% · smooth ${smooth}`,
+            `${sum.fps} fps · slowest ${sum.slowest} ms · ${canvas.width}×${canvas.height} · detail ${detail}% · smooth ${smooth}`,
           )
         }
       }
