@@ -6,7 +6,7 @@ import { gpuImage } from '../sprites/gpuImage'
 import { getSprite } from '../sprites/spriteCache'
 import type { ViewState } from '../view'
 import { normToPx, vesselMetrics, type RenderFn } from './metrics'
-import { drawGroundShadow } from './shadows'
+import { drawGroundShadow, drawMountShadow, lightK, silhouetteOf } from './shadows'
 
 /**
  * Pixel box of a placed item: centre and drawn size, with the sprout / baby scale applied.
@@ -57,8 +57,9 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
 
     ctx.save()
     ctx.translate(px, py)
-    // Before the rotation, flip and sway: a shadow lies on the ground, it does not turn with the item.
-    if (!item.parentUid) drawGroundShadow(ctx, world, state, R, item, def, box, 0)
+    // Before the rotation, flip and sway: a shadow lies on its surface, it does not turn with the item.
+    if (item.parentUid) drawMountShadow(ctx, world, state, R, item, box)
+    else drawGroundShadow(ctx, world, state, R, item, def, box, 0)
 
     // Subtle gentle sway for flora
     let sway = 0
@@ -73,6 +74,17 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
       const wobble = state.reducedMotion ? 0 : Math.sin(timestamp * 0.002 + item.x * 30) * 0.05
       ctx.rotate(-Math.PI / 2 + wobble)
       if (item.aiState === 'hiding') ctx.globalAlpha = 0.5
+      // A climber on the pane barely shades the glass behind it
+      const ga = ctx.globalAlpha
+      ctx.globalAlpha = ga * 0.16 * lightK(state)
+      ctx.drawImage(
+        gpuImage(silhouetteOf(sprite), world.view.fastDraw),
+        -drawSize * 0.5 - drawSize * 0.03,
+        -drawSize * 0.5 + drawSize * 0.03,
+        drawSize,
+        drawSize,
+      )
+      ctx.globalAlpha = ga
     }
 
     // Night bioluminescence glow for crystals & lanterns

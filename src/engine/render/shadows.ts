@@ -1,3 +1,4 @@
+import type { CatalogId } from '@/data/catalog'
 import type { CatalogDef, PlacedItem, Rect } from '@/data/types'
 import type { StudioState } from '@/store/studio'
 import {
@@ -9,7 +10,7 @@ import {
 } from '../geometry'
 import { isLampOn } from '../simulation/clock'
 import { gpuImage } from '../sprites/gpuImage'
-import { createScratchCanvas } from '../sprites/spriteCache'
+import { createScratchCanvas, getSprite } from '../sprites/spriteCache'
 import type { EngineWorld } from '../world'
 import { normToPx, vesselMetrics } from './metrics'
 import { terrainOf } from './terrain'
@@ -126,5 +127,124 @@ export function drawGroundShadow(
     ctx.drawImage(s, -wide * 0.27, -tall * 0.28, wide * 0.54, tall * 0.56)
   }
   ctx.restore()
+  ctx.globalAlpha = a0
+}
+
+// A soft black copy of a picture, used as the shadow it casts on the surface behind it (prototype 7858).
+// Painted once per source and never again, so it is safe to hand to gpuImage when the source is a sprite.
+const silCache = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>()
+
+export function silhouetteOf(src: HTMLCanvasElement): HTMLCanvasElement {
+  const cached = silCache.get(src)
+  if (cached) return cached
+  const c = createScratchCanvas(src.width, src.height)
+  const g = c.getContext('2d')
+  // No context (tests, a lost context): fall back to the picture itself and try again next time.
+  if (!g) return src
+  const b = Math.max(2, Math.round(src.width / 52))
+  if ('filter' in (g as object)) {
+    g.filter = `blur(${b}px)`
+    g.drawImage(src, 0, 0)
+    g.filter = 'none'
+  } else {
+    g.globalAlpha = 0.2
+    for (const [x, y] of [
+      [0, 0],
+      [b, 0],
+      [-b, 0],
+      [0, b],
+      [0, -b],
+      [b, b],
+      [-b, -b],
+    ] as const)
+      g.drawImage(src, x, y)
+    g.globalAlpha = 1
+  }
+  g.globalCompositeOperation = 'source-in'
+  g.fillStyle = '#0b130e'
+  g.fillRect(0, 0, c.width, c.height)
+  silCache.set(src, c)
+  return c
+}
+
+// One small canvas per mounted item, repainted in place when its key changes: never pass it to gpuImage.
+const MOUNT_SHADOW_PX = 192
+const mountShadows = new Map<string, { canvas: HTMLCanvasElement; key: string | null }>()
+
+/** Drops every cached mount shadow (tests; a fresh sprite factory). */
+export function clearMountShadows(): void {
+  mountShadows.clear()
+}
+
+/**
+ * A plant or animal on a rock or the back wall casts its own shape onto that surface, pushed down and away
+ * from the lamp, and cut off where the surface ends (prototype 7876). Call with the context translated to
+ * the item centre and before the item's rotation, flip and sway. An orphan (no live parent) draws nothing.
+ */
+export function drawMountShadow(
+  ctx: CanvasRenderingContext2D,
+  world: EngineWorld,
+  state: StudioState,
+  R: Rect,
+  item: PlacedItem,
+  box: { x: number; y: number; size: number },
+): void {
+  const parent = world.items.find((p) => p.uid === item.parentUid)
+  if (!parent) return
+  const src = getSprite(item.id as CatalogId)
+  const pspr = getSprite(parent.id as CatalogId)
+  const { x: px, y: py, size: drawSize } = box
+  const { cx, cy, r, kx } = vesselMetrics(R)
+  const S = MOUNT_SHADOW_PX
+  const lean = isLampOn(state)
+    ? Math.round(Math.max(-1, Math.min(1, (px - cx) / (r * kx))) * 20) / 20
+    : 0
+  const ox = lean * drawSize * 0.07
+  const oy = drawSize * 0.09
+  const span = drawSize * 1.5
+  const q = S / span
+  // The parent as drawn, unshifted (the depth-plane shift joins it with the planes).
+  const ppx = normToPx(R, parent.x)
+  const ppy = cy - r + parent.y * (r * 2)
+  const pds = r * 0.36 * (parent.scale || 1)
+  const key = `${Math.round((ppx - px) * 2)}|${Math.round((ppy - py) * 2)}|${Math.round(drawSize * 2)}|${Math.round(pds * 2)}|${lean}|${item.flipX ? 1 : 0}|${parent.flipX ? 1 : 0}|${item.rotation || 0}|${parent.rotation || 0}|${parent.id}`
+  let e = mountShadows.get(item.uid)
+  if (!e) {
+    if (mountShadows.size > 60) mountShadows.clear()
+    e = { canvas: createScratchCanvas(S, S), key: null }
+    mountShadows.set(item.uid, e)
+  }
+  if (e.key !== key) {
+    const g = e.canvas.getContext('2d')
+    if (!g) return
+    g.setTransform(1, 0, 0, 1, 0, 0)
+    g.globalCompositeOperation = 'source-over'
+    g.globalAlpha = 1
+    g.clearRect(0, 0, S, S)
+    g.save()
+    g.translate(S / 2, S / 2)
+    g.rotate(((item.rotation || 0) * Math.PI) / 180)
+    if (item.flipX) g.scale(-1, 1)
+    g.drawImage(
+      silhouetteOf(src),
+      (-drawSize * q) / 2,
+      (-drawSize * q) / 2,
+      drawSize * q,
+      drawSize * q,
+    )
+    g.restore()
+    // Keep only what lies over the parent
+    g.globalCompositeOperation = 'destination-in'
+    g.save()
+    g.translate(S / 2 + (ppx - px - ox) * q, S / 2 + (ppy - py - oy) * q)
+    g.rotate(((parent.rotation || 0) * Math.PI) / 180)
+    if (parent.flipX) g.scale(-1, 1)
+    g.drawImage(pspr, (-pds * q) / 2, (-pds * q) / 2, pds * q, pds * q)
+    g.restore()
+    e.key = key
+  }
+  const a0 = ctx.globalAlpha
+  ctx.globalAlpha = a0 * 0.5 * lightK(state)
+  ctx.drawImage(e.canvas, ox - span / 2, oy - span / 2, span, span)
   ctx.globalAlpha = a0
 }

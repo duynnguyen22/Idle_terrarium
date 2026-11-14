@@ -4,8 +4,14 @@ import type { PlacedItem } from '@/data/types'
 import { getDividerNormX, getSoilSurfaceNormalizedY } from '@/engine/geometry'
 import { vesselMetrics, normToPx } from '@/engine/render/metrics'
 import { computeVesselRect } from '@/engine/render/renderFrame'
-import { drawGroundShadow, lightK, shadowSprite } from '@/engine/render/shadows'
-import { itemBox } from '@/engine/render/specimens'
+import {
+  clearMountShadows,
+  drawGroundShadow,
+  lightK,
+  shadowSprite,
+  silhouetteOf,
+} from '@/engine/render/shadows'
+import { drawSpecimens, itemBox } from '@/engine/render/specimens'
 import { terrainOf } from '@/engine/render/terrain'
 import { configureSpriteCache } from '@/engine/sprites/spriteCache'
 import { createWorld } from '@/engine/world'
@@ -73,6 +79,7 @@ function shade(state: StudioState, x: number, above: (size: number) => number, a
 }
 
 beforeEach(() => {
+  clearMountShadows()
   configureSpriteCache(
     () => ({ width: 0, height: 0, getContext: () => null }) as unknown as HTMLCanvasElement,
   )
@@ -187,5 +194,178 @@ describe('ground shadows', () => {
     expect(sprite.height).toBe(32)
     const state = createDefaultState()
     expect(() => shade(state, 0.6, (size) => size * 0.2)).not.toThrow()
+  })
+})
+
+type Call = { name: string; args: unknown[] }
+
+/** Logs every call with its raw arguments and every property write, in order. */
+function rawTrace() {
+  const calls: Call[] = []
+  const target: Record<string, unknown> = { globalAlpha: 1 }
+  const gradient = { addColorStop: () => undefined }
+  const ctx = new Proxy(target, {
+    get(t, prop: string) {
+      if (prop in t) return t[prop]
+      return (...args: unknown[]) => {
+        calls.push({ name: prop, args })
+        return prop.startsWith('create') ? gradient : undefined
+      }
+    },
+    set(t, prop: string, value) {
+      calls.push({ name: `${prop}=`, args: [value] })
+      t[prop] = value
+      return true
+    },
+  }) as unknown as CanvasRenderingContext2D
+  return { ctx, calls }
+}
+
+type FakeCanvas = { width: number; height: number; calls: Call[] | null; getContext(): unknown }
+
+/** A canvas factory that gives a tracing context only to canvases `wants` accepts (by size). */
+function tracingFactory(wants: (c: FakeCanvas) => boolean) {
+  const made: FakeCanvas[] = []
+  configureSpriteCache(() => {
+    let ctx: CanvasRenderingContext2D | null = null
+    const c: FakeCanvas = {
+      width: 0,
+      height: 0,
+      calls: null,
+      getContext() {
+        if (!wants(c)) return null
+        if (!ctx) {
+          const t = rawTrace()
+          ctx = t.ctx
+          c.calls = t.calls
+        }
+        return ctx
+      },
+    }
+    made.push(c)
+    return c as unknown as HTMLCanvasElement
+  })
+  return made
+}
+
+const isMountCanvas = (c: FakeCanvas) => c.width === 192 && c.height === 192
+const imageWidth = (call: Call) => (call.args[0] as { width: number }).width
+const blits = (calls: Call[], w: number) =>
+  calls.filter((c) => c.name === 'drawImage' && imageWidth(c) === w)
+
+function rock(x = 0.6, y = 0.62): PlacedItem {
+  return { ...fern(x, y), uid: 'rock', id: 'moss_wall_cliff', category: 'hardscape', zIndex: 1 }
+}
+function mounted(x = 0.6, y = 0.52, parentUid = 'rock'): PlacedItem {
+  return { ...fern(x, y), uid: 'm', zIndex: 2, parentUid }
+}
+
+function frame(items: PlacedItem[], state = createDefaultState(), world = createWorld()) {
+  world.items = items
+  const { ctx, calls } = rawTrace()
+  drawSpecimens(ctx, world, state, R, 0)
+  return calls
+}
+
+describe('silhouette shadows', () => {
+  it('silhouetteOf is cached per sprite and returns the source without a context', () => {
+    const src = { width: 256, height: 256 } as HTMLCanvasElement
+    expect(silhouetteOf(src)).toBe(src)
+
+    const made = tracingFactory(() => true)
+    const sil = silhouetteOf(src)
+    expect(sil).not.toBe(src)
+    expect(sil.width).toBe(256)
+    expect(sil.height).toBe(256)
+    expect(silhouetteOf(src)).toBe(sil)
+    expect(made).toHaveLength(1)
+    const calls = made[0].calls!
+    // Blurred copies of the picture, then everything drawn is filled with the shadow colour
+    expect(calls.filter((c) => c.name === 'drawImage').length).toBeGreaterThan(0)
+    const op = calls.findIndex((c) => c.name === 'globalCompositeOperation=')
+    expect(calls[op].args[0]).toBe('source-in')
+    const fill = calls.findIndex((c) => c.name === 'fillRect')
+    expect(fill).toBeGreaterThan(op)
+    expect(calls.find((c) => c.name === 'fillStyle=')!.args[0]).toBe('#0b130e')
+    expect(calls[fill].args).toEqual([0, 0, 256, 256])
+  })
+
+  it('a mounted item draws a mount shadow and no ground shadow', () => {
+    tracingFactory(isMountCanvas)
+    const state = createDefaultState()
+    const alone = frame([rock()], state)
+    const both = frame([rock(), mounted()], state)
+    // The rock's own ground shadow is all the soft-shadow blits there are
+    expect(blits(both, 128)).toHaveLength(blits(alone, 128).length)
+    const mount = blits(both, 192)
+    expect(mount).toHaveLength(1)
+    const size = itemBox(R, mounted())!.size
+    expect(mount[0].args[3]).toBeCloseTo(size * 1.5, 5)
+    expect(mount[0].args[4]).toBeCloseTo(size * 1.5, 5)
+    const at = both.indexOf(mount[0])
+    const alpha = both
+      .slice(0, at)
+      .filter((c) => c.name === 'globalAlpha=')
+      .at(-1)!
+    expect(alpha.args[0]).toBeCloseTo(0.5 * lightK(state), 5)
+  })
+
+  it('the mount shadow is repainted when the parent moves and reused when nothing changed', () => {
+    const made = tracingFactory(isMountCanvas)
+    const state = createDefaultState()
+    const world = createWorld()
+    frame([rock(), mounted()], state, world)
+    const canvas = made.find(isMountCanvas)!
+    const clears = () => canvas.calls!.filter((c) => c.name === 'clearRect').length
+    // The item's silhouette, then the parent's sprite as a mask
+    expect(
+      canvas.calls!.find(
+        (c) => c.name === 'globalCompositeOperation=' && c.args[0] === 'destination-in',
+      ),
+    ).toBeTruthy()
+    expect(clears()).toBe(1)
+    frame([rock(), mounted()], state, world)
+    expect(clears()).toBe(1)
+    frame([rock(0.65), mounted()], state, world)
+    expect(clears()).toBe(2)
+    expect(made.filter(isMountCanvas)).toHaveLength(1)
+  })
+
+  it('an orphan (parentUid with no parent) draws no mount shadow and does not throw', () => {
+    tracingFactory(isMountCanvas)
+    let calls: Call[] = []
+    expect(() => (calls = frame([mounted(0.6, 0.52, 'gone')]))).not.toThrow()
+    expect(blits(calls, 192)).toHaveLength(0)
+    expect(blits(calls, 128)).toHaveLength(0)
+    // The plant itself is still drawn
+    expect(calls.filter((c) => c.name === 'drawImage')).toHaveLength(1)
+  })
+
+  it('a glass climber draws its faint offset copy before its sprite', () => {
+    const state = createDefaultState()
+    const gecko: PlacedItem = {
+      ...fern(0.6, 0.4),
+      uid: 'g',
+      id: 'mourning_gecko',
+      category: 'fauna',
+    }
+    const s = itemBox(R, gecko)!.size
+    const calls = frame([gecko], state)
+    const draws = calls.filter((c) => c.name === 'drawImage')
+    expect(draws).toHaveLength(2)
+    const [copy, sprite] = draws
+    expect(copy.args.slice(1).map(Number)).toEqual(
+      [-s * 0.53, -s * 0.47, s, s].map((v) => expect.closeTo(v, 5)) as unknown as number[],
+    )
+    expect(sprite.args.slice(1)).toEqual([-s * 0.5, -s * 0.5, s, s])
+    const at = calls.indexOf(copy)
+    const alpha = calls
+      .slice(0, at)
+      .filter((c) => c.name === 'globalAlpha=')
+      .at(-1)!
+    expect(alpha.args[0]).toBeCloseTo(0.16 * lightK(state), 5)
+    // The sprite goes back to full alpha
+    const before = calls.slice(at, calls.indexOf(sprite)).filter((c) => c.name === 'globalAlpha=')
+    expect(before.at(-1)!.args[0]).toBe(1)
   })
 })
