@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { tryGetWorld } from '@/engine/engineBridge'
 import { PING_MS, pingItem } from '@/engine/marks'
+import { focusOn } from '@/engine/view'
 import { breedConditions } from '@/engine/simulation/breed'
 import { lightDose } from '@/engine/simulation/life'
 import { PACE_LABELS, PACE_SUBTITLES, type PaceId } from '@/engine/simulation/pace'
@@ -31,6 +32,12 @@ import {
   type FloraRow,
   type HealthChip,
 } from './growthRows'
+
+/** A click's close-up: the camera eases to the animals for 3.2 s, then returns. */
+function closeUp(uids: string[]): void {
+  const world = tryGetWorld()
+  if (world) focusOn(world.view, uids, 2, 3200, performance.now())
+}
 
 const PACE_IDS: PaceId[] = ['brisk', 'garden', 'calm', 'real']
 const REFRESH_MS = 1000
@@ -181,8 +188,11 @@ export function GrowthBoard() {
     const live = tryGetWorld()
     if (live) for (const uid of uids) pingItem(live, uid, PING_MS)
   }
-  const select = (uid: string | undefined) => {
-    if (uid !== undefined) appStore.set(selectedIdAtom, uid)
+  const select = (uids: string[]) => {
+    const first = uids[0]
+    if (first === undefined) return
+    appStore.set(selectedIdAtom, first)
+    closeUp(uids.slice(0, 3))
   }
   const choosePace = (id: PaceId) => {
     setPace(id)
@@ -288,7 +298,7 @@ export function GrowthBoard() {
                     size="auto"
                     onMouseEnter={() => ping([row.uid])}
                     onFocus={() => ping([row.uid])}
-                    onClick={() => select(row.uid)}
+                    onClick={() => select([row.uid])}
                     className={ROW}
                   >
                     <span className="flex items-center justify-between gap-2">
@@ -328,7 +338,7 @@ export function GrowthBoard() {
                     size="auto"
                     onMouseEnter={() => ping(row.uids)}
                     onFocus={() => ping(row.uids)}
-                    onClick={() => select(row.uids[0])}
+                    onClick={() => select(row.uids)}
                     className={ROW}
                   >
                     <span className="flex items-center justify-between gap-2">

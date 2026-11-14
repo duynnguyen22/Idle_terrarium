@@ -142,4 +142,31 @@ describe('useTour', () => {
     act(() => appStore.set(relaxModeAtom, false))
     expect(tour()).toBeNull()
   })
+
+  it('each tour step aims the camera at its item and the end of the tour restores the view', () => {
+    vi.spyOn(performance, 'now').mockReturnValue(1000)
+    world.view.camT.z = 1.2
+    render(<Harness />)
+    act(() => appStore.set(startTourAtom, steps))
+    expect(world.view.follow).toEqual({ uids: ['a'], z: 2, until: 1000 + TOUR_PING_MS })
+    act(() => void vi.advanceTimersByTime(TOUR_PING_MS))
+    expect(world.view.follow?.uids).toEqual(['b'])
+    act(() => void vi.advanceTimersByTime(TOUR_PING_MS))
+    expect(world.view.follow?.uids).toEqual(['c'])
+    act(() => void vi.advanceTimersByTime(TOUR_PING_MS))
+    expect(tour()).toBeNull()
+    expect(world.view.follow).toBeNull()
+    expect(world.view.camT.z).toBe(1.2)
+    vi.mocked(performance.now).mockRestore()
+  })
+
+  it('Skip restores the view', () => {
+    world.view.camT.z = 1.2
+    render(<Harness />)
+    act(() => appStore.set(startTourAtom, steps))
+    expect(world.view.follow).not.toBeNull()
+    act(() => void fireEvent.click(screen.getByRole('button', { name: 'Skip' })))
+    expect(world.view.follow).toBeNull()
+    expect(world.view.camT.z).toBe(1.2)
+  })
 })
