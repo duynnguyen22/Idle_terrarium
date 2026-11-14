@@ -29,10 +29,12 @@ const goHome = () => {
 const BTN =
   'h-[30px] min-w-[30px] rounded-lg px-1.5 text-[11.5px] font-semibold tabular-nums text-ink-deep transition-[background-color,transform] duration-150 hover:bg-sand-pale active:scale-95 disabled:opacity-35 motion-reduce:transition-none'
 const BTN_RELAX = 'text-white/80 hover:bg-white/10 hover:text-white'
+// Radix sets both aria-pressed and data-state; both rules have the same specificity, so each on-state
+// utility is paired (as in ui/toggle.tsx) and neither can be overridden by the other.
 const DEPTH_ON =
-  'aria-pressed:bg-forest-deep aria-pressed:text-white aria-pressed:hover:bg-forest-deep aria-pressed:hover:text-white'
+  'aria-pressed:bg-forest-deep aria-pressed:text-white aria-pressed:hover:bg-forest-deep aria-pressed:hover:text-white data-[state=on]:bg-forest-deep data-[state=on]:text-white data-[state=on]:hover:bg-forest-deep data-[state=on]:hover:text-white'
 const DEPTH_ON_RELAX =
-  'aria-pressed:bg-sage aria-pressed:text-forest-night aria-pressed:hover:bg-sage aria-pressed:hover:text-forest-night'
+  'aria-pressed:bg-sage aria-pressed:text-forest-night aria-pressed:hover:bg-sage aria-pressed:hover:text-forest-night data-[state=on]:bg-sage data-[state=on]:text-forest-night data-[state=on]:hover:bg-sage data-[state=on]:hover:text-forest-night'
 
 /**
  * Zoom out, zoom percent (press for the whole tank), zoom in, frame the plants, depth effects
@@ -108,12 +110,7 @@ export function ViewControls() {
         onPressedChange={toggleDepth}
         aria-label="Depth effects"
         title="Depth effects: planes, soft shadows, haze, glass"
-        className={cn(
-          BTN,
-          'bg-transparent data-[state=on]:bg-transparent',
-          relax ? DEPTH_ON_RELAX : DEPTH_ON,
-          tone,
-        )}
+        className={cn(BTN, relax ? DEPTH_ON_RELAX : DEPTH_ON, tone)}
       >
         <LineIcon name="layers" />
       </Toggle>

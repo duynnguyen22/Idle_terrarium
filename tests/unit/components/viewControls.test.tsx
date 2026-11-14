@@ -4,10 +4,14 @@ import { ViewControls } from '@/components/stage/ViewControls'
 import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { appStore } from '@/store/appStore'
+import { relaxModeAtom } from '@/store/studio'
 import { toastAtom } from '@/store/toast'
 import { VIEW_STORAGE_KEY, depthOnAtom, hydrateViewPrefs, zoomPctAtom } from '@/store/view'
 
 const click = (el: HTMLElement) => act(() => void fireEvent.click(el))
+
+// Built from parts: Tailwind scans test files too, and the literal would emit the very rule this guards against.
+const TRANSPARENT_ON = ['data-[state=on]', 'bg-transparent'].join(':')
 
 let world: EngineWorld
 
@@ -87,6 +91,34 @@ describe('ViewControls', () => {
     expect(depth).toHaveAttribute('aria-pressed', 'true')
     expect(appStore.get(toastAtom).message).toBe('Depth effects on')
     off()
+  })
+
+  it('the depth toggle pairs aria-pressed and data-state on-state classes and never forces a transparent fill', () => {
+    render(<ViewControls />)
+    const cls = screen.getByRole('button', { name: 'Depth effects' }).className
+    expect(cls).not.toContain(TRANSPARENT_ON)
+    for (const c of [
+      'aria-pressed:bg-forest-deep',
+      'aria-pressed:text-white',
+      'data-[state=on]:bg-forest-deep',
+      'data-[state=on]:text-white',
+    ])
+      expect(cls).toContain(c)
+  })
+
+  it('the relax depth toggle pairs the sage on-state classes', () => {
+    appStore.set(relaxModeAtom, true)
+    render(<ViewControls />)
+    const cls = screen.getByRole('button', { name: 'Depth effects' }).className
+    appStore.set(relaxModeAtom, false)
+    expect(cls).not.toContain(TRANSPARENT_ON)
+    for (const c of [
+      'aria-pressed:bg-sage',
+      'aria-pressed:text-forest-night',
+      'data-[state=on]:bg-sage',
+      'data-[state=on]:text-forest-night',
+    ])
+      expect(cls).toContain(c)
   })
 
   it('every control has an accessible name', () => {
