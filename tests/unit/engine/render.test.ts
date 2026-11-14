@@ -397,6 +397,13 @@ describe('rectangular tanks', () => {
     expect(rails('rimless_landscape').rail).toHaveLength(0)
   })
 
+  it('drawSpecimens still draws every item with a context-less sprite factory', () => {
+    const world = populatedWorld()
+    const { ctx, calls } = makeRecordingContext()
+    expect(() => drawSpecimens(ctx, world, createDefaultState(), computeVesselRect(800, 600), 0)).not.toThrow()
+    expect(calls.filter((c) => c === 'drawImage')).toHaveLength(ITEMS.length)
+  })
+
   it('places a specimen across the full scaled width', () => {
     const R = computeVesselRect(800, 600, false, 2)
     const world = createWorld()

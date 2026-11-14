@@ -18,12 +18,18 @@ export function configureSpriteCache(factory: CreateCanvas = defaultCreateCanvas
   dataUrls.clear()
 }
 
+/** A blank canvas from the current factory (the one tests swap). */
+export function createScratchCanvas(w: number, h: number): HTMLCanvasElement {
+  const canvas = createCanvas()
+  canvas.width = w
+  canvas.height = h
+  return canvas
+}
+
 export function getSprite(id: SpriteId): HTMLCanvasElement {
   const cached = canvases.get(id)
   if (cached) return cached
-  const canvas = createCanvas()
-  canvas.width = SPRITE_SIZE
-  canvas.height = SPRITE_SIZE
+  const canvas = createScratchCanvas(SPRITE_SIZE, SPRITE_SIZE)
   const ctx = canvas.getContext('2d')
   if (ctx) drawSprite(ctx, id, SPRITE_SIZE)
   canvases.set(id, canvas)

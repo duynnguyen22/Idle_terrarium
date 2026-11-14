@@ -2,6 +2,7 @@ import { findCatalogDef, type CatalogId } from '@/data/catalog'
 import type { PlacedItem, Rect } from '@/data/types'
 import { babyScale } from '../simulation/breed'
 import { sproutScale } from '../simulation/dayTick'
+import { gpuImage } from '../sprites/gpuImage'
 import { getSprite } from '../sprites/spriteCache'
 import { normToPx, vesselMetrics, type RenderFn } from './metrics'
 
@@ -88,7 +89,7 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
     }
 
     // Crisp 256x256 vector sprite
-    ctx.drawImage(sprite, -drawSize * 0.5, -drawSize * 0.5, drawSize, drawSize)
+    ctx.drawImage(gpuImage(sprite, world.view.fastDraw), -drawSize * 0.5, -drawSize * 0.5, drawSize, drawSize)
 
     // Visual stage overlays for sprout & lush flora
     if (item.category === 'flora') {

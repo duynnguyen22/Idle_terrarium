@@ -1,5 +1,6 @@
 import type { MossTuft, PlacedItem, SubstrateDepths } from '@/data/types'
 import type { CareIssue } from './care'
+import { createView, type ViewState } from './view'
 
 /** Loose shape for per-frame particles; the engine narrows these in later tasks. */
 export type WorldEntity = Record<string, unknown>
@@ -83,6 +84,8 @@ export interface EngineWorld {
   lastLiveToast: number
   wasMisting: boolean
   wasPouring: boolean
+  /** Drawing flags copied in by the engine hook each frame; never persisted. */
+  view: ViewState
 }
 
 export function createWorld(): EngineWorld {
@@ -138,5 +141,6 @@ export function createWorld(): EngineWorld {
     lastLiveToast: 0,
     wasMisting: false,
     wasPouring: false,
+    view: createView(),
   }
 }

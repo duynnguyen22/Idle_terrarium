@@ -31,7 +31,7 @@ import {
   worldSnapshotAtom,
 } from '@/store/studio'
 import { showToast } from '@/store/toast'
-import { perfHudAtom, perfTextAtom, smoothDrawingAtom } from '@/store/view'
+import { depthOnAtom, perfHudAtom, perfTextAtom, smoothDrawingAtom } from '@/store/view'
 
 /** Longest simulated step; a backgrounded tab resumes with a clamped dt instead of a huge jump. */
 const MAX_DT_MS = 100
@@ -130,6 +130,9 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       last = timestamp
       sampleFrame(perf, timestamp)
 
+      world.view.fastDraw = appStore.get(smoothDrawingAtom)
+      world.view.depthOn = appStore.get(depthOnAtom)
+
       // Read before tick: this frame renders the state the frame started with.
       const state = appStore.get(studioStateAtom)
       tick(world, dt, timestamp, { onCue: play, onToast: showToast, commit: commitWorld })
@@ -149,7 +152,7 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       ctx.save()
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.imageSmoothingEnabled = true
-      ctx.imageSmoothingQuality = 'high'
+      ctx.imageSmoothingQuality = world.view.fastDraw ? 'low' : 'high'
       const R = computeVesselRect(W, H, state.relaxMode, vesselKX(state.vessel))
       renderFrame(ctx, world, state, R, timestamp, { w: W, h: H })
       ctx.restore()
