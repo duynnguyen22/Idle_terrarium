@@ -55,6 +55,11 @@ declare global {
   }
 }
 
+/** The app has given the canvas a backing size (the width and height properties reflect to attributes). */
+function isCanvasSized(canvas: HTMLCanvasElement): boolean {
+  return canvas.hasAttribute('width') && canvas.hasAttribute('height')
+}
+
 /**
  * Owns the EngineWorld and the single rAF loop for `canvasRef`. The hot path reads the studio state
  * once per frame for rendering. The canvas backing size is owned by the component.
@@ -156,7 +161,9 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR)
       const W = canvas.width / dpr
       const H = canvas.height / dpr
-      if (W <= 0 || H <= 0) return
+      // Until the app sizes the backing store (setting width/height adds the attributes), the canvas is the
+      // browser's 300 x 150 default: the camera's one-time phone start would latch a close-up on it.
+      if (W <= 0 || H <= 0 || !isCanvasSized(canvas)) return
 
       const R = computeVesselRect(W, H, state.relaxMode, vesselKX(state.vessel))
       const pointerLive = world.pointerInCanvas && !document.body.classList.contains('relax-idle')

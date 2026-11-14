@@ -91,6 +91,13 @@ function Harness() {
   return <canvas ref={ref} width={800} height={600} />
 }
 
+/** A canvas nobody has sized yet: the browser's default 300 x 150 backing store. */
+function UnsizedHarness() {
+  const ref = useRef<HTMLCanvasElement>(null)
+  useTerrariumEngine(ref)
+  return <canvas ref={ref} />
+}
+
 describe('useTerrariumEngine', () => {
   let callbacks: Map<number, FrameRequestCallback>
   let nextId: number
@@ -476,6 +483,28 @@ describe('useTerrariumEngine', () => {
     act(() => applyGardenSnapshot(staleGarden(0, 'fresh-fern'), appStore))
     expect(appStore.get(awayLogAtom)).toHaveLength(0)
     expect(appStore.get(awayIndexAtom)).toBeNull()
+    unmount()
+  })
+  it('holds the camera and drawing until the app sizes the canvas, so a desktop does not start zoomed', () => {
+    const { container, unmount } = render(<UnsizedHarness />)
+    const canvas = container.querySelector('canvas')!
+    expect(canvas.width).toBe(300)
+    expect(canvas.height).toBe(150)
+    runFrame(16)
+    runFrame(32)
+    // The 300 x 150 default must not run the phone start (which would latch a close-up) or draw.
+    expect(getWorld().view.framedOnce).toBe(false)
+    expect(getWorld().view.size).toBeNull()
+    expect(ctxCalls.filter((c) => c === 'clip')).toHaveLength(0)
+
+    // The app's resize lands: a desktop canvas shows the whole tank.
+    canvas.width = 1200
+    canvas.height = 800
+    runFrame(48)
+    expect(getWorld().view.framedOnce).toBe(true)
+    expect(getWorld().view.size).toEqual({ w: 1200, h: 800 })
+    expect(getWorld().view.camT).toEqual({ z: 1, u: 0.5, v: 0.5 })
+    expect(ctxCalls.filter((c) => c === 'clip').length).toBeGreaterThan(0)
     unmount()
   })
 })
