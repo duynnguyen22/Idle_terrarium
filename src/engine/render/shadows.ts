@@ -179,22 +179,23 @@ export function clearMountShadows(): void {
 /**
  * A plant or animal on a rock or the back wall casts its own shape onto that surface, pushed down and away
  * from the lamp, and cut off where the surface ends (prototype 7876). Call with the context translated to
- * the item centre and before the item's rotation, flip and sway. An orphan (no live parent) draws nothing.
+ * the item centre and before the item's rotation, flip and sway. The caller resolves the parent and passes
+ * its `itemBox` (with the same view, so its depth-plane shift matches what is drawn); an orphan has no
+ * parent, so the caller draws no mount shadow.
  */
 export function drawMountShadow(
   ctx: CanvasRenderingContext2D,
-  world: EngineWorld,
   state: StudioState,
   R: Rect,
   item: PlacedItem,
   box: { x: number; y: number; size: number },
+  parent: PlacedItem,
+  parentBox: { x: number; y: number; size: number },
 ): void {
-  const parent = world.items.find((p) => p.uid === item.parentUid)
-  if (!parent) return
   const src = getSprite(item.id as CatalogId)
   const pspr = getSprite(parent.id as CatalogId)
   const { x: px, y: py, size: drawSize } = box
-  const { cx, cy, r, kx } = vesselMetrics(R)
+  const { cx, r, kx } = vesselMetrics(R)
   const S = MOUNT_SHADOW_PX
   const lean = isLampOn(state)
     ? Math.round(Math.max(-1, Math.min(1, (px - cx) / (r * kx))) * 20) / 20
@@ -203,10 +204,8 @@ export function drawMountShadow(
   const oy = drawSize * 0.09
   const span = drawSize * 1.5
   const q = S / span
-  // The parent as drawn, unshifted (the depth-plane shift joins it with the planes).
-  const ppx = normToPx(R, parent.x)
-  const ppy = cy - r + parent.y * (r * 2)
-  const pds = r * 0.36 * (parent.scale || 1)
+  // The parent as drawn: the mask must sit exactly over the rock or wall the user sees.
+  const { x: ppx, y: ppy, size: pds } = parentBox
   const key = `${Math.round((ppx - px) * 2)}|${Math.round((ppy - py) * 2)}|${Math.round(drawSize * 2)}|${Math.round(pds * 2)}|${lean}|${item.flipX ? 1 : 0}|${parent.flipX ? 1 : 0}|${item.rotation || 0}|${parent.rotation || 0}|${parent.id}`
   let e = mountShadows.get(item.uid)
   if (!e) {

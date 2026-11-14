@@ -51,15 +51,19 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
         ? getSprite('bumblebee_millipede_curl')
         : getSprite(item.id as CatalogId)
 
-    const box = itemBox(R, item)
+    const box = itemBox(R, item, world.view)
     if (!box) return
     const { x: px, y: py, size: drawSize } = box
 
     ctx.save()
     ctx.translate(px, py)
     // Before the rotation, flip and sway: a shadow lies on its surface, it does not turn with the item.
-    if (item.parentUid) drawMountShadow(ctx, world, state, R, item, box)
-    else drawGroundShadow(ctx, world, state, R, item, def, box, 0)
+    if (item.parentUid) {
+      // Masked by the parent as drawn, so both boxes come from itemBox with the same view.
+      const parent = world.items.find((p) => p.uid === item.parentUid)
+      const parentBox = parent && itemBox(R, parent, world.view)
+      if (parent && parentBox) drawMountShadow(ctx, state, R, item, box, parent, parentBox)
+    } else drawGroundShadow(ctx, world, state, R, item, def, box, 0)
 
     // Subtle gentle sway for flora
     let sway = 0

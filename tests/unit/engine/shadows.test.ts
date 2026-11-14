@@ -7,6 +7,7 @@ import { computeVesselRect } from '@/engine/render/renderFrame'
 import {
   clearMountShadows,
   drawGroundShadow,
+  drawMountShadow,
   lightK,
   shadowSprite,
   silhouetteOf,
@@ -367,5 +368,60 @@ describe('silhouette shadows', () => {
     // The sprite goes back to full alpha
     const before = calls.slice(at, calls.indexOf(sprite)).filter((c) => c.name === 'globalAlpha=')
     expect(before.at(-1)!.args[0]).toBe(1)
+  })
+
+  /** The translate and blit that place the parent's sprite as the mask on the mount canvas. */
+  function maskPlacement(calls: Call[]) {
+    const from = calls.findIndex(
+      (c) => c.name === 'globalCompositeOperation=' && c.args[0] === 'destination-in',
+    )
+    const after = calls.slice(from)
+    return {
+      at: after.find((c) => c.name === 'translate')!.args as number[],
+      blit: after.find((c) => c.name === 'drawImage')!.args.slice(1) as number[],
+    }
+  }
+  /** Where the mask must land for a given item box and parent box (lamp off: no lean). */
+  function expectedMask(
+    box: { x: number; y: number; size: number },
+    pbox: { x: number; y: number; size: number },
+  ) {
+    const q = 192 / (box.size * 1.5)
+    return {
+      at: [96 + (pbox.x - box.x) * q, 96 + (pbox.y - box.y - box.size * 0.09) * q],
+      blit: [(-pbox.size * q) / 2, (-pbox.size * q) / 2, pbox.size * q, pbox.size * q],
+    }
+  }
+  const lampOff = () => ({ ...createDefaultState(), hasGrowLamp: false })
+
+  it('the mask is placed from the parent box it is given, not from the parent item', () => {
+    const made = tracingFactory(isMountCanvas)
+    const parent = rock()
+    const item = mounted()
+    const box = itemBox(R, item)!
+    const real = itemBox(R, parent)!
+    // A box that no formula on parent.x / parent.y could produce: shifted right and up, and larger
+    const pbox = { x: real.x + 13, y: real.y - 7, size: real.size * 1.1 }
+    const { ctx } = rawTrace()
+    drawMountShadow(ctx, lampOff(), R, item, box, parent, pbox)
+    const got = maskPlacement(made.find(isMountCanvas)!.calls!)
+    const want = expectedMask(box, pbox)
+    got.at.forEach((v, k) => expect(v).toBeCloseTo(want.at[k], 5))
+    got.blit.forEach((v, k) => expect(v).toBeCloseTo(want.blit[k], 5))
+  })
+
+  it('drawSpecimens masks with the parent itemBox under the world view', () => {
+    const made = tracingFactory(isMountCanvas)
+    const world = createWorld()
+    const parent = rock(0.55, 0.64)
+    const item = mounted(0.6, 0.5)
+    frame([parent, item], lampOff(), world)
+    const got = maskPlacement(made.find(isMountCanvas)!.calls!)
+    const want = expectedMask(itemBox(R, item, world.view)!, itemBox(R, parent, world.view)!)
+    got.at.forEach((v, k) => expect(v).toBeCloseTo(want.at[k], 5))
+    got.blit.forEach((v, k) => expect(v).toBeCloseTo(want.blit[k], 5))
+    // The parent sits left of and below the plant: the mask goes left and down (sign check)
+    expect(got.at[0]).toBeLessThan(96)
+    expect(got.at[1]).toBeGreaterThan(96)
   })
 })
