@@ -18,6 +18,7 @@ import { runCatchUpIfDue } from '@/engine/simulation/catchup'
 import { flushEnvSeed, flushTelemetry } from '@/engine/simulation/telemetry'
 import { tick } from '@/engine/simulation/tick'
 import { warmSpriteCache } from '@/engine/sprites/spriteCache'
+import { updateCamera } from '@/engine/view'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { play } from '@/hooks/useAudio'
 import { recordReport } from '@/store/awayFlow'
@@ -31,7 +32,13 @@ import {
   worldSnapshotAtom,
 } from '@/store/studio'
 import { showToast } from '@/store/toast'
-import { depthOnAtom, perfHudAtom, perfTextAtom, smoothDrawingAtom } from '@/store/view'
+import {
+  depthOnAtom,
+  perfHudAtom,
+  perfTextAtom,
+  smoothDrawingAtom,
+  zoomPctAtom,
+} from '@/store/view'
 
 /** Longest simulated step; a backgrounded tab resumes with a clamped dt instead of a huge jump. */
 const MAX_DT_MS = 100
@@ -123,6 +130,8 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
     let rafId = 0
     let last = 0
     const perf = createPerf()
+    let zoomPct = Math.round(world.view.cam.z * 100)
+    appStore.set(zoomPctAtom, zoomPct)
 
     const frame = (timestamp: number) => {
       rafId = requestAnimationFrame(frame)
@@ -149,11 +158,19 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       const H = canvas.height / dpr
       if (W <= 0 || H <= 0) return
 
+      const R = computeVesselRect(W, H, state.relaxMode, vesselKX(state.vessel))
+      const pointerLive = world.pointerInCanvas && !document.body.classList.contains('relax-idle')
+      updateCamera(world.view, world, state, R, { w: W, h: H }, dt, timestamp, pointerLive)
+      const pct = Math.round(world.view.cam.z * 100)
+      if (pct !== zoomPct) {
+        zoomPct = pct
+        appStore.set(zoomPctAtom, pct)
+      }
+
       ctx.save()
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.imageSmoothingEnabled = true
       ctx.imageSmoothingQuality = world.view.fastDraw ? 'low' : 'high'
-      const R = computeVesselRect(W, H, state.relaxMode, vesselKX(state.vessel))
       renderFrame(ctx, world, state, R, timestamp, { w: W, h: H })
       ctx.restore()
 

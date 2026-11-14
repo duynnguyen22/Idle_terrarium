@@ -400,7 +400,9 @@ describe('rectangular tanks', () => {
   it('drawSpecimens still draws every item with a context-less sprite factory', () => {
     const world = populatedWorld()
     const { ctx, calls } = makeRecordingContext()
-    expect(() => drawSpecimens(ctx, world, createDefaultState(), computeVesselRect(800, 600), 0)).not.toThrow()
+    expect(() =>
+      drawSpecimens(ctx, world, createDefaultState(), computeVesselRect(800, 600), 0),
+    ).not.toThrow()
     expect(calls.filter((c) => c === 'drawImage')).toHaveLength(ITEMS.length)
   })
 
@@ -492,5 +494,35 @@ describe('moss tufts', () => {
     const world = emptyWorld([{ x: 0.7, r: 0.5, w: 0.05, seed: 0.1 }])
     expect(ellipses(world, 'soil')).toBe(base + 1)
     expect(ellipses(world, 'water')).toBe(0)
+  })
+})
+
+describe('camera transform', () => {
+  it('renderFrame saves and restores the same number of times with a zoomed camera', () => {
+    const { ctx, calls } = makeRecordingContext()
+    const world = populatedWorld()
+    Object.assign(world.view.cam, { z: 2.5, u: 0.4, v: 0.6 })
+    const R = computeVesselRect(800, 600)
+    renderFrame(ctx, world, createDefaultState(), R, 1234, { w: 800, h: 600 })
+    expect(calls.filter((c) => c === 'scale').length).toBeGreaterThan(0)
+    expect(calls.filter((c) => c === 'save')).toHaveLength(
+      calls.filter((c) => c === 'restore').length,
+    )
+  })
+
+  it('the sky is filled before the camera transform and the base board after', () => {
+    const { ctx, calls } = makeRecordingContext()
+    const world = populatedWorld()
+    Object.assign(world.view.cam, { z: 2, u: 0.5, v: 0.5 })
+    const R = computeVesselRect(800, 600)
+    renderFrame(ctx, world, createDefaultState(), R, 1234, { w: 800, h: 600 })
+    const sky = calls.indexOf('fillRect')
+    const camera = calls.indexOf('translate')
+    const board = calls.indexOf('roundRect')
+    expect(sky).toBeGreaterThanOrEqual(0)
+    expect(sky).toBeLessThan(camera)
+    expect(camera).toBeLessThan(board)
+    // The camera is the first transform: translate, scale, translate, inside a save.
+    expect(calls.slice(camera - 1, camera + 3)).toEqual(['save', 'translate', 'scale', 'translate'])
   })
 })

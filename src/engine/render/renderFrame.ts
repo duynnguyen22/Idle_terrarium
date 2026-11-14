@@ -1,8 +1,9 @@
 import type { Rect } from '@/data/types'
 import type { StudioState } from '@/store/studio'
+import { applyCamera } from '../view'
 import type { EngineWorld } from '../world'
 import { getCustomBackdrop } from '@/lib/backdropPhoto'
-import { drawBackground } from './background'
+import { drawBaseBoard, drawSky } from './background'
 import { drawMiniatureBackdrop } from './backdrop'
 import { drawCondensation, drawMineralSpots } from './condensation'
 import { drawLid, drawPaludariumFrontFrame } from './frame'
@@ -33,8 +34,9 @@ export function computeVesselRect(
 }
 
 /**
- * Draws one frame. `view` is the CSS-pixel canvas size (for the sky backdrop); when omitted it is
+ * Draws one frame. `view` is the CSS-pixel canvas size (for the sky and the camera); when omitted it is
  * recovered from `R`, which is exact for rects produced by `computeVesselRect`.
+ * The sky is drawn flat; everything from the base board to the lid is drawn through `world.view.cam`.
  * The caller owns the DPR transform and save/restore around this call.
  */
 export function renderFrame(
@@ -47,8 +49,11 @@ export function renderFrame(
 ): void {
   const size = view ?? { w: (R.x + R.w / 2) * 2, h: (R.y + R.h / 2) * 2 }
 
-  // 1. Sky backdrop + studio base board
-  drawBackground(ctx, state, R, size)
+  // 1. Sky backdrop (not zoomed), then the camera for everything else, starting with the base board
+  drawSky(ctx, state, size)
+  ctx.save()
+  applyCamera(ctx, world.view.cam, size.w, size.h)
+  drawBaseBoard(ctx, R)
   // 2. Overhead gooseneck halo lamp
   drawLamp(ctx, world, state, R, timestamp)
 
@@ -82,4 +87,5 @@ export function renderFrame(
   drawVesselRim(ctx, world, state, R, timestamp)
   drawPaludariumFrontFrame(ctx, world, state, R, timestamp)
   drawLid(ctx, world, state, R, timestamp)
+  ctx.restore()
 }

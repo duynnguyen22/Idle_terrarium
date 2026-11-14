@@ -4,13 +4,20 @@ import { babyScale } from '../simulation/breed'
 import { sproutScale } from '../simulation/dayTick'
 import { gpuImage } from '../sprites/gpuImage'
 import { getSprite } from '../sprites/spriteCache'
+import type { ViewState } from '../view'
 import { normToPx, vesselMetrics, type RenderFn } from './metrics'
 
 /**
  * Pixel box of a placed item: centre and drawn size, with the sprout / baby scale applied.
- * Shared by the specimen pass and the mark rings so both agree on the item's extent.
+ * Shared by the specimen pass, the mark rings and the camera so all agree on the item's extent.
+ * `view` is accepted for the depth-plane shift; without it the box is the unshifted one.
  */
-export function itemBox(R: Rect, item: PlacedItem): { x: number; y: number; size: number } | null {
+export function itemBox(
+  R: Rect,
+  item: PlacedItem,
+  view?: ViewState,
+): { x: number; y: number; size: number } | null {
+  void view
   const def = findCatalogDef(item.id)
   if (!def) return null
   const { cy, r: Rad } = vesselMetrics(R)
@@ -89,7 +96,13 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
     }
 
     // Crisp 256x256 vector sprite
-    ctx.drawImage(gpuImage(sprite, world.view.fastDraw), -drawSize * 0.5, -drawSize * 0.5, drawSize, drawSize)
+    ctx.drawImage(
+      gpuImage(sprite, world.view.fastDraw),
+      -drawSize * 0.5,
+      -drawSize * 0.5,
+      drawSize,
+      drawSize,
+    )
 
     // Visual stage overlays for sprout & lush flora
     if (item.category === 'flora') {
