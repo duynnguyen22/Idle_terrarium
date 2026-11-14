@@ -598,4 +598,43 @@ describe('TerrariumCanvas gestures', () => {
     expect(world.draggingId).toBeNull()
     expect(fern.x).toBe(0.5)
   })
+  it('a right-button mouse press neither pans nor starts a drag', () => {
+    world.view.cam = { z: 2, u: 0.5, v: 0.5 }
+    world.view.camT = { z: 2, u: 0.5, v: 0.5 }
+    appStore.set(selectedIdAtom, 'someone')
+    render(<TerrariumCanvas />)
+
+    act(
+      () =>
+        void fireEvent.pointerDown(canvas(), {
+          pointerId: 1,
+          pointerType: 'mouse',
+          button: 2,
+          isPrimary: true,
+          clientX: 300,
+          clientY: 300,
+        }),
+    )
+    expect(appStore.get(selectedIdAtom)).toBe('someone')
+    expect(world.view.gesture).toBe(false)
+    expect(world.draggingId).toBeNull()
+
+    act(() => void fireEvent.pointerMove(window, { pointerId: 1, clientX: 400, clientY: 340 }))
+    expect(world.view.camT).toEqual({ z: 2, u: 0.5, v: 0.5 })
+  })
+
+  it('a stale pointer from a lost pointerup does not turn the next touch into a pinch', () => {
+    render(<TerrariumCanvas />)
+    const touch = { pointerType: 'touch', isPrimary: true }
+    act(
+      () =>
+        void fireEvent.pointerDown(canvas(), { ...touch, pointerId: 1, clientX: 300, clientY: 300 }),
+    )
+    // pointerup for pointer 1 never arrives; a new finger goes down as the primary pointer.
+    act(
+      () =>
+        void fireEvent.pointerDown(canvas(), { ...touch, pointerId: 2, clientX: 600, clientY: 300 }),
+    )
+    expect(world.view.gesture).toBe(false)
+  })
 })

@@ -232,11 +232,15 @@ export function TerrariumCanvas() {
   }, [])
 
   const onPointerDown = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    // Right and middle clicks open a menu or autoscroll; their pointerup may never reach the page.
+    if (e.pointerType === 'mouse' && e.button !== 0) return
     const world = tryGetWorld()
     if (!world) return
     const store = appStore.get(studioStateAtom)
     const ptrs = pointers.current
     const here = local(e.clientX, e.clientY)
+    // A new primary pointer starts a fresh gesture: drop entries left by a pointerup that never arrived.
+    if (e.isPrimary) ptrs.clear()
     ptrs.set(e.pointerId, here)
 
     // A second finger turns whatever the first was doing into a pinch: end it cleanly first, or the plant
