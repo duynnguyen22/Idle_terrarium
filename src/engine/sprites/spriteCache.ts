@@ -10,12 +10,16 @@ const defaultCreateCanvas: CreateCanvas = () => document.createElement('canvas')
 let createCanvas: CreateCanvas = defaultCreateCanvas
 const canvases = new Map<SpriteId, HTMLCanvasElement>()
 const dataUrls = new Map<CatalogId, string>()
+const sharpCanvases = new Map<SpriteId, HTMLCanvasElement>()
+let sharpFrame = -1
 
 /** Swap the canvas factory (tests) and clear all memoized sprites. Call with no argument to restore the default. */
 export function configureSpriteCache(factory: CreateCanvas = defaultCreateCanvas): void {
   createCanvas = factory
   canvases.clear()
   dataUrls.clear()
+  sharpCanvases.clear()
+  sharpFrame = -1
 }
 
 /** A blank canvas from the current factory (the one tests swap). */
@@ -33,6 +37,35 @@ export function getSprite(id: SpriteId): HTMLCanvasElement {
   const ctx = canvas.getContext('2d')
   if (ctx) drawSprite(ctx, id, SPRITE_SIZE)
   canvases.set(id, canvas)
+  return canvas
+}
+
+export const SHARP_SIZE = 512
+const SHARP_FROM_DEVICE_PX = 300
+const SHARP_CAP = 48
+
+/**
+ * The sprite to blit at `devicePx` device pixels: the 256 px `base` while small, a 512 px redraw once zoomed in.
+ * At most one redraw per `frame` (a counter, not time); until then `base` stands in. The 512 canvas is painted once
+ * at creation and never repainted, so gpuImage and silhouette caches may key on it.
+ */
+export function getSharpSprite(
+  id: SpriteId,
+  base: HTMLCanvasElement,
+  devicePx: number,
+  frame: number,
+): HTMLCanvasElement {
+  if (devicePx < SHARP_FROM_DEVICE_PX) return base
+  const cached = sharpCanvases.get(id)
+  if (cached) return cached
+  if (sharpFrame === frame) return base
+  const canvas = createScratchCanvas(SHARP_SIZE, SHARP_SIZE)
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return base
+  sharpFrame = frame
+  if (sharpCanvases.size > SHARP_CAP) sharpCanvases.clear()
+  drawSprite(ctx, id, SHARP_SIZE)
+  sharpCanvases.set(id, canvas)
   return canvas
 }
 

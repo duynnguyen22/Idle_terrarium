@@ -3,7 +3,8 @@ import type { PlacedItem, Rect } from '@/data/types'
 import { babyScale } from '../simulation/breed'
 import { sproutScale } from '../simulation/dayTick'
 import { gpuImage } from '../sprites/gpuImage'
-import { getSprite } from '../sprites/spriteCache'
+import type { SpriteId } from '../sprites/drawSprite'
+import { getSharpSprite, getSprite } from '../sprites/spriteCache'
 import type { ViewState } from '../view'
 import { hazedSprite, planeOf, planeShiftFor } from './depth'
 import { normToPx, vesselMetrics, type RenderFn } from './metrics'
@@ -115,9 +116,15 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
       ctx.fill()
     }
 
-    // Crisp 256x256 vector sprite, washed with the air colour when it stands further back
+    // Vector sprite (redrawn at 512 px when zoomed in), washed with the air colour when it stands further back
+    const dpr = typeof window === 'undefined' ? 1 : Math.min(window.devicePixelRatio || 1, 2)
+    const devicePx = drawSize * world.view.cam.z * dpr * world.view.renderScale
+    const spriteId = (
+      item.id === 'bumblebee_millipede' && item.aiState === 'hiding' ? 'bumblebee_millipede_curl' : item.id
+    ) as SpriteId
+    const crisp = getSharpSprite(spriteId, sprite, devicePx, world.frame)
     ctx.drawImage(
-      gpuImage(hazedSprite(sprite, plane, state.lighting, world.view.depthOn), world.view.fastDraw),
+      gpuImage(hazedSprite(crisp, plane, state.lighting, world.view.depthOn), world.view.fastDraw),
       -drawSize * 0.5,
       -drawSize * 0.5,
       drawSize,

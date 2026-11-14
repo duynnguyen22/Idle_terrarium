@@ -6,6 +6,7 @@ import { record } from '../helpers/recordingContext'
 import { drawSprite } from '@/engine/sprites/drawSprite'
 import {
   configureSpriteCache,
+  getSharpSprite,
   getSprite,
   getSpriteDataUrl,
   THUMB_SIZE,
@@ -172,5 +173,52 @@ describe('fauna sprites', () => {
       const fills = record((ctx) => all[id]?.(ctx)).calls.filter((c) => c.name === 'fill')
       expect(fills.length, id).toBeGreaterThan(3)
     }
+  })
+})
+
+describe('getSharpSprite', () => {
+  function countingFactory() {
+    const made: number[] = []
+    configureSpriteCache(() => {
+      const { canvas } = makeStubCanvas()
+      made.push(1)
+      return canvas
+    })
+    return made
+  }
+
+  it('returns the 256 sprite under 300 device px', () => {
+    const made = countingFactory()
+    const base = getSprite('quartz')
+    expect(getSharpSprite('quartz', base, 299, 1)).toBe(base)
+    expect(made).toHaveLength(1)
+  })
+
+  it('builds one 512 sprite per frame at most and reuses it afterwards', () => {
+    const made = countingFactory()
+    const qBase = getSprite('quartz')
+    const mBase = getSprite('moss_mound')
+    const sharp = getSharpSprite('quartz', qBase, 400, 5)
+    expect(sharp).not.toBe(qBase)
+    expect(sharp.width).toBe(512)
+    expect(sharp.height).toBe(512)
+    // A second id in the same frame waits for the next one.
+    expect(getSharpSprite('moss_mound', mBase, 400, 5)).toBe(mBase)
+    expect(made).toHaveLength(3)
+    // Cached ids are served at once, even in the same frame.
+    expect(getSharpSprite('quartz', qBase, 400, 5)).toBe(sharp)
+    const mSharp = getSharpSprite('moss_mound', mBase, 400, 6)
+    expect(mSharp).not.toBe(mBase)
+    expect(getSharpSprite('moss_mound', mBase, 400, 7)).toBe(mSharp)
+    expect(made).toHaveLength(4)
+  })
+
+  it('configureSpriteCache clears the 512 sprites', () => {
+    countingFactory()
+    const base = getSprite('quartz')
+    const first = getSharpSprite('quartz', base, 400, 1)
+    configureSpriteCache()
+    const second = getSharpSprite('quartz', getSprite('quartz'), 400, 1)
+    expect(second).not.toBe(first)
   })
 })
