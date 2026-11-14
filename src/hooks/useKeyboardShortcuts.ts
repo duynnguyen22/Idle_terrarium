@@ -17,8 +17,8 @@ function isEditable(target: EventTarget | null): boolean {
   )
 }
 
-/** F: zoom to the planted band of the current canvas (prototype camFramePlants). */
-function frameThePlants(relaxMode: boolean): void {
+/** F and the frame button: zoom to the planted band of the current canvas (prototype camFramePlants). */
+export function frameThePlants(relaxMode: boolean): void {
   const world = tryGetWorld()
   const size = world?.view.size
   if (!world || !size) return

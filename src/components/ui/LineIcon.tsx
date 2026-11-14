@@ -27,6 +27,10 @@ export const ICONS = {
   close: 'M6 6l12 12M18 6L6 18',
   check: 'M5 12.5l4.5 4.5L19 7.5',
   chevronUp: 'M6 15l6-6l6 6',
+  minus: 'M5 12h14',
+  plus: 'M5 12h14M12 5v14',
+  frame: 'M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4M9 15c0-3 1.5-5 3-5s3 2 3 5',
+  layers: 'M12 3l9 5l-9 5l-9-5zM3 12.5l9 5l9-5M3 17l9 5l9-5',
   eraser: 'M4 16l9-9l7 7l-6 6H8zM10 20h10',
 } as const
 

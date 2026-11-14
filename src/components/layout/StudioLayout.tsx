@@ -6,6 +6,7 @@ import { AwayCard } from '@/components/stage/AwayCard'
 import { CareToolbar } from '@/components/stage/CareToolbar'
 import { ItemInspector } from '@/components/stage/ItemInspector'
 import { PerfHud } from '@/components/stage/PerfHud'
+import { ViewControls } from '@/components/stage/ViewControls'
 import { TourCaption } from '@/components/stage/TourCaption'
 import { RelaxDock } from '@/components/stage/RelaxDock'
 import { Toaster } from '@/components/ui/sonner'
@@ -73,10 +74,11 @@ export function StudioLayout({ children }: { children: ReactNode }) {
             className="absolute inset-0 z-[35] bg-forest-night/40 lg:hidden"
           />
         )}
-        <main id="canvas-stage" className="relative flex-1 overflow-hidden bg-stage">
+        <main id="canvas-stage" className="@container relative flex-1 overflow-hidden bg-stage">
           {children}
           <LightingControls />
           <CareToolbar />
+          <ViewControls />
           <ItemInspector />
           <RelaxDock />
           <AwayCard />
