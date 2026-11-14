@@ -2,15 +2,13 @@ import type { Rect } from '@/data/types'
 import type { StudioState } from '@/store/studio'
 import { vesselMetrics } from './metrics'
 
-/** Dynamic sky backdrop plus the wooden studio base board. Needs the full canvas size for the sky. */
-export function drawBackground(
+/** Dynamic sky backdrop over the whole canvas. Drawn before the camera, so it is never zoomed. */
+export function drawSky(
   ctx: CanvasRenderingContext2D,
   state: StudioState,
-  R: Rect,
-  view: { w: number; h: number },
+  size: { w: number; h: number },
 ): void {
-  const { cx, cy, r, kx } = vesselMetrics(R)
-  const { w: W, h: H } = view
+  const { w: W, h: H } = size
 
   const bgGrad = ctx.createLinearGradient(0, 0, 0, H)
   if (state.lighting === 'night') {
@@ -30,8 +28,11 @@ export function drawBackground(
   }
   ctx.fillStyle = bgGrad
   ctx.fillRect(0, 0, W, H)
+}
 
-  // Wooden studio base board
+/** The wooden studio base board under the vessel. Drawn inside the camera. */
+export function drawBaseBoard(ctx: CanvasRenderingContext2D, R: Rect): void {
+  const { cx, cy, r, kx } = vesselMetrics(R)
   ctx.fillStyle = '#cbbba0'
   ctx.beginPath()
   ctx.roundRect(cx - r * 0.78 * kx, cy + r * 0.84, r * 1.56 * kx, r * 0.06, 6)

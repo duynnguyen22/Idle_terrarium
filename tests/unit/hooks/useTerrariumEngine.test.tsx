@@ -11,6 +11,7 @@ import { configureSpriteCache } from '@/engine/sprites/spriteCache'
 import * as catchup from '@/engine/simulation/catchup'
 import { createWorld } from '@/engine/world'
 import { useTerrariumEngine } from '@/hooks/useTerrariumEngine'
+import { registerTerrariumCanvas, setCanvasCssSize } from '@/lib/terrariumCanvas'
 import { applyGardenSnapshot, getGardenSnapshot } from '@/store/gardenSnapshot'
 import { account, journalAtom, patchAccountAtom, resetAccountAtom } from '@/store/account'
 import { appStore } from '@/store/appStore'
@@ -28,6 +29,7 @@ import {
   worldSnapshotAtom,
 } from '@/store/studio'
 import { telemetryAtom } from '@/store/telemetry'
+import { perfHudAtom, perfTextAtom, smoothDrawingAtom } from '@/store/view'
 import { makeRecordingContext } from '../helpers/recordingContext'
 
 vi.mock('@/engine/simulation/catchup', async (importOriginal) => {
@@ -91,6 +93,13 @@ function Harness() {
   return <canvas ref={ref} width={800} height={600} />
 }
 
+/** A canvas whose CSS size nobody has recorded yet: the browser's default 300 x 150 backing store. */
+function UnsizedHarness() {
+  const ref = useRef<HTMLCanvasElement>(null)
+  useTerrariumEngine(ref)
+  return <canvas ref={ref} />
+}
+
 describe('useTerrariumEngine', () => {
   let callbacks: Map<number, FrameRequestCallback>
   let nextId: number
@@ -126,24 +135,32 @@ describe('useTerrariumEngine', () => {
     configureSpriteCache(
       () => ({ width: 0, height: 0, getContext: () => null }) as unknown as HTMLCanvasElement,
     )
+    // What TerrariumCanvas's ResizeObserver records for Harness's 800 x 600 element.
+    setCanvasCssSize(800, 600)
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
     configureSpriteCache()
+    // Unregistering the canvas also forgets its CSS size.
+    registerTerrariumCanvas(null)
     appStore.set(resetAccountAtom)
   })
 
   it('starts exactly one loop, keeps it single across frames, and stops on unmount', () => {
     const { unmount } = render(<Harness />)
     expect(callbacks.size).toBe(1)
+    const clips = () => ctxCalls.filter((c) => c === 'clip').length
     runFrame(16)
+    const firstFrame = clips()
     runFrame(32)
     expect(callbacks.size).toBe(1)
-    // Two frames; each clips the vessel, plus the bank cut and gravel bed when there is a pool.
-    const clipsPerFrame = 1 + (hasPool(appStore.get(waterSplitAtom)) ? 2 : 0)
-    expect(ctxCalls.filter((c) => c === 'clip').length).toBe(2 * clipsPerFrame)
+    // Two frames; each clips the vessel, plus the bank cut and gravel bed when there is a pool,
+    // plus each ground shadow's own clips, so the second frame repeats the first.
+    const vesselClips = 1 + (hasPool(appStore.get(waterSplitAtom)) ? 2 : 0)
+    expect(firstFrame).toBeGreaterThanOrEqual(vesselClips)
+    expect(clips()).toBe(2 * firstFrame)
     unmount()
     expect(callbacks.size).toBe(0)
     expect(cancel).toHaveBeenCalled()
@@ -476,6 +493,106 @@ describe('useTerrariumEngine', () => {
     act(() => applyGardenSnapshot(staleGarden(0, 'fresh-fern'), appStore))
     expect(appStore.get(awayLogAtom)).toHaveLength(0)
     expect(appStore.get(awayIndexAtom)).toBeNull()
+    unmount()
+  })
+  it('holds the camera and drawing until the CSS size is recorded, so a desktop does not start zoomed', () => {
+    registerTerrariumCanvas(null)
+    const { container, unmount } = render(<UnsizedHarness />)
+    const canvas = container.querySelector('canvas')!
+    expect(canvas.width).toBe(300)
+    expect(canvas.height).toBe(150)
+    runFrame(16)
+    runFrame(32)
+    // The 300 x 150 default must not run the phone start (which would latch a close-up) or draw.
+    expect(getWorld().view.framedOnce).toBe(false)
+    expect(getWorld().view.size).toBeNull()
+    expect(ctxCalls.filter((c) => c === 'clip')).toHaveLength(0)
+    expect(canvas.width).toBe(300)
+
+    // The ResizeObserver records the element's size: a desktop canvas shows the whole tank.
+    setCanvasCssSize(1200, 800)
+    runFrame(48)
+    expect(getWorld().view.framedOnce).toBe(true)
+    expect(getWorld().view.size).toEqual({ w: 1200, h: 800 })
+    expect(getWorld().view.camT).toEqual({ z: 1, u: 0.5, v: 0.5 })
+    expect(canvas.width).toBe(1200)
+    expect(canvas.height).toBe(800)
+    expect(ctxCalls.filter((c) => c === 'clip').length).toBeGreaterThan(0)
+    unmount()
+  })
+
+  it('the backing store follows renderScale and the CSS size, and is not resized when neither changed', () => {
+    vi.stubGlobal('devicePixelRatio', 3)
+    const { container, unmount } = render(<Harness />)
+    const canvas = container.querySelector('canvas')!
+    const view = getWorld().view
+    let t = 0
+    runFrame((t += 16))
+    // DPR is capped at 2.
+    expect([canvas.width, canvas.height]).toEqual([1600, 1200])
+    expect(view.size).toEqual({ w: 800, h: 600 })
+
+    // Setting width or height clears the canvas, so an unchanged size must not be written again.
+    const setW = vi.spyOn(HTMLCanvasElement.prototype, 'width', 'set')
+    const setH = vi.spyOn(HTMLCanvasElement.prototype, 'height', 'set')
+    for (let i = 0; i < 5; i++) runFrame((t += 16))
+    expect(setW).not.toHaveBeenCalled()
+    expect(setH).not.toHaveBeenCalled()
+
+    // A lower drawing resolution shrinks the backing store, not the CSS size the frame lays out in.
+    view.renderScale = 0.72
+    runFrame((t += 16))
+    expect([canvas.width, canvas.height]).toEqual([1152, 864])
+    expect(view.size).toEqual({ w: 800, h: 600 })
+    expect(setW).toHaveBeenCalledTimes(1)
+
+    try {
+      // Smooth drawing off draws at full resolution.
+      appStore.set(smoothDrawingAtom, false)
+      runFrame((t += 16))
+      expect(view.renderScale).toBe(1)
+      expect([canvas.width, canvas.height]).toEqual([1600, 1200])
+    } finally {
+      appStore.set(smoothDrawingAtom, true)
+    }
+
+    // A new CSS size resizes the backing store and the layout.
+    setCanvasCssSize(1000, 500)
+    runFrame((t += 16))
+    expect([canvas.width, canvas.height]).toEqual([2000, 1000])
+    expect(view.size).toEqual({ w: 1000, h: 500 })
+    unmount()
+  })
+
+  it('the frame-rate readout shows the drawing resolution and smooth drawing the frame used', () => {
+    appStore.set(perfHudAtom, true)
+    const { unmount } = render(<Harness />)
+    const view = getWorld().view
+    let t = 0
+    const run = (n: number) => {
+      for (let i = 0; i < n; i++) runFrame((t += 16))
+    }
+    try {
+      run(40)
+      expect(appStore.get(perfTextAtom)).toBe(
+        '63 fps · slowest 16 ms · 800×600 · detail 100% · smooth on',
+      )
+      view.renderScale = 0.72
+      run(20)
+      expect(appStore.get(perfTextAtom)).toBe(
+        '63 fps · slowest 16 ms · 576×432 · detail 72% · smooth on',
+      )
+      appStore.set(smoothDrawingAtom, false)
+      run(20)
+      expect(view.fastDraw).toBe(false)
+      expect(appStore.get(perfTextAtom)).toBe(
+        '63 fps · slowest 16 ms · 800×600 · detail 100% · smooth off',
+      )
+    } finally {
+      appStore.set(smoothDrawingAtom, true)
+      appStore.set(perfHudAtom, false)
+      appStore.set(perfTextAtom, '')
+    }
     unmount()
   })
 })

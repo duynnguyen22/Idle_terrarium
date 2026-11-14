@@ -2,25 +2,38 @@ import { findCatalogDef, type CatalogId } from '@/data/catalog'
 import type { PlacedItem, Rect } from '@/data/types'
 import { babyScale } from '../simulation/breed'
 import { sproutScale } from '../simulation/dayTick'
-import { getSprite } from '../sprites/spriteCache'
+import { gpuImage } from '../sprites/gpuImage'
+import type { SpriteId } from '../sprites/drawSprite'
+import { getSharpSprite, getSprite } from '../sprites/spriteCache'
+import type { ViewState } from '../view'
+import { hazedSprite, planeOf, planeShiftFor } from './depth'
 import { normToPx, vesselMetrics, type RenderFn } from './metrics'
+import { drawGroundShadow, drawMountShadow, lightK, silhouetteOf } from './shadows'
 
 /**
  * Pixel box of a placed item: centre and drawn size, with the sprout / baby scale applied.
- * Shared by the specimen pass and the mark rings so both agree on the item's extent.
+ * Shared by the specimen pass, the mark rings and the camera so all agree on the item's extent.
+ * With `view` the box carries the item's depth-plane shift; `items` (the world's items) lets a mounted item
+ * take its parent's plane. Without `view` the box is the unshifted one, which hit testing uses.
  */
-export function itemBox(R: Rect, item: PlacedItem): { x: number; y: number; size: number } | null {
+export function itemBox(
+  R: Rect,
+  item: PlacedItem,
+  view?: ViewState,
+  items?: readonly PlacedItem[],
+): { x: number; y: number; size: number } | null {
   const def = findCatalogDef(item.id)
   if (!def) return null
   const { cy, r: Rad } = vesselMetrics(R)
+  const shift = view ? planeShiftFor(view, planeOf(item, items), Rad) : { x: 0, y: 0 }
   // Seedlings grow from 0.58 of their species size; young fauna from 0.55 of the adult's.
   let scale = item.scale || 1
   if (item.baby !== undefined) scale = babyScale(item, scale)
   else if (item.category === 'flora' && item.stage === 'sprout')
     scale = sproutScale(item, def.baseScale)
   return {
-    x: normToPx(R, item.x),
-    y: cy - Rad + item.y * (Rad * 2),
+    x: normToPx(R, item.x) + shift.x,
+    y: cy - Rad + item.y * (Rad * 2) + shift.y,
     size: Rad * 0.36 * scale,
   }
 }
@@ -32,6 +45,7 @@ export function itemBox(R: Rect, item: PlacedItem): { x: number; y: number; size
  */
 export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
   const sorted = [...world.items].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
+  const { r } = vesselMetrics(R)
 
   sorted.forEach((item) => {
     const def = findCatalogDef(item.id)
@@ -42,12 +56,24 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
         ? getSprite('bumblebee_millipede_curl')
         : getSprite(item.id as CatalogId)
 
-    const box = itemBox(R, item)
+    // The plane decides the parallax shift (already in the box) and the haze; a mount takes its parent's.
+    const plane = planeOf(item, world.items)
+    const box = itemBox(R, item, world.view, world.items)
     if (!box) return
     const { x: px, y: py, size: drawSize } = box
 
     ctx.save()
     ctx.translate(px, py)
+    // Before the rotation, flip and sway: a shadow lies on its surface, it does not turn with the item.
+    if (item.parentUid) {
+      // Masked by the parent as drawn, so both boxes come from itemBox with the same view.
+      const parent = world.items.find((p) => p.uid === item.parentUid)
+      const parentBox = parent && itemBox(R, parent, world.view, world.items)
+      if (parent && parentBox) drawMountShadow(ctx, state, R, item, box, parent, parentBox)
+    } else {
+      const shiftY = planeShiftFor(world.view, plane, r).y
+      drawGroundShadow(ctx, world, state, R, item, def, box, shiftY)
+    }
 
     // Subtle gentle sway for flora
     let sway = 0
@@ -62,14 +88,17 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
       const wobble = state.reducedMotion ? 0 : Math.sin(timestamp * 0.002 + item.x * 30) * 0.05
       ctx.rotate(-Math.PI / 2 + wobble)
       if (item.aiState === 'hiding') ctx.globalAlpha = 0.5
-    }
-
-    // Ground contact shadow
-    if (!climbing) {
-      ctx.fillStyle = 'rgba(15, 23, 18, 0.18)'
-      ctx.beginPath()
-      ctx.ellipse(0, drawSize * 0.24, drawSize * 0.28, drawSize * 0.07, 0, 0, Math.PI * 2)
-      ctx.fill()
+      // A climber on the pane barely shades the glass behind it
+      const ga = ctx.globalAlpha
+      ctx.globalAlpha = ga * 0.16 * lightK(state)
+      ctx.drawImage(
+        gpuImage(silhouetteOf(sprite), world.view.fastDraw),
+        -drawSize * 0.5 - drawSize * 0.03,
+        -drawSize * 0.5 + drawSize * 0.03,
+        drawSize,
+        drawSize,
+      )
+      ctx.globalAlpha = ga
     }
 
     // Night bioluminescence glow for crystals & lanterns
@@ -87,8 +116,22 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
       ctx.fill()
     }
 
-    // Crisp 256x256 vector sprite
-    ctx.drawImage(sprite, -drawSize * 0.5, -drawSize * 0.5, drawSize, drawSize)
+    // Vector sprite (redrawn at 512 px when zoomed in), washed with the air colour when it stands further back
+    const dpr = typeof window === 'undefined' ? 1 : Math.min(window.devicePixelRatio || 1, 2)
+    const devicePx = drawSize * world.view.cam.z * dpr * world.view.renderScale
+    const spriteId = (
+      item.id === 'bumblebee_millipede' && item.aiState === 'hiding'
+        ? 'bumblebee_millipede_curl'
+        : item.id
+    ) as SpriteId
+    const crisp = getSharpSprite(spriteId, sprite, devicePx, world.frame)
+    ctx.drawImage(
+      gpuImage(hazedSprite(crisp, plane, state.lighting, world.view.depthOn), world.view.fastDraw),
+      -drawSize * 0.5,
+      -drawSize * 0.5,
+      drawSize,
+      drawSize,
+    )
 
     // Visual stage overlays for sprout & lush flora
     if (item.category === 'flora') {

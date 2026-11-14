@@ -210,4 +210,22 @@ describe('GrowthBoard', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('No plants yet. Add some from the Flora tab.')).toBeInTheDocument()
   })
+
+  it('clicking a growth-board row focuses up to three animals of that species', () => {
+    const spy = vi.spyOn(performance, 'now').mockReturnValue(500)
+    world.items.push(
+      item('f1', 'springtails'),
+      item('f2', 'springtails'),
+      item('f3', 'springtails'),
+      item('f4', 'springtails'),
+    )
+    act(() => appStore.set(openGrowthBoardAtom))
+    render(<GrowthBoard />)
+    const row = screen.getByText(`${findCatalogDef('springtails')!.name} ×4`).closest('button')!
+    act(() => void fireEvent.mouseEnter(row))
+    expect(world.view.follow).toBeNull()
+    click(row)
+    expect(world.view.follow).toEqual({ uids: ['f1', 'f2', 'f3'], z: 2, until: 500 + 3200 })
+    spy.mockRestore()
+  })
 })

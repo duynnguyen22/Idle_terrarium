@@ -5,6 +5,8 @@ import { RightTelemetry } from '@/components/layout/RightTelemetry'
 import { TopNav } from '@/components/layout/TopNav'
 import { LightingControls } from '@/components/nav/LightingControls'
 import { GaugeBar } from '@/components/telemetry/GaugeBar'
+import { TerrariumCanvas } from '@/components/stage/TerrariumCanvas'
+import { computeVesselRect } from '@/engine/render/renderFrame'
 import { DEFAULT_ROOM } from '@/engine/room'
 import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { createWorld, type EngineWorld } from '@/engine/world'
@@ -20,6 +22,7 @@ import {
   dayCountAtom,
   hasLidAtom,
   patchStudioAtom,
+  selectedIdAtom,
   studioStateAtom,
   substratesAtom,
   worldSnapshotAtom,
@@ -501,5 +504,147 @@ describe('Toast', () => {
       vi.advanceTimersByTime(2201)
     })
     expect(appStore.get(toastAtom).visible).toBe(false)
+  })
+})
+
+describe('TerrariumCanvas gestures', () => {
+  const W = 1000
+  const H = 800
+
+  beforeEach(() => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      right: W,
+      bottom: H,
+      width: W,
+      height: H,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    } as DOMRect)
+    world.view.size = { w: W, h: H }
+    world.view.framedOnce = true
+  })
+
+  afterEach(() => vi.restoreAllMocks())
+
+  const canvas = () => screen.getByRole('application', { name: 'Terrarium canvas' })
+
+  it('a press on empty space at 200 % pans instead of only clearing the selection', () => {
+    world.view.cam = { z: 2, u: 0.5, v: 0.5 }
+    world.view.camT = { z: 2, u: 0.5, v: 0.5 }
+    appStore.set(selectedIdAtom, 'someone')
+    render(<TerrariumCanvas />)
+
+    act(() => void fireEvent.pointerDown(canvas(), { pointerId: 1, clientX: 300, clientY: 300 }))
+    expect(appStore.get(selectedIdAtom)).toBeNull()
+    expect(canvas().dataset.cursor).toBe('grabbing')
+    expect(world.view.gesture).toBe(true)
+
+    act(() => void fireEvent.pointerMove(window, { pointerId: 1, clientX: 400, clientY: 340 }))
+    expect(world.view.camT.u).toBeCloseTo(0.5 - 100 / 2 / W)
+    expect(world.view.camT.v).toBeCloseTo(0.5 - 40 / 2 / H)
+    expect(world.view.cam).toEqual(world.view.camT)
+
+    act(() => void fireEvent.pointerUp(window, { pointerId: 1, clientX: 400, clientY: 340 }))
+    expect(world.view.gesture).toBe(false)
+    expect(canvas().dataset.cursor).toBe('grab')
+    // Released: further moves leave the camera alone.
+    act(() => void fireEvent.pointerMove(window, { pointerId: 1, clientX: 600, clientY: 600 }))
+    expect(world.view.camT.u).toBeCloseTo(0.45)
+  })
+
+  it('a second pointer ends the drag and starts a pinch', () => {
+    const fern: PlacedItem = {
+      ...item('f1', 'flora'),
+      id: 'peacock_fern',
+      x: 0.5,
+      y: 0.6,
+      stage: 'lush',
+    }
+    world.items = [fern]
+    const R = computeVesselRect(W, H)
+    const sx = R.x + 0.5 * R.w
+    const sy = R.y + 0.6 * R.h
+    render(<TerrariumCanvas />)
+
+    act(() => void fireEvent.pointerDown(canvas(), { pointerId: 1, clientX: sx, clientY: sy }))
+    expect(world.draggingId).toBe('f1')
+
+    act(
+      () => void fireEvent.pointerDown(canvas(), { pointerId: 2, clientX: sx + 100, clientY: sy }),
+    )
+    expect(world.draggingId).toBeNull()
+    expect(world.isMisting).toBe(false)
+    expect(world.isPouring).toBe(false)
+    expect(world.view.gesture).toBe(true)
+
+    // Spreading the fingers to twice the distance doubles the zoom; the plant stays put.
+    act(() => void fireEvent.pointerMove(window, { pointerId: 2, clientX: sx + 200, clientY: sy }))
+    expect(world.view.cam.z).toBeCloseTo(2)
+    expect(fern.x).toBe(0.5)
+    expect(fern.y).toBe(0.6)
+
+    // Lifting one finger: no pan, no drag, no selection change from the finger left down.
+    act(() => void fireEvent.pointerUp(window, { pointerId: 2, clientX: sx + 200, clientY: sy }))
+    expect(world.view.gesture).toBe(false)
+    const cam = { ...world.view.camT }
+    act(
+      () =>
+        void fireEvent.pointerMove(window, { pointerId: 1, clientX: sx - 80, clientY: sy + 40 }),
+    )
+    expect(world.view.camT).toEqual(cam)
+    expect(world.draggingId).toBeNull()
+    expect(fern.x).toBe(0.5)
+  })
+  it('a right-button mouse press neither pans nor starts a drag', () => {
+    world.view.cam = { z: 2, u: 0.5, v: 0.5 }
+    world.view.camT = { z: 2, u: 0.5, v: 0.5 }
+    appStore.set(selectedIdAtom, 'someone')
+    render(<TerrariumCanvas />)
+
+    act(
+      () =>
+        void fireEvent.pointerDown(canvas(), {
+          pointerId: 1,
+          pointerType: 'mouse',
+          button: 2,
+          isPrimary: true,
+          clientX: 300,
+          clientY: 300,
+        }),
+    )
+    expect(appStore.get(selectedIdAtom)).toBe('someone')
+    expect(world.view.gesture).toBe(false)
+    expect(world.draggingId).toBeNull()
+
+    act(() => void fireEvent.pointerMove(window, { pointerId: 1, clientX: 400, clientY: 340 }))
+    expect(world.view.camT).toEqual({ z: 2, u: 0.5, v: 0.5 })
+  })
+
+  it('a stale pointer from a lost pointerup does not turn the next touch into a pinch', () => {
+    render(<TerrariumCanvas />)
+    const touch = { pointerType: 'touch', isPrimary: true }
+    act(
+      () =>
+        void fireEvent.pointerDown(canvas(), {
+          ...touch,
+          pointerId: 1,
+          clientX: 300,
+          clientY: 300,
+        }),
+    )
+    // pointerup for pointer 1 never arrives; a new finger goes down as the primary pointer.
+    act(
+      () =>
+        void fireEvent.pointerDown(canvas(), {
+          ...touch,
+          pointerId: 2,
+          clientX: 600,
+          clientY: 300,
+        }),
+    )
+    expect(world.view.gesture).toBe(false)
   })
 })

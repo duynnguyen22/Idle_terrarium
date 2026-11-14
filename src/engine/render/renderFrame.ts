@@ -1,12 +1,15 @@
 import type { Rect } from '@/data/types'
 import type { StudioState } from '@/store/studio'
+import { applyCamera } from '../view'
 import type { EngineWorld } from '../world'
 import { getCustomBackdrop } from '@/lib/backdropPhoto'
-import { drawBackground } from './background'
+import { drawBaseBoard, drawSky } from './background'
 import { drawMiniatureBackdrop } from './backdrop'
 import { drawCondensation, drawMineralSpots } from './condensation'
+import { drawGlassDepth, planeShiftFor } from './depth'
 import { drawLid, drawPaludariumFrontFrame } from './frame'
 import { drawLamp } from './lamp'
+import { vesselMetrics } from './metrics'
 import { drawMist } from './mist'
 import { drawParticles } from './particles'
 import { drawPouring } from './pouring'
@@ -33,8 +36,9 @@ export function computeVesselRect(
 }
 
 /**
- * Draws one frame. `view` is the CSS-pixel canvas size (for the sky backdrop); when omitted it is
+ * Draws one frame. `view` is the CSS-pixel canvas size (for the sky and the camera); when omitted it is
  * recovered from `R`, which is exact for rects produced by `computeVesselRect`.
+ * The sky is drawn flat; everything from the base board to the lid is drawn through `world.view.cam`.
  * The caller owns the DPR transform and save/restore around this call.
  */
 export function renderFrame(
@@ -47,16 +51,29 @@ export function renderFrame(
 ): void {
   const size = view ?? { w: (R.x + R.w / 2) * 2, h: (R.y + R.h / 2) * 2 }
 
-  // 1. Sky backdrop + studio base board
-  drawBackground(ctx, state, R, size)
+  // 1. Sky backdrop (not zoomed), then the camera for everything else, starting with the base board
+  drawSky(ctx, state, size)
+  ctx.save()
+  applyCamera(ctx, world.view.cam, size.w, size.h)
+  drawBaseBoard(ctx, R)
   // 2. Overhead gooseneck halo lamp
   drawLamp(ctx, world, state, R, timestamp)
 
   // 3. Everything inside the glass is clipped to the vessel path
   ctx.save()
   beginVesselClip(ctx, world, state, R, timestamp)
-  // 3A. Painted miniature landscape on the back glass, then the lamp's light cone over it
-  drawMiniatureBackdrop(ctx, state, R, getCustomBackdrop())
+  // 3A. Painted miniature landscape on the back glass, then the lamp's light cone over it. The back glass is
+  // the furthest plane: with depth on it shifts most, and is drawn a touch larger so no edge shows.
+  if (world.view.depthOn) {
+    const { cx, cy, r } = vesselMetrics(R)
+    const bs = planeShiftFor(world.view, 2, r)
+    ctx.save()
+    ctx.translate(cx + bs.x * 1.4, cy + bs.y * 1.4)
+    ctx.scale(1.05, 1.05)
+    ctx.translate(-cx, -cy)
+    drawMiniatureBackdrop(ctx, state, R, getCustomBackdrop())
+    ctx.restore()
+  } else drawMiniatureBackdrop(ctx, state, R, getCustomBackdrop())
   drawLampCone(ctx, world, state, R, timestamp)
   // 4. Land strata, pool gravel bed, bank, surface grains, moss & mold
   drawSubstrates(ctx, world, state, R, timestamp, 'soil')
@@ -78,8 +95,10 @@ export function renderFrame(
   drawMineralSpots(ctx, world, state, R, timestamp)
   ctx.restore()
 
-  // 8. Glass rim, paludarium front frame, cork lid
+  // 8. Glass rim, paludarium front frame, the pane's lit edge and reflection (depth on), cork lid
   drawVesselRim(ctx, world, state, R, timestamp)
   drawPaludariumFrontFrame(ctx, world, state, R, timestamp)
+  drawGlassDepth(ctx, state, R, world.view.depthOn)
   drawLid(ctx, world, state, R, timestamp)
+  ctx.restore()
 }

@@ -283,4 +283,16 @@ describe('AwayCard', () => {
     })
     expect(appStore.get(relaxModeAtom)).toBe(true)
   })
+
+  it('clicking an away-card line focuses the item; hovering does not move the camera', () => {
+    const spy = vi.spyOn(performance, 'now').mockReturnValue(1000)
+    open([full()])
+    render(<AwayCard />)
+    const line = screen.getByText('The rose opened pink flowers.').closest('button')!
+    act(() => void fireEvent.mouseEnter(line))
+    expect(world.view.follow).toBeNull()
+    click(line)
+    expect(world.view.follow).toEqual({ uids: ['a'], z: 2, until: 1000 + 3200 })
+    spy.mockRestore()
+  })
 })

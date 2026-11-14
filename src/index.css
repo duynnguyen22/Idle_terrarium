@@ -222,6 +222,14 @@
   body.relax-idle:has(#relax-dock[data-menu-open]) {
     cursor: auto !important;
   }
+  /* The view controls stay in relax mode (top right) and fade with the dock when the pointer rests. */
+  #view-ctl {
+    transition: opacity 0.5s ease;
+  }
+  body.relax-idle #view-ctl {
+    opacity: 0;
+    pointer-events: none;
+  }
   body.relax-idle {
     cursor: none !important;
   }

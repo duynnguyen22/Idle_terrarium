@@ -99,4 +99,18 @@ describe('world persistence', () => {
     expect(w.items[0]!.life?.cyc).toBeGreaterThanOrEqual(0)
     expect(w.items[0]!.life?.cyc).toBeLessThan(0.45)
   })
+
+  it('snapshotWorld leaves view out and restoreWorld keeps the current view', () => {
+    const w = createWorld()
+    const view = w.view
+    view.fastDraw = false
+    view.depthOn = false
+    view.cam.z = 2.5
+    const snap = snapshotWorld(w)
+    expect(snap).not.toHaveProperty('view')
+    restoreWorld(w, snap)
+    expect(w.view).toBe(view)
+    expect(w.view).toMatchObject({ depthOn: false, fastDraw: false, renderScale: 1 })
+    expect(w.view.cam.z).toBe(2.5)
+  })
 })

@@ -11,7 +11,7 @@ export const drawMarks: RenderFn = (ctx, world, _state, R, timestamp) => {
   const ring = (uid: string, style: () => void) => {
     const item = world.items.find((i) => i.uid === uid)
     if (!item) return
-    const box = itemBox(R, item)
+    const box = itemBox(R, item, world.view, world.items)
     if (!box) return
     ctx.save()
     style()

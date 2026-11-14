@@ -2,20 +2,28 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { VESSELS, VESSELS_BY_ID, vesselKX, type VesselId } from '@/data/vessels'
 import { hasPool } from '@/engine/geometry'
 import { drawCondensation, drawMineralSpots } from '@/engine/render/condensation'
+import { getCustomBackdrop } from '@/lib/backdropPhoto'
+import { drawBaseBoard, drawSky } from '@/engine/render/background'
+import { drawMiniatureBackdrop } from '@/engine/render/backdrop'
 import { drawLid, drawPaludariumFrontFrame } from '@/engine/render/frame'
+import { drawLamp } from '@/engine/render/lamp'
+import { drawMist } from '@/engine/render/mist'
+import { drawParticles } from '@/engine/render/particles'
+import { drawPouring } from '@/engine/render/pouring'
+import { applyCamera } from '@/engine/view'
 import { vesselMetrics } from '@/engine/render/metrics'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
 import { drawMarks } from '@/engine/render/marks'
 import { setRings, pingItem, activePings, clearRings } from '@/engine/marks'
 import { drawSpecimens } from '@/engine/render/specimens'
 import { drawSubstrates } from '@/engine/render/substrates'
-import { beginVesselClip } from '@/engine/render/vessel'
+import { beginVesselClip, drawLampCone, drawVesselRim } from '@/engine/render/vessel'
 import { drawWater, rippleAmplitude } from '@/engine/render/water'
 import { configureSpriteCache } from '@/engine/sprites/spriteCache'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { createDefaultState, type StudioState } from '@/store/studio'
 import type { PlacedItem } from '@/data/types'
-import { makeRecordingContext, record } from '../helpers/recordingContext'
+import { makeRecordingContext, makeTraceContext, record } from '../helpers/recordingContext'
 
 const base = { scale: 1, rotation: 0, flipX: false, x: 0.5, y: 0.6 }
 const ITEMS: PlacedItem[] = [
@@ -48,8 +56,12 @@ function populatedWorld(): EngineWorld {
   return world
 }
 
-/** Vessel clip, plus (with a pool) the land-strata bank cut and the pool gravel-bed clip. */
-const expectedClips = (s: StudioState) => 1 + (hasPool(s.waterSplit) ? 2 : 0)
+/**
+ * Vessel clip, plus the glass edge's clip (depth on, the default), plus (with a pool) the land-strata bank cut and the pool gravel-bed clip, plus each
+ * item's ground shadow: the half on the ground, and (with a pool) the cut at the bank.
+ */
+const expectedClips = (s: StudioState) =>
+  2 + (hasPool(s.waterSplit) ? 2 : 0) + ITEMS.length * (hasPool(s.waterSplit) ? 2 : 1)
 
 beforeEach(() => {
   configureSpriteCache(
@@ -66,7 +78,7 @@ describe('computeVesselRect', () => {
 })
 
 describe('renderFrame', () => {
-  it('draws one of each item category: vessel (+ pool) clips, one drawImage per item', () => {
+  it('draws one of each item category: vessel (+ pool) clips, one drawImage per item and its shadow', () => {
     const { ctx, calls } = makeRecordingContext()
     const R = computeVesselRect(800, 600)
     const state = createDefaultState()
@@ -74,7 +86,8 @@ describe('renderFrame', () => {
       renderFrame(ctx, populatedWorld(), state, R, 1234, { w: 800, h: 600 }),
     ).not.toThrow()
     expect(calls.filter((c) => c === 'clip')).toHaveLength(expectedClips(state))
-    expect(calls.filter((c) => c === 'drawImage')).toHaveLength(ITEMS.length)
+    // Every item stands lifted above the soil here (lift ≈ 0.48), so its shadow has no darker core.
+    expect(calls.filter((c) => c === 'drawImage')).toHaveLength(ITEMS.length * 2)
     expect(calls.filter((c) => c === 'save')).toHaveLength(
       calls.filter((c) => c === 'restore').length,
     )
@@ -104,6 +117,113 @@ describe('renderFrame', () => {
     expect(pouring.calls.filter((c) => c === 'roundRect').length).toBeGreaterThan(
       idle.calls.filter((c) => c === 'roundRect').length,
     )
+  })
+})
+
+describe('depth off', () => {
+  const b = { scale: 1, rotation: 0, flipX: false }
+  const SCENE: PlacedItem[] = [
+    { ...b, uid: 'w', id: 'moss_wall_cliff', category: 'hardscape', x: 0.6, y: 0.5, zIndex: 1 },
+    {
+      ...b,
+      uid: 'wm',
+      id: 'peacock_fern',
+      category: 'flora',
+      x: 0.62,
+      y: 0.4,
+      zIndex: 2,
+      parentUid: 'w',
+      stage: 'mature',
+    },
+    {
+      ...b,
+      uid: 'r',
+      id: 'golden_river_boulders',
+      category: 'hardscape',
+      x: 0.3,
+      y: 0.7,
+      zIndex: 3,
+    },
+    {
+      ...b,
+      uid: 'rm',
+      id: 'peacock_fern',
+      category: 'flora',
+      x: 0.3,
+      y: 0.62,
+      zIndex: 4,
+      parentUid: 'r',
+      stage: 'lush',
+    },
+    {
+      ...b,
+      uid: 'f',
+      id: 'peacock_fern',
+      category: 'flora',
+      x: 0.5,
+      y: 0.75,
+      zIndex: 5,
+      stage: 'sprout',
+    },
+    { ...b, uid: 'c', id: 'medaka_fish', category: 'fauna', x: 0.8, y: 0.8, zIndex: 6 },
+  ]
+
+  /** renderFrame as it was before depth planes: the same steps in the same order, nothing added. */
+  function flatFrame(
+    ctx: CanvasRenderingContext2D,
+    world: EngineWorld,
+    state: StudioState,
+    R: ReturnType<typeof computeVesselRect>,
+    t: number,
+    size: { w: number; h: number },
+  ) {
+    drawSky(ctx, state, size)
+    ctx.save()
+    applyCamera(ctx, world.view.cam, size.w, size.h)
+    drawBaseBoard(ctx, R)
+    drawLamp(ctx, world, state, R, t)
+    ctx.save()
+    beginVesselClip(ctx, world, state, R, t)
+    drawMiniatureBackdrop(ctx, state, R, getCustomBackdrop())
+    drawLampCone(ctx, world, state, R, t)
+    drawSubstrates(ctx, world, state, R, t, 'soil')
+    drawSpecimens(ctx, world, state, R, t)
+    drawMarks(ctx, world, state, R, t)
+    drawSubstrates(ctx, world, state, R, t, 'water')
+    drawPouring(ctx, world, state, R, t)
+    drawMist(ctx, world, state, R, t)
+    drawParticles(ctx, world, state, R, t)
+    drawCondensation(ctx, world, state, R, t)
+    drawMineralSpots(ctx, world, state, R, t)
+    ctx.restore()
+    drawVesselRim(ctx, world, state, R, t)
+    drawPaludariumFrontFrame(ctx, world, state, R, t)
+    drawLid(ctx, world, state, R, t)
+    ctx.restore()
+  }
+
+  it('with depth off renderFrame draws exactly what it drew before this task', () => {
+    const size = { w: 800, h: 600 }
+    const R = computeVesselRect(800, 600)
+    for (const vessel of ['wardian', 'paludarium_tank', 'globe'] as const)
+      for (const lighting of ['sunlight', 'night'] as const) {
+        const scene = () => {
+          const world = createWorld()
+          world.items = structuredClone(SCENE)
+          world.view.depthOn = false
+          // A parallax left over from before the toggle must not move anything
+          world.view.par = { x: 1.2, y: -0.8 }
+          setRings(world, ['r', 'wm'])
+          return world
+        }
+        const state: StudioState = { ...createDefaultState(), vessel, lighting, selectedId: 'rm' }
+        const got = makeTraceContext()
+        renderFrame(got.ctx, scene(), state, R, 1234, size)
+        const want = makeTraceContext()
+        flatFrame(want.ctx, scene(), state, R, 1234, size)
+        expect(got.trace.length).toBeGreaterThan(100)
+        expect(got.trace).toEqual(want.trace)
+      }
   })
 })
 
@@ -397,6 +517,41 @@ describe('rectangular tanks', () => {
     expect(rails('rimless_landscape').rail).toHaveLength(0)
   })
 
+  it('drawSpecimens still draws every item with a context-less sprite factory', () => {
+    const world = populatedWorld()
+    const { ctx, calls } = makeRecordingContext()
+    expect(() =>
+      drawSpecimens(ctx, world, createDefaultState(), computeVesselRect(800, 600), 0),
+    ).not.toThrow()
+    // Each item and its ground shadow
+    expect(calls.filter((c) => c === 'drawImage')).toHaveLength(ITEMS.length * 2)
+  })
+
+  it('drawSpecimens draws no ellipse for the contact shadow any more', () => {
+    const world = createWorld()
+    world.items = [{ ...structuredClone(ITEMS[0]), stage: 'mature' }]
+    const { ctx, calls } = makeRecordingContext()
+    drawSpecimens(ctx, world, createDefaultState(), computeVesselRect(800, 600), 0)
+    expect(calls.filter((c) => c === 'ellipse')).toHaveLength(0)
+  })
+
+  it('the shadow is drawn before the item rotation', () => {
+    const world = createWorld()
+    world.items = [{ ...structuredClone(ITEMS[0]), stage: 'mature', rotation: 30 }]
+    const { ctx, calls } = argsContext()
+    const state = { ...createDefaultState(), reducedMotion: true }
+    drawSpecimens(ctx, world, state, computeVesselRect(800, 600), 0)
+    const turn = calls.findIndex(
+      (c) => c.name === 'rotate' && Math.abs(c.args[0] - Math.PI / 6) < 1e-9,
+    )
+    const blits = calls.flatMap((c, i) => (c.name === 'drawImage' ? [i] : []))
+    expect(turn).toBeGreaterThan(0)
+    // The ground shadow comes before the item's own rotation, the sprite after it.
+    expect(blits.length).toBeGreaterThanOrEqual(2)
+    expect(blits[0]).toBeLessThan(turn)
+    expect(blits[blits.length - 1]).toBeGreaterThan(turn)
+  })
+
   it('places a specimen across the full scaled width', () => {
     const R = computeVesselRect(800, 600, false, 2)
     const world = createWorld()
@@ -485,5 +640,35 @@ describe('moss tufts', () => {
     const world = emptyWorld([{ x: 0.7, r: 0.5, w: 0.05, seed: 0.1 }])
     expect(ellipses(world, 'soil')).toBe(base + 1)
     expect(ellipses(world, 'water')).toBe(0)
+  })
+})
+
+describe('camera transform', () => {
+  it('renderFrame saves and restores the same number of times with a zoomed camera', () => {
+    const { ctx, calls } = makeRecordingContext()
+    const world = populatedWorld()
+    Object.assign(world.view.cam, { z: 2.5, u: 0.4, v: 0.6 })
+    const R = computeVesselRect(800, 600)
+    renderFrame(ctx, world, createDefaultState(), R, 1234, { w: 800, h: 600 })
+    expect(calls.filter((c) => c === 'scale').length).toBeGreaterThan(0)
+    expect(calls.filter((c) => c === 'save')).toHaveLength(
+      calls.filter((c) => c === 'restore').length,
+    )
+  })
+
+  it('the sky is filled before the camera transform and the base board after', () => {
+    const { ctx, calls } = makeRecordingContext()
+    const world = populatedWorld()
+    Object.assign(world.view.cam, { z: 2, u: 0.5, v: 0.5 })
+    const R = computeVesselRect(800, 600)
+    renderFrame(ctx, world, createDefaultState(), R, 1234, { w: 800, h: 600 })
+    const sky = calls.indexOf('fillRect')
+    const camera = calls.indexOf('translate')
+    const board = calls.indexOf('roundRect')
+    expect(sky).toBeGreaterThanOrEqual(0)
+    expect(sky).toBeLessThan(camera)
+    expect(camera).toBeLessThan(board)
+    // The camera is the first transform: translate, scale, translate, inside a save.
+    expect(calls.slice(camera - 1, camera + 3)).toEqual(['save', 'translate', 'scale', 'translate'])
   })
 })

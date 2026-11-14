@@ -41,6 +41,11 @@ export function getDividerNormX(waterSplit: number): number {
   return 0.15 + 0.7 * Math.min(0.6, waterSplit || 0)
 }
 
+/** Left of the middle of the bank, in the pool (prototype isInPool). False when there is no pool. */
+export function isInPool(x: number, waterSplit: number): boolean {
+  return hasPool(waterSplit) && x < getDividerNormX(waterSplit) - BANK_W * 0.5
+}
+
 export function getPoolBedNormY(substrates: Partial<SubstrateDepths>): number {
   return 0.92 - Math.max(2, substrates.rivergravel || 0) * MM_TO_NORM
 }

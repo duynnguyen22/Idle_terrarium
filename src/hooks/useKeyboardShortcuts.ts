@@ -1,7 +1,11 @@
 import { useEffect } from 'react'
+import { vesselKX } from '@/data/vessels'
+import { tryGetWorld } from '@/engine/engineBridge'
+import { computeVesselRect } from '@/engine/render/renderFrame'
+import { camHome, framePlants } from '@/engine/view'
 import { startAudioFromGesture } from '@/hooks/useAudio'
 import { appStore } from '@/store/appStore'
-import { relaxModeAtom, selectedIdAtom } from '@/store/studio'
+import { relaxModeAtom, selectedIdAtom, vesselAtom } from '@/store/studio'
 
 function isEditable(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -13,7 +17,19 @@ function isEditable(target: EventTarget | null): boolean {
   )
 }
 
-/** R toggles relax mode; Escape leaves relax mode, otherwise clears the selection. Ignored while typing. */
+/** F and the frame button: zoom to the planted band of the current canvas (prototype camFramePlants). */
+export function frameThePlants(relaxMode: boolean): void {
+  const world = tryGetWorld()
+  const size = world?.view.size
+  if (!world || !size) return
+  const R = computeVesselRect(size.w, size.h, relaxMode, vesselKX(appStore.get(vesselAtom)))
+  framePlants(world.view, world, R)
+}
+
+/**
+ * R toggles relax mode; Escape leaves relax mode, otherwise clears the selection; F frames the plants and 0
+ * shows the whole tank. Ignored while typing.
+ */
 export function useKeyboardShortcuts(): void {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -26,6 +42,11 @@ export function useKeyboardShortcuts(): void {
       } else if (e.key === 'Escape') {
         if (relaxMode) appStore.set(relaxModeAtom, false)
         else if (appStore.get(selectedIdAtom) !== null) appStore.set(selectedIdAtom, null)
+      } else if (e.key === 'f' || e.key === 'F') {
+        frameThePlants(relaxMode)
+      } else if (e.key === '0') {
+        const world = tryGetWorld()
+        if (world) camHome(world.view)
       }
     }
     window.addEventListener('keydown', onKeyDown)

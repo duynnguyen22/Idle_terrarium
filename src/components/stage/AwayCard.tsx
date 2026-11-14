@@ -5,6 +5,7 @@ import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import { tryGetWorld } from '@/engine/engineBridge'
 import { clearRings, pingItem, PING_MS, setRings } from '@/engine/marks'
+import { focusOn } from '@/engine/view'
 import { paceMs } from '@/engine/simulation/pace'
 import {
   dotColour,
@@ -18,6 +19,12 @@ import { startEveningVisit } from '@/store/awayFlow'
 import { appStore } from '@/store/appStore'
 import { awayIndexAtom } from '@/store/overlay'
 import { awayLogAtom, paceAtom, relaxModeAtom, selectedIdAtom } from '@/store/studio'
+
+/** A click's close-up: the camera eases to the item for 3.2 s, then returns. */
+function closeUp(uids: string[]): void {
+  const world = tryGetWorld()
+  if (world) focusOn(world.view, uids, 2, 3200, performance.now())
+}
 
 function tankSpan(tankHours: number): string {
   const days = tankHours / 24
@@ -100,7 +107,10 @@ export function AwayCard() {
     const world = tryGetWorld()
     if (world) pingItem(world, uid, PING_MS)
   }
-  const select = (uid: string) => appStore.set(selectedIdAtom, uid)
+  const select = (uid: string) => {
+    appStore.set(selectedIdAtom, uid)
+    closeUp([uid])
+  }
   const msPerDay = paceMs(pace)
   const empty = report.items.length === 0 && report.rest.length === 0
   const here = new Set(tryGetWorld()?.items.map((i) => i.uid))

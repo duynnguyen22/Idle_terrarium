@@ -1,13 +1,12 @@
 import { LAND_LAYER_IDS, SUBSTRATE_LAYERS } from '@/data/substrates'
 import type { StudioState } from '@/store/studio'
 import {
-  BANK_W,
   CONTOUR_X_MAX,
   CONTOUR_X_MIN,
-  getDividerNormX,
   getSoilSurfaceNormalizedY,
   getWaterTopNormY,
   hasPool,
+  isInPool,
 } from '../geometry'
 import type { EngineWorld, WorldEntity } from '../world'
 import { frameScale, type Rng } from './constants'
@@ -101,7 +100,7 @@ export function stepPourParticles(
       waterSplit,
       terrainContour: world.terrainContour,
     }
-    const inPool = hasPool(waterSplit) && px < getDividerNormX(waterSplit) - BANK_W * 0.5
+    const inPool = isInPool(px, waterSplit)
     const landingY =
       mat === 'water' && inPool ? getWaterTopNormY(terrain) : getSoilSurfaceNormalizedY(terrain, px)
     if (num(p, 'y') < landingY) continue
