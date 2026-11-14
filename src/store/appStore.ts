@@ -1,5 +1,6 @@
 import { getDefaultStore, type Store } from 'jotai'
 import { bindStudioStorage } from './studio'
+import { hydrateViewPrefs } from './view'
 
 export type AppStore = Store
 
@@ -11,3 +12,4 @@ export type AppStore = Store
 export const appStore: AppStore = getDefaultStore()
 
 bindStudioStorage(appStore, globalThis.localStorage)
+hydrateViewPrefs(appStore, globalThis.localStorage)

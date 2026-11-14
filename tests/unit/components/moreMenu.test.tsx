@@ -15,6 +15,7 @@ import {
 } from '@/store/studio'
 import { awayIndexAtom, resetOverlayAtom } from '@/store/overlay'
 import { toastAtom } from '@/store/toast'
+import { perfHudAtom, smoothDrawingAtom } from '@/store/view'
 import { account, patchAccountAtom, resetAccountAtom } from '@/store/account'
 
 const click = (el: HTMLElement) => act(() => void fireEvent.click(el))
@@ -117,6 +118,36 @@ describe('MoreMenu time away', () => {
     click(sw())
     expect(appStore.get(catchupEnabledAtom)).toBe(true)
     expect(appStore.get(toastAtom).message).toBe('The tank will keep growing while you are away')
+  })
+
+  it('Drawing group toggles Smooth drawing and Show frame rate and keeps the menu open', () => {
+    appStore.set(smoothDrawingAtom, true)
+    appStore.set(perfHudAtom, false)
+    openMenu()
+    expect(screen.getByRole('group', { name: 'Drawing' })).toBeTruthy()
+    // The group sits above Time away.
+    const labels = screen.getAllByText(/^(Drawing|Time away)$/).map((e) => e.textContent)
+    expect(labels).toEqual(['Drawing', 'Time away'])
+
+    const smooth = () => screen.getByRole('menuitemcheckbox', { name: 'Smooth drawing' })
+    expect(smooth().getAttribute('aria-checked')).toBe('true')
+    click(smooth())
+    expect(appStore.get(smoothDrawingAtom)).toBe(false)
+    expect(appStore.get(toastAtom).message).toBe('Smooth drawing off: full detail every frame')
+    expect(screen.queryByRole('menu')).toBeTruthy()
+    expect(smooth().getAttribute('aria-checked')).toBe('false')
+    click(smooth())
+    expect(appStore.get(smoothDrawingAtom)).toBe(true)
+    expect(appStore.get(toastAtom).message).toBe('Smooth drawing on')
+
+    const hud = () => screen.getByRole('menuitemcheckbox', { name: 'Show frame rate' })
+    expect(hud().getAttribute('aria-checked')).toBe('false')
+    click(hud())
+    expect(appStore.get(perfHudAtom)).toBe(true)
+    expect(screen.queryByRole('menu')).toBeTruthy()
+    expect(hud().getAttribute('aria-checked')).toBe('true')
+    click(hud())
+    expect(appStore.get(perfHudAtom)).toBe(false)
   })
 
   it('a preview adds no journal entry', async () => {

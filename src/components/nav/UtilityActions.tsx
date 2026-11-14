@@ -29,6 +29,7 @@ import {
   selectedIdAtom,
 } from '@/store/studio'
 import { showToast } from '@/store/toast'
+import { perfHudAtom, smoothDrawingAtom } from '@/store/view'
 
 const enterRelax = () => {
   appStore.set(relaxModeAtom, true)
@@ -81,6 +82,14 @@ const ITEM = 'px-3 py-2 text-xs font-medium'
 /** "⋯" button with the rarely used, destructive actions (prototype #more-menu). */
 function MoreMenu() {
   const catchupEnabled = useAtomValue(catchupEnabledAtom)
+  const smoothDrawing = useAtomValue(smoothDrawingAtom)
+  const perfHud = useAtomValue(perfHudAtom)
+
+  const toggleSmooth = () => {
+    const next = !smoothDrawing
+    appStore.set(smoothDrawingAtom, next)
+    showToast(next ? 'Smooth drawing on' : 'Smooth drawing off: full detail every frame')
+  }
 
   const toggleCatchup = () => {
     const next = !catchupEnabled
@@ -116,6 +125,31 @@ function MoreMenu() {
             <LineIcon name="trash" />
             Clear all specimens
           </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup aria-labelledby="drawing-label">
+          <DropdownMenuLabel
+            id="drawing-label"
+            className="px-3 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase"
+          >
+            Drawing
+          </DropdownMenuLabel>
+          <DropdownMenuCheckboxItem
+            checked={smoothDrawing}
+            onCheckedChange={toggleSmooth}
+            onSelect={(e) => e.preventDefault()}
+            className={`${ITEM} pr-8`}
+          >
+            Smooth drawing
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem
+            checked={perfHud}
+            onCheckedChange={() => appStore.set(perfHudAtom, !perfHud)}
+            onSelect={(e) => e.preventDefault()}
+            className={`${ITEM} pr-8`}
+          >
+            Show frame rate
+          </DropdownMenuCheckboxItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup aria-labelledby="time-away-label">

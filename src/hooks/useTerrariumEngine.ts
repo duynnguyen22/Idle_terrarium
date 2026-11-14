@@ -12,6 +12,7 @@ import {
 import { seedWorldEnv } from '@/engine/envSeed'
 import { seedInitialScene } from '@/engine/presets'
 import { ecoTimeFromDayCount, restoreWorld } from '@/engine/persistence'
+import { createPerf, perfSummary, sampleFrame } from '@/engine/render/perf'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
 import { runCatchUpIfDue } from '@/engine/simulation/catchup'
 import { flushEnvSeed, flushTelemetry } from '@/engine/simulation/telemetry'
@@ -30,6 +31,7 @@ import {
   worldSnapshotAtom,
 } from '@/store/studio'
 import { showToast } from '@/store/toast'
+import { perfHudAtom, perfTextAtom, smoothDrawingAtom } from '@/store/view'
 
 /** Longest simulated step; a backgrounded tab resumes with a clamped dt instead of a huge jump. */
 const MAX_DT_MS = 100
@@ -120,11 +122,13 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
 
     let rafId = 0
     let last = 0
+    const perf = createPerf()
 
     const frame = (timestamp: number) => {
       rafId = requestAnimationFrame(frame)
       const dt = Math.min(timestamp - (last || timestamp), MAX_DT_MS)
       last = timestamp
+      sampleFrame(perf, timestamp)
 
       // Read before tick: this frame renders the state the frame started with.
       const state = appStore.get(studioStateAtom)
@@ -149,11 +153,23 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       const R = computeVesselRect(W, H, state.relaxMode, vesselKX(state.vessel))
       renderFrame(ctx, world, state, R, timestamp, { w: W, h: H })
       ctx.restore()
+
+      if (world.frame % 20 === 0 && appStore.get(perfHudAtom)) {
+        const sum = perfSummary(perf)
+        if (sum) {
+          const smooth = appStore.get(smoothDrawingAtom) ? 'on' : 'off'
+          appStore.set(
+            perfTextAtom,
+            `${sum.fps} fps · slowest ${sum.slowest} ms · ${canvas.width}×${canvas.height} · detail 100% · smooth ${smooth}`,
+          )
+        }
+      }
     }
 
     const start = () => {
       if (rafId) return
       last = 0
+      perf.last = 0
       rafId = requestAnimationFrame(frame)
     }
     const stop = () => {

@@ -5,6 +5,7 @@ import { LightingControls } from '@/components/nav/LightingControls'
 import { AwayCard } from '@/components/stage/AwayCard'
 import { CareToolbar } from '@/components/stage/CareToolbar'
 import { ItemInspector } from '@/components/stage/ItemInspector'
+import { PerfHud } from '@/components/stage/PerfHud'
 import { TourCaption } from '@/components/stage/TourCaption'
 import { RelaxDock } from '@/components/stage/RelaxDock'
 import { Toaster } from '@/components/ui/sonner'
@@ -82,6 +83,7 @@ export function StudioLayout({ children }: { children: ReactNode }) {
           <GrowthBoard />
           <TourCaption />
           <AccountDialog />
+          <PerfHud />
         </main>
         <RightTelemetry drawerOpen={drawer === 'right'} />
         <Toaster position="top-center" offset={64} />
