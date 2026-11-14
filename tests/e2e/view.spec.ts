@@ -123,9 +123,7 @@ function pickLoosePlant(page: Page): Promise<string> {
 }
 
 function rectsIntersect(a: { x: number; y: number; width: number; height: number }, b: typeof a) {
-  return (
-    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
-  )
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
 }
 
 async function boxOf(locator: Locator) {
@@ -163,6 +161,10 @@ test('drags a plant at 200 % zoom and it ends under the pointer', async ({ page 
   await waitForCameraToSettle(page)
 
   const from = await plantScreen(page, uid)
+  const y0 = await page.evaluate(
+    (id) => window.__botanica!.world().items.find((i) => i.uid === id)!.y,
+    uid,
+  )
   const canvasBox = await boxOf(page.locator('canvas').first())
   expect(from.x).toBeGreaterThan(canvasBox.x)
   expect(from.x).toBeLessThan(canvasBox.x + canvasBox.width)
@@ -184,6 +186,30 @@ test('drags a plant at 200 % zoom and it ends under the pointer', async ({ page 
     })
     .toBeLessThan(4)
   await page.mouse.up()
+
+  // Released: draggingId clears, and the plant is not parented or snapped anywhere. Its x stays under the
+  // release point at the same 200 % camera (a drop that ignored the camera, snapped or clamped would not).
+  await expect.poll(() => page.evaluate(() => window.__botanica!.world().draggingId)).toBeNull()
+  await expect
+    .poll(async () => Math.abs((await plantScreen(page, uid)).x - (from.x + dx)))
+    .toBeLessThan(4)
+  // A released plant settles back onto the soil by itself (the simulation eases its y down), so its y
+  // ends at the soil line it was lifted from. That is the app's behaviour, not a camera effect: it is
+  // checked in normalized units, and it must never end above where the pointer released it.
+  await expect
+    .poll(() =>
+      page.evaluate((id) => window.__botanica!.world().items.find((i) => i.uid === id)!.y, uid),
+    )
+    .toBeCloseTo(y0, 2)
+  const end = await plantScreen(page, uid)
+  expect(Math.abs(end.x - (from.x + dx))).toBeLessThan(4)
+  expect(end.y).toBeGreaterThanOrEqual(from.y + dy - 4)
+  expect(
+    await page.evaluate(
+      (id) => window.__botanica!.world().items.find((i) => i.uid === id)?.parentUid,
+      uid,
+    ),
+  ).toBeFalsy()
 })
 
 test('double-click on a plant centres it; double-click on empty space goes home', async ({
@@ -202,9 +228,7 @@ test('double-click on a plant centres it; double-click on empty space goes home'
   await waitForCameraToSettle(page)
   const canvasBox = await boxOf(page.locator('canvas').first())
   const now = await plantScreen(page, uid)
-  expect(Math.abs(now.x - (canvasBox.x + canvasBox.width / 2))).toBeLessThan(
-    canvasBox.width * 0.05,
-  )
+  expect(Math.abs(now.x - (canvasBox.x + canvasBox.width / 2))).toBeLessThan(canvasBox.width * 0.05)
   expect(Math.abs(now.y - (canvasBox.y + canvasBox.height / 2))).toBeLessThan(
     canvasBox.height * 0.08,
   )
@@ -294,6 +318,25 @@ test('an evening visit moves the camera and Skip restores it', async ({ page }) 
   await waitForEngine(page)
   await expect(zoomButton(page)).toHaveText('100%')
 
+  // A non-default view first: zoom in twice, then pan by dragging empty air.
+  await page.getByRole('button', { name: 'Zoom in' }).click()
+  await page.getByRole('button', { name: 'Zoom in' }).click()
+  await expect.poll(() => zoomPercent(page)).toBeGreaterThan(170)
+  await waitForCameraToSettle(page)
+  const canvasBox = await boxOf(page.locator('canvas').first())
+  const sx = canvasBox.x + 14
+  const sy = canvasBox.y + 14
+  await page.mouse.move(sx, sy)
+  await page.mouse.down()
+  await page.mouse.move(sx + 70, sy + 50, { steps: 8 })
+  await page.mouse.up()
+  await waitForCameraToSettle(page)
+  const before = await page.evaluate(() => ({ ...window.__botanica!.world().view.cam }))
+  const percentBefore = await zoomPercent(page)
+  expect(before.z).toBeGreaterThan(1.7)
+  expect(Math.abs(before.u - 0.5)).toBeGreaterThan(0.01)
+  expect(Math.abs(before.v - 0.5)).toBeGreaterThan(0.01)
+
   await page.getByRole('button', { name: 'More actions' }).click()
   await page.getByRole('menuitem', { name: 'Preview a gap of 1 day' }).click()
   const card = page.locator('section#away-card')
@@ -301,14 +344,30 @@ test('an evening visit moves the camera and Skip restores it', async ({ page }) 
   await card.getByRole('button', { name: 'Start the evening visit' }).click()
 
   await expect(page.locator('#tour-caption')).toBeVisible()
-  // The camera heads for the first item: the target zoom is 2 and the view follows it.
-  await expect.poll(() => zoomPercent(page)).toBeGreaterThan(110)
-  expect(await page.evaluate(() => window.__botanica!.world().view.camT.z)).toBeGreaterThanOrEqual(2)
+  // The camera moves off the saved view toward the first item: the target zoom is at least 2.
+  await expect
+    .poll(() =>
+      page.evaluate((b) => {
+        const { cam } = window.__botanica!.world().view
+        return Math.max(Math.abs(cam.z - b.z), Math.abs(cam.u - b.u) * 2, Math.abs(cam.v - b.v) * 2)
+      }, before),
+    )
+    .toBeGreaterThan(0.05)
+  expect(await page.evaluate(() => window.__botanica!.world().view.camT.z)).toBeGreaterThanOrEqual(
+    2,
+  )
 
   await page.locator('#tour-caption').getByRole('button', { name: 'Skip' }).click()
   await expect(page.locator('#tour-caption')).toHaveCount(0)
-  await expect(zoomButton(page)).toHaveText('100%')
-  await waitForCameraToSettle(page)
-  const cam = await page.evaluate(() => window.__botanica!.world().view.cam)
-  expect(cam.z).toBeCloseTo(1, 2)
+  // It returns to the view recorded before the visit, not to home.
+  await expect
+    .poll(() =>
+      page.evaluate((b) => {
+        const { cam } = window.__botanica!.world().view
+        return Math.max(Math.abs(cam.z - b.z), Math.abs(cam.u - b.u) * 2, Math.abs(cam.v - b.v) * 2)
+      }, before),
+    )
+    .toBeLessThan(0.01)
+  await expect.poll(() => zoomPercent(page)).toBe(percentBefore)
+  expect(percentBefore).toBeGreaterThan(100)
 })
