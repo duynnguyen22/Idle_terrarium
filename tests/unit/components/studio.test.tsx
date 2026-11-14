@@ -628,12 +628,22 @@ describe('TerrariumCanvas gestures', () => {
     const touch = { pointerType: 'touch', isPrimary: true }
     act(
       () =>
-        void fireEvent.pointerDown(canvas(), { ...touch, pointerId: 1, clientX: 300, clientY: 300 }),
+        void fireEvent.pointerDown(canvas(), {
+          ...touch,
+          pointerId: 1,
+          clientX: 300,
+          clientY: 300,
+        }),
     )
     // pointerup for pointer 1 never arrives; a new finger goes down as the primary pointer.
     act(
       () =>
-        void fireEvent.pointerDown(canvas(), { ...touch, pointerId: 2, clientX: 600, clientY: 300 }),
+        void fireEvent.pointerDown(canvas(), {
+          ...touch,
+          pointerId: 2,
+          clientX: 600,
+          clientY: 300,
+        }),
     )
     expect(world.view.gesture).toBe(false)
   })

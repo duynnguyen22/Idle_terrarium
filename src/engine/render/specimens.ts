@@ -120,7 +120,9 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
     const dpr = typeof window === 'undefined' ? 1 : Math.min(window.devicePixelRatio || 1, 2)
     const devicePx = drawSize * world.view.cam.z * dpr * world.view.renderScale
     const spriteId = (
-      item.id === 'bumblebee_millipede' && item.aiState === 'hiding' ? 'bumblebee_millipede_curl' : item.id
+      item.id === 'bumblebee_millipede' && item.aiState === 'hiding'
+        ? 'bumblebee_millipede_curl'
+        : item.id
     ) as SpriteId
     const crisp = getSharpSprite(spriteId, sprite, devicePx, world.frame)
     ctx.drawImage(
