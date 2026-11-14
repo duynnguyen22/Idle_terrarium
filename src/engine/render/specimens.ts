@@ -6,6 +6,7 @@ import { gpuImage } from '../sprites/gpuImage'
 import { getSprite } from '../sprites/spriteCache'
 import type { ViewState } from '../view'
 import { normToPx, vesselMetrics, type RenderFn } from './metrics'
+import { drawGroundShadow } from './shadows'
 
 /**
  * Pixel box of a placed item: centre and drawn size, with the sprout / baby scale applied.
@@ -56,6 +57,8 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
 
     ctx.save()
     ctx.translate(px, py)
+    // Before the rotation, flip and sway: a shadow lies on the ground, it does not turn with the item.
+    if (!item.parentUid) drawGroundShadow(ctx, world, state, R, item, def, box, 0)
 
     // Subtle gentle sway for flora
     let sway = 0
@@ -70,14 +73,6 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
       const wobble = state.reducedMotion ? 0 : Math.sin(timestamp * 0.002 + item.x * 30) * 0.05
       ctx.rotate(-Math.PI / 2 + wobble)
       if (item.aiState === 'hiding') ctx.globalAlpha = 0.5
-    }
-
-    // Ground contact shadow
-    if (!climbing) {
-      ctx.fillStyle = 'rgba(15, 23, 18, 0.18)'
-      ctx.beginPath()
-      ctx.ellipse(0, drawSize * 0.24, drawSize * 0.28, drawSize * 0.07, 0, 0, Math.PI * 2)
-      ctx.fill()
     }
 
     // Night bioluminescence glow for crystals & lanterns

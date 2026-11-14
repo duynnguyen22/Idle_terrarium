@@ -48,8 +48,12 @@ function populatedWorld(): EngineWorld {
   return world
 }
 
-/** Vessel clip, plus (with a pool) the land-strata bank cut and the pool gravel-bed clip. */
-const expectedClips = (s: StudioState) => 1 + (hasPool(s.waterSplit) ? 2 : 0)
+/**
+ * Vessel clip, plus (with a pool) the land-strata bank cut and the pool gravel-bed clip, plus each
+ * item's ground shadow: the half on the ground, and (with a pool) the cut at the bank.
+ */
+const expectedClips = (s: StudioState) =>
+  1 + (hasPool(s.waterSplit) ? 2 : 0) + ITEMS.length * (hasPool(s.waterSplit) ? 2 : 1)
 
 beforeEach(() => {
   configureSpriteCache(
@@ -66,7 +70,7 @@ describe('computeVesselRect', () => {
 })
 
 describe('renderFrame', () => {
-  it('draws one of each item category: vessel (+ pool) clips, one drawImage per item', () => {
+  it('draws one of each item category: vessel (+ pool) clips, one drawImage per item and its shadow', () => {
     const { ctx, calls } = makeRecordingContext()
     const R = computeVesselRect(800, 600)
     const state = createDefaultState()
@@ -74,7 +78,8 @@ describe('renderFrame', () => {
       renderFrame(ctx, populatedWorld(), state, R, 1234, { w: 800, h: 600 }),
     ).not.toThrow()
     expect(calls.filter((c) => c === 'clip')).toHaveLength(expectedClips(state))
-    expect(calls.filter((c) => c === 'drawImage')).toHaveLength(ITEMS.length)
+    // Every item stands lifted above the soil here (lift ≈ 0.48), so its shadow has no darker core.
+    expect(calls.filter((c) => c === 'drawImage')).toHaveLength(ITEMS.length * 2)
     expect(calls.filter((c) => c === 'save')).toHaveLength(
       calls.filter((c) => c === 'restore').length,
     )
@@ -403,7 +408,33 @@ describe('rectangular tanks', () => {
     expect(() =>
       drawSpecimens(ctx, world, createDefaultState(), computeVesselRect(800, 600), 0),
     ).not.toThrow()
-    expect(calls.filter((c) => c === 'drawImage')).toHaveLength(ITEMS.length)
+    // Each item and its ground shadow
+    expect(calls.filter((c) => c === 'drawImage')).toHaveLength(ITEMS.length * 2)
+  })
+
+  it('drawSpecimens draws no ellipse for the contact shadow any more', () => {
+    const world = createWorld()
+    world.items = [{ ...structuredClone(ITEMS[0]), stage: 'mature' }]
+    const { ctx, calls } = makeRecordingContext()
+    drawSpecimens(ctx, world, createDefaultState(), computeVesselRect(800, 600), 0)
+    expect(calls.filter((c) => c === 'ellipse')).toHaveLength(0)
+  })
+
+  it('the shadow is drawn before the item rotation', () => {
+    const world = createWorld()
+    world.items = [{ ...structuredClone(ITEMS[0]), stage: 'mature', rotation: 30 }]
+    const { ctx, calls } = argsContext()
+    const state = { ...createDefaultState(), reducedMotion: true }
+    drawSpecimens(ctx, world, state, computeVesselRect(800, 600), 0)
+    const turn = calls.findIndex(
+      (c) => c.name === 'rotate' && Math.abs(c.args[0] - Math.PI / 6) < 1e-9,
+    )
+    const blits = calls.flatMap((c, i) => (c.name === 'drawImage' ? [i] : []))
+    expect(turn).toBeGreaterThan(0)
+    // The ground shadow comes before the item's own rotation, the sprite after it.
+    expect(blits.length).toBeGreaterThanOrEqual(2)
+    expect(blits[0]).toBeLessThan(turn)
+    expect(blits[blits.length - 1]).toBeGreaterThan(turn)
   })
 
   it('places a specimen across the full scaled width', () => {

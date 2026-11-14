@@ -145,12 +145,16 @@ describe('useTerrariumEngine', () => {
   it('starts exactly one loop, keeps it single across frames, and stops on unmount', () => {
     const { unmount } = render(<Harness />)
     expect(callbacks.size).toBe(1)
+    const clips = () => ctxCalls.filter((c) => c === 'clip').length
     runFrame(16)
+    const firstFrame = clips()
     runFrame(32)
     expect(callbacks.size).toBe(1)
-    // Two frames; each clips the vessel, plus the bank cut and gravel bed when there is a pool.
-    const clipsPerFrame = 1 + (hasPool(appStore.get(waterSplitAtom)) ? 2 : 0)
-    expect(ctxCalls.filter((c) => c === 'clip').length).toBe(2 * clipsPerFrame)
+    // Two frames; each clips the vessel, plus the bank cut and gravel bed when there is a pool,
+    // plus each ground shadow's own clips, so the second frame repeats the first.
+    const vesselClips = 1 + (hasPool(appStore.get(waterSplitAtom)) ? 2 : 0)
+    expect(firstFrame).toBeGreaterThanOrEqual(vesselClips)
+    expect(clips()).toBe(2 * firstFrame)
     unmount()
     expect(callbacks.size).toBe(0)
     expect(cancel).toHaveBeenCalled()

@@ -7,6 +7,7 @@ import {
   getPoolBedNormY,
   getWaterTopNormY,
   hasPool,
+  isInPool,
   poolHasWater,
   randomLandX,
   getSoilSurfaceNormalizedY,
@@ -164,5 +165,13 @@ describe('v6 pool geometry', () => {
     expect(randomLandX(t, () => 0)).toBeCloseTo(getDividerNormX(0.32) + 0.03, 5)
     expect(randomLandX(t, () => 0.999)).toBeLessThanOrEqual(0.76)
     expect(randomLandX({ ...t, waterSplit: 0 }, () => 0)).toBeCloseTo(0.24, 5)
+  })
+  it('isInPool is false without a pool and true left of the bank middle', () => {
+    expect(isInPool(0.1, 0)).toBe(false)
+    const mid = getDividerNormX(0.32) - BANK_W * 0.5
+    expect(isInPool(0.2, 0.32)).toBe(true)
+    expect(isInPool(mid - 0.001, 0.32)).toBe(true)
+    expect(isInPool(mid + 0.001, 0.32)).toBe(false)
+    expect(isInPool(0.7, 0.32)).toBe(false)
   })
 })
