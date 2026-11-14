@@ -5,31 +5,34 @@ import { sproutScale } from '../simulation/dayTick'
 import { gpuImage } from '../sprites/gpuImage'
 import { getSprite } from '../sprites/spriteCache'
 import type { ViewState } from '../view'
+import { hazedSprite, planeOf, planeShiftFor } from './depth'
 import { normToPx, vesselMetrics, type RenderFn } from './metrics'
 import { drawGroundShadow, drawMountShadow, lightK, silhouetteOf } from './shadows'
 
 /**
  * Pixel box of a placed item: centre and drawn size, with the sprout / baby scale applied.
  * Shared by the specimen pass, the mark rings and the camera so all agree on the item's extent.
- * `view` is accepted for the depth-plane shift; without it the box is the unshifted one.
+ * With `view` the box carries the item's depth-plane shift; `items` (the world's items) lets a mounted item
+ * take its parent's plane. Without `view` the box is the unshifted one, which hit testing uses.
  */
 export function itemBox(
   R: Rect,
   item: PlacedItem,
   view?: ViewState,
+  items?: readonly PlacedItem[],
 ): { x: number; y: number; size: number } | null {
-  void view
   const def = findCatalogDef(item.id)
   if (!def) return null
   const { cy, r: Rad } = vesselMetrics(R)
+  const shift = view ? planeShiftFor(view, planeOf(item, items), Rad) : { x: 0, y: 0 }
   // Seedlings grow from 0.58 of their species size; young fauna from 0.55 of the adult's.
   let scale = item.scale || 1
   if (item.baby !== undefined) scale = babyScale(item, scale)
   else if (item.category === 'flora' && item.stage === 'sprout')
     scale = sproutScale(item, def.baseScale)
   return {
-    x: normToPx(R, item.x),
-    y: cy - Rad + item.y * (Rad * 2),
+    x: normToPx(R, item.x) + shift.x,
+    y: cy - Rad + item.y * (Rad * 2) + shift.y,
     size: Rad * 0.36 * scale,
   }
 }
@@ -41,6 +44,7 @@ export function itemBox(
  */
 export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
   const sorted = [...world.items].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
+  const { r } = vesselMetrics(R)
 
   sorted.forEach((item) => {
     const def = findCatalogDef(item.id)
@@ -51,7 +55,9 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
         ? getSprite('bumblebee_millipede_curl')
         : getSprite(item.id as CatalogId)
 
-    const box = itemBox(R, item, world.view)
+    // The plane decides the parallax shift (already in the box) and the haze; a mount takes its parent's.
+    const plane = planeOf(item, world.items)
+    const box = itemBox(R, item, world.view, world.items)
     if (!box) return
     const { x: px, y: py, size: drawSize } = box
 
@@ -61,9 +67,12 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
     if (item.parentUid) {
       // Masked by the parent as drawn, so both boxes come from itemBox with the same view.
       const parent = world.items.find((p) => p.uid === item.parentUid)
-      const parentBox = parent && itemBox(R, parent, world.view)
+      const parentBox = parent && itemBox(R, parent, world.view, world.items)
       if (parent && parentBox) drawMountShadow(ctx, state, R, item, box, parent, parentBox)
-    } else drawGroundShadow(ctx, world, state, R, item, def, box, 0)
+    } else {
+      const shiftY = planeShiftFor(world.view, plane, r).y
+      drawGroundShadow(ctx, world, state, R, item, def, box, shiftY)
+    }
 
     // Subtle gentle sway for flora
     let sway = 0
@@ -106,9 +115,9 @@ export const drawSpecimens: RenderFn = (ctx, world, state, R, timestamp) => {
       ctx.fill()
     }
 
-    // Crisp 256x256 vector sprite
+    // Crisp 256x256 vector sprite, washed with the air colour when it stands further back
     ctx.drawImage(
-      gpuImage(sprite, world.view.fastDraw),
+      gpuImage(hazedSprite(sprite, plane, state.lighting, world.view.depthOn), world.view.fastDraw),
       -drawSize * 0.5,
       -drawSize * 0.5,
       drawSize,

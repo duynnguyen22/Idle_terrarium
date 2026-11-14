@@ -2,20 +2,28 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { VESSELS, VESSELS_BY_ID, vesselKX, type VesselId } from '@/data/vessels'
 import { hasPool } from '@/engine/geometry'
 import { drawCondensation, drawMineralSpots } from '@/engine/render/condensation'
+import { getCustomBackdrop } from '@/lib/backdropPhoto'
+import { drawBaseBoard, drawSky } from '@/engine/render/background'
+import { drawMiniatureBackdrop } from '@/engine/render/backdrop'
 import { drawLid, drawPaludariumFrontFrame } from '@/engine/render/frame'
+import { drawLamp } from '@/engine/render/lamp'
+import { drawMist } from '@/engine/render/mist'
+import { drawParticles } from '@/engine/render/particles'
+import { drawPouring } from '@/engine/render/pouring'
+import { applyCamera } from '@/engine/view'
 import { vesselMetrics } from '@/engine/render/metrics'
 import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
 import { drawMarks } from '@/engine/render/marks'
 import { setRings, pingItem, activePings, clearRings } from '@/engine/marks'
 import { drawSpecimens } from '@/engine/render/specimens'
 import { drawSubstrates } from '@/engine/render/substrates'
-import { beginVesselClip } from '@/engine/render/vessel'
+import { beginVesselClip, drawLampCone, drawVesselRim } from '@/engine/render/vessel'
 import { drawWater, rippleAmplitude } from '@/engine/render/water'
 import { configureSpriteCache } from '@/engine/sprites/spriteCache'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { createDefaultState, type StudioState } from '@/store/studio'
 import type { PlacedItem } from '@/data/types'
-import { makeRecordingContext, record } from '../helpers/recordingContext'
+import { makeRecordingContext, makeTraceContext, record } from '../helpers/recordingContext'
 
 const base = { scale: 1, rotation: 0, flipX: false, x: 0.5, y: 0.6 }
 const ITEMS: PlacedItem[] = [
@@ -49,11 +57,11 @@ function populatedWorld(): EngineWorld {
 }
 
 /**
- * Vessel clip, plus (with a pool) the land-strata bank cut and the pool gravel-bed clip, plus each
+ * Vessel clip, plus the glass edge's clip (depth on, the default), plus (with a pool) the land-strata bank cut and the pool gravel-bed clip, plus each
  * item's ground shadow: the half on the ground, and (with a pool) the cut at the bank.
  */
 const expectedClips = (s: StudioState) =>
-  1 + (hasPool(s.waterSplit) ? 2 : 0) + ITEMS.length * (hasPool(s.waterSplit) ? 2 : 1)
+  2 + (hasPool(s.waterSplit) ? 2 : 0) + ITEMS.length * (hasPool(s.waterSplit) ? 2 : 1)
 
 beforeEach(() => {
   configureSpriteCache(
@@ -109,6 +117,113 @@ describe('renderFrame', () => {
     expect(pouring.calls.filter((c) => c === 'roundRect').length).toBeGreaterThan(
       idle.calls.filter((c) => c === 'roundRect').length,
     )
+  })
+})
+
+describe('depth off', () => {
+  const b = { scale: 1, rotation: 0, flipX: false }
+  const SCENE: PlacedItem[] = [
+    { ...b, uid: 'w', id: 'moss_wall_cliff', category: 'hardscape', x: 0.6, y: 0.5, zIndex: 1 },
+    {
+      ...b,
+      uid: 'wm',
+      id: 'peacock_fern',
+      category: 'flora',
+      x: 0.62,
+      y: 0.4,
+      zIndex: 2,
+      parentUid: 'w',
+      stage: 'mature',
+    },
+    {
+      ...b,
+      uid: 'r',
+      id: 'golden_river_boulders',
+      category: 'hardscape',
+      x: 0.3,
+      y: 0.7,
+      zIndex: 3,
+    },
+    {
+      ...b,
+      uid: 'rm',
+      id: 'peacock_fern',
+      category: 'flora',
+      x: 0.3,
+      y: 0.62,
+      zIndex: 4,
+      parentUid: 'r',
+      stage: 'lush',
+    },
+    {
+      ...b,
+      uid: 'f',
+      id: 'peacock_fern',
+      category: 'flora',
+      x: 0.5,
+      y: 0.75,
+      zIndex: 5,
+      stage: 'sprout',
+    },
+    { ...b, uid: 'c', id: 'medaka_fish', category: 'fauna', x: 0.8, y: 0.8, zIndex: 6 },
+  ]
+
+  /** renderFrame as it was before depth planes: the same steps in the same order, nothing added. */
+  function flatFrame(
+    ctx: CanvasRenderingContext2D,
+    world: EngineWorld,
+    state: StudioState,
+    R: ReturnType<typeof computeVesselRect>,
+    t: number,
+    size: { w: number; h: number },
+  ) {
+    drawSky(ctx, state, size)
+    ctx.save()
+    applyCamera(ctx, world.view.cam, size.w, size.h)
+    drawBaseBoard(ctx, R)
+    drawLamp(ctx, world, state, R, t)
+    ctx.save()
+    beginVesselClip(ctx, world, state, R, t)
+    drawMiniatureBackdrop(ctx, state, R, getCustomBackdrop())
+    drawLampCone(ctx, world, state, R, t)
+    drawSubstrates(ctx, world, state, R, t, 'soil')
+    drawSpecimens(ctx, world, state, R, t)
+    drawMarks(ctx, world, state, R, t)
+    drawSubstrates(ctx, world, state, R, t, 'water')
+    drawPouring(ctx, world, state, R, t)
+    drawMist(ctx, world, state, R, t)
+    drawParticles(ctx, world, state, R, t)
+    drawCondensation(ctx, world, state, R, t)
+    drawMineralSpots(ctx, world, state, R, t)
+    ctx.restore()
+    drawVesselRim(ctx, world, state, R, t)
+    drawPaludariumFrontFrame(ctx, world, state, R, t)
+    drawLid(ctx, world, state, R, t)
+    ctx.restore()
+  }
+
+  it('with depth off renderFrame draws exactly what it drew before this task', () => {
+    const size = { w: 800, h: 600 }
+    const R = computeVesselRect(800, 600)
+    for (const vessel of ['wardian', 'paludarium_tank', 'globe'] as const)
+      for (const lighting of ['sunlight', 'night'] as const) {
+        const scene = () => {
+          const world = createWorld()
+          world.items = structuredClone(SCENE)
+          world.view.depthOn = false
+          // A parallax left over from before the toggle must not move anything
+          world.view.par = { x: 1.2, y: -0.8 }
+          setRings(world, ['r', 'wm'])
+          return world
+        }
+        const state: StudioState = { ...createDefaultState(), vessel, lighting, selectedId: 'rm' }
+        const got = makeTraceContext()
+        renderFrame(got.ctx, scene(), state, R, 1234, size)
+        const want = makeTraceContext()
+        flatFrame(want.ctx, scene(), state, R, 1234, size)
+        expect(got.trace.length).toBeGreaterThan(100)
+        expect(got.trace).toEqual(want.trace)
+      }
   })
 })
 

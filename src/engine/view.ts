@@ -116,7 +116,7 @@ export function framePlants(view: ViewState, world: EngineWorld, R: Rect): void 
   for (const item of world.items) {
     const def = findCatalogDef(item.id)
     if (def?.category === 'fauna' && def.habitat === 'glass') continue
-    const box = itemBox(R, item, view)
+    const box = itemBox(R, item, view, world.items)
     if (box) top = Math.min(top, box.y - box.size * 0.5)
   }
   const bottom = cy + r * 0.92
@@ -178,7 +178,7 @@ export function updateCamera(
     let y = 0
     let n = 0
     for (const item of its) {
-      const box = itemBox(R, item, view)
+      const box = itemBox(R, item, view, world.items)
       if (!box) continue
       x += box.x
       y += box.y - box.size * 0.05

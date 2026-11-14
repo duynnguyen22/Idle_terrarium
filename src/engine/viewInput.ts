@@ -95,7 +95,7 @@ export function doubleClick(
   const b = camToBase(view.cam, sx, sy, g.w, g.h)
   const { nx, ny } = toNormalized(b.x, b.y, { left: 0, top: 0 }, R)
   const hit = hitTest(world, nx, ny, kx)
-  const box = hit ? itemBox(R, hit, view) : null
+  const box = hit ? itemBox(R, hit, view, world.items) : null
   if (box) {
     Object.assign(
       view.camT,

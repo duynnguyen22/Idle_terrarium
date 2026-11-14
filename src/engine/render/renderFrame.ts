@@ -6,8 +6,10 @@ import { getCustomBackdrop } from '@/lib/backdropPhoto'
 import { drawBaseBoard, drawSky } from './background'
 import { drawMiniatureBackdrop } from './backdrop'
 import { drawCondensation, drawMineralSpots } from './condensation'
+import { drawGlassDepth, planeShiftFor } from './depth'
 import { drawLid, drawPaludariumFrontFrame } from './frame'
 import { drawLamp } from './lamp'
+import { vesselMetrics } from './metrics'
 import { drawMist } from './mist'
 import { drawParticles } from './particles'
 import { drawPouring } from './pouring'
@@ -60,8 +62,18 @@ export function renderFrame(
   // 3. Everything inside the glass is clipped to the vessel path
   ctx.save()
   beginVesselClip(ctx, world, state, R, timestamp)
-  // 3A. Painted miniature landscape on the back glass, then the lamp's light cone over it
-  drawMiniatureBackdrop(ctx, state, R, getCustomBackdrop())
+  // 3A. Painted miniature landscape on the back glass, then the lamp's light cone over it. The back glass is
+  // the furthest plane: with depth on it shifts most, and is drawn a touch larger so no edge shows.
+  if (world.view.depthOn) {
+    const { cx, cy, r } = vesselMetrics(R)
+    const bs = planeShiftFor(world.view, 2, r)
+    ctx.save()
+    ctx.translate(cx + bs.x * 1.4, cy + bs.y * 1.4)
+    ctx.scale(1.05, 1.05)
+    ctx.translate(-cx, -cy)
+    drawMiniatureBackdrop(ctx, state, R, getCustomBackdrop())
+    ctx.restore()
+  } else drawMiniatureBackdrop(ctx, state, R, getCustomBackdrop())
   drawLampCone(ctx, world, state, R, timestamp)
   // 4. Land strata, pool gravel bed, bank, surface grains, moss & mold
   drawSubstrates(ctx, world, state, R, timestamp, 'soil')
@@ -83,9 +95,10 @@ export function renderFrame(
   drawMineralSpots(ctx, world, state, R, timestamp)
   ctx.restore()
 
-  // 8. Glass rim, paludarium front frame, cork lid
+  // 8. Glass rim, paludarium front frame, the pane's lit edge and reflection (depth on), cork lid
   drawVesselRim(ctx, world, state, R, timestamp)
   drawPaludariumFrontFrame(ctx, world, state, R, timestamp)
+  drawGlassDepth(ctx, state, R, world.view.depthOn)
   drawLid(ctx, world, state, R, timestamp)
   ctx.restore()
 }
