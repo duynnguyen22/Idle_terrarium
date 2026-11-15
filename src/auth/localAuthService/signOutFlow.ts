@@ -1,10 +1,10 @@
 import type { AuthContext } from './context'
-import { clear } from './tokens'
+import { clearSession } from './tokens'
 import { findById, readUsers, writeUsers } from './userStore'
 
 export async function signOut(ctx: AuthContext): Promise<void> {
   await ctx.signOutDelay()
-  clear(ctx)
+  clearSession(ctx)
 }
 
 export async function signOutEverywhere(ctx: AuthContext, userId: string): Promise<void> {
@@ -15,5 +15,5 @@ export async function signOutEverywhere(ctx: AuthContext, userId: string): Promi
     u.sessionVersion = (u.sessionVersion || 1) + 1
     writeUsers(ctx, users)
   }
-  clear(ctx)
+  clearSession(ctx)
 }

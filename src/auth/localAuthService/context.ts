@@ -26,7 +26,7 @@ const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, 
 
 export function createAuthContext(opts: LocalAuthOptions): AuthContext {
   // Resolved on use: touching window.localStorage throws where storage is blocked, and that
-  // must surface inside the try blocks below rather than when the module loads.
+  // must surface in the callers' try blocks rather than when the module loads.
   const local = (): Storage => opts.local ?? localStorage
   const sessionStore = (): Storage => opts.session ?? sessionStorage
   const now = opts.now ?? Date.now

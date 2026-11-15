@@ -8,7 +8,7 @@ import { awayIndexAtom } from '@/store/overlay'
 import { lastSimulatedAtAtom } from '@/store/studio'
 
 /** The time-away catch-up for one engine world, and the subscriptions that trigger it. */
-export interface EngineCatchUp {
+interface EngineCatchUp {
   /** Runs the catch-up now, or once the account check has settled. */
   catchUpWhenSettled: () => void
   unsubscribeAccount: () => void

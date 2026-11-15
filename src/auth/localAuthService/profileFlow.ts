@@ -5,7 +5,7 @@ import { MSG, NAME_MAX } from './constants'
 import type { AuthContext } from './context'
 import { checkPassword, hash, newSalt } from './password'
 import { publicUser } from './records'
-import { clear } from './tokens'
+import { clearSession } from './tokens'
 import { findById, readUsers, writeUsers } from './userStore'
 
 export async function updateProfile(
@@ -59,5 +59,5 @@ export async function deleteAccount(ctx: AuthContext, userId: string): Promise<v
     delete users[key]
     writeUsers(ctx, users)
   }
-  clear(ctx)
+  clearSession(ctx)
 }

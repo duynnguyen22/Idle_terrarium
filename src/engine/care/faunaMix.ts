@@ -1,4 +1,3 @@
-/** Tankmate rules for the research species. */
 import type { CareIssue } from '@/data/care'
 import type { EnvModel } from '../room'
 import type { CareInputs } from './inputs'

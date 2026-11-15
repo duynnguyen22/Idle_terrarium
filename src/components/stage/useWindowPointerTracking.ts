@@ -13,6 +13,8 @@ import { endPan, type CanvasGesture } from '@/components/stage/canvasGesture'
 /**
  * Tracks pointer moves and releases anywhere on the page for the gesture a canvas press started. Every
  * field of the gesture is a ref or a state setter, so the listeners are attached once, on mount.
+ * The effect rebuilds the gesture from its fields so it does not depend on the object, which is
+ * recreated every render.
  */
 export function useWindowPointerTracking({
   canvasRef,

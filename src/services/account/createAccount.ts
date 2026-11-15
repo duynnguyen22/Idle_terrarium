@@ -16,6 +16,8 @@ import { sessionActions } from './session'
  */
 export function createAccount(store: Store, deps: AccountDeps): Account {
   // One object, filled below, so every internal call goes through what this returns.
+  // Factories must not call an action while they are being built, and their method names must not
+  // overlap: Object.assign fills this object only after every factory has run.
   const actions = {} as AccountActions
   const ctx = createAccountContext(store, deps, actions)
   const all: AccountActions = {

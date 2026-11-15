@@ -37,13 +37,13 @@ interface LoopState {
 }
 
 /** The rAF loop's start and stop. */
-export interface FrameLoop {
+interface FrameLoop {
   start: () => void
   stop: () => void
 }
 
 /** The simulation half of a frame: view flags, perf sampling and the tick. Returns the state to render. */
-function advanceWorld(world: EngineWorld, perf: PerfState, dt: number, timestamp: number) {
+function stepSimulation(world: EngineWorld, perf: PerfState, dt: number, timestamp: number) {
   world.view.fastDraw = appStore.get(smoothDrawingAtom)
   world.view.depthOn = appStore.get(depthOnAtom)
   if (sampleFrame(perf, timestamp) !== null) perfStep(perf, world.view, timestamp)
@@ -146,7 +146,7 @@ export function createFrameLoop(
     loop.rafId = requestAnimationFrame(frame)
     const dt = Math.min(timestamp - (loop.last || timestamp), MAX_DT_MS)
     loop.last = timestamp
-    const state = advanceWorld(world, loop.perf, dt, timestamp)
+    const state = stepSimulation(world, loop.perf, dt, timestamp)
     drawWorld(canvas, ctx, world, loop, state, dt, timestamp)
   }
 

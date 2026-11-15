@@ -5,7 +5,7 @@ import type { AuthContext } from './context'
 import { norm, requireEmail } from './email'
 import { checkPassword } from './password'
 import { publicUser } from './records'
-import { clear, issueCode, startSession } from './tokens'
+import { clearSession, issueCode, startSession } from './tokens'
 import { ensureDemo, readUsers, writeUsers } from './userStore'
 
 export function getSession(ctx: AuthContext): SessionCheck {
@@ -24,11 +24,11 @@ export function getSession(ctx: AuthContext): SessionCheck {
   const u = readUsers(ctx)[norm(s.email)]
   if (!u || u.id !== s.userId) return { session: null, user: null, ended: 'missing' }
   if (ctx.now() > s.expiresAt) {
-    clear(ctx)
+    clearSession(ctx)
     return { session: null, user: null, ended: 'expired' }
   }
   if ((u.sessionVersion || 1) !== s.version) {
-    clear(ctx)
+    clearSession(ctx)
     return { session: null, user: null, ended: 'revoked' }
   }
   return { session: s, user: publicUser(u) }

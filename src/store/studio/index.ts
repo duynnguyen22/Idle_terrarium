@@ -61,6 +61,3 @@ export {
   worldSnapshotAtom,
 } from './atoms'
 export { bindStudioStorage } from './storage'
-
-// The live gauges live in the unpersisted telemetry atom; re-exported so existing imports keep working.
-export { DEFAULT_TELEMETRY, type Telemetry } from '../telemetry'

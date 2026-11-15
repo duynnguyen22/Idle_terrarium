@@ -1,3 +1,8 @@
+/**
+ * Procedural miniature landscapes for the back glass (prototype-v7 paintBackdrop). Every scene is
+ * drawn from a fixed seed, so the same id and size always paint the same picture.
+ */
+
 import type { BackdropId } from '@/data/types'
 import { paintAlpine } from './alpine'
 import { paintCustom } from './custom'
@@ -11,11 +16,6 @@ import type { Painter } from './types'
 
 export { seededRandom } from './random'
 export { ridgeY, skyGradient } from './skyAndRidge'
-
-/**
- * Procedural miniature landscapes for the back glass (prototype-v7 paintBackdrop). Every scene is
- * drawn from a fixed seed, so the same id and size always paint the same picture.
- */
 
 const PAINTERS: Partial<Record<BackdropId, Painter>> = {
   karst: paintKarst,

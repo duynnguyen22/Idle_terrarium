@@ -11,7 +11,7 @@ export function issueCode(ctx: AuthContext, email: string, purpose: CodePurpose)
   return code
 }
 
-export function clear(ctx: AuthContext) {
+export function clearSession(ctx: AuthContext) {
   try {
     ctx.local().removeItem(AUTH_SESSION_KEY)
     ctx.sessionStore().removeItem(AUTH_SESSION_KEY)
