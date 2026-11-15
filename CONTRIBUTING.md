@@ -55,4 +55,5 @@ The list may only get shorter.
 
 ## Where code lives
 
-See `docs/ARCHITECTURE.md`.
+Imports only point down the layer table. `pnpm lint` checks this. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the table and for where to put new code.
