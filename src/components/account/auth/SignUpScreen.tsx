@@ -1,7 +1,7 @@
-import { useAtomValue, useStore } from 'jotai'
+import { useStore } from 'jotai'
 import type { FormEvent } from 'react'
 import { RESEND_WINDOW_MS, useAuthEnv } from './authEnv'
-import { viewDataAtom } from '@/store/account'
+import { viewDataAtom } from '@/services/account'
 import { AuthField } from './AuthField'
 import {
   AUTH_FORM,
@@ -16,8 +16,8 @@ import {
   Providers,
   SubmitButton,
 } from './AuthPieces'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { FieldGroup } from '@/components/ui/field'
+import { SignUpTermsField } from './SignUpTermsField'
 import { StrengthBlock } from './StrengthBlock'
 
 const TERMS_ERROR = 'Accept the terms to continue.'
@@ -26,8 +26,6 @@ const TERMS_ERROR = 'Accept the terms to continue.'
 export function SignUpScreen() {
   const { account, auth } = useAuthEnv()
   const store = useStore()
-  const terms = useAtomValue(viewDataAtom).terms ?? false
-  const termsError = useAtomValue(viewDataAtom).fieldErrors?.terms
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
@@ -78,27 +76,7 @@ export function SignUpScreen() {
           />
           <AuthField name="password" label="Password" type="password" autoComplete="new-password" />
           <StrengthBlock name="password" />
-          <Field
-            orientation="horizontal"
-            data-invalid={termsError ? true : undefined}
-            className="gap-2"
-          >
-            <Checkbox
-              id="auth-terms"
-              checked={terms}
-              aria-invalid={termsError ? true : undefined}
-              aria-describedby={termsError ? 'auth-terms-err' : undefined}
-              onCheckedChange={(c) => account.setViewData({ terms: c === true })}
-            />
-            <FieldLabel htmlFor="auth-terms" className="text-[12.5px] font-normal text-ink-soft">
-              I agree to the Terms of Service and Privacy Policy
-            </FieldLabel>
-          </Field>
-          {termsError && (
-            <FieldError id="auth-terms-err" className="-mt-2 text-xs">
-              {termsError}
-            </FieldError>
-          )}
+          <SignUpTermsField />
           <FormError />
           <SubmitButton>Create account</SubmitButton>
         </FieldGroup>

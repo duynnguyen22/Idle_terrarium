@@ -1,3 +1,4 @@
+import type { PaceId } from '@/data/pace'
 import { findCatalogDef } from '@/data/catalog'
 import type { PlacedItem } from '@/data/types'
 import { CYCLE_DAYS } from '@/engine/care'
@@ -12,7 +13,7 @@ import {
 import { itemStress } from '@/engine/simulation/ecology'
 import { LIFE, lifePace } from '@/engine/simulation/life'
 import { mossCover } from '@/engine/simulation/moss'
-import { paceMs, type PaceId } from '@/engine/simulation/pace'
+import { paceMs } from '@/engine/simulation/pace'
 import { PHASES, phaseAt } from '@/engine/simulation/phases'
 import { etaLabel } from '@/engine/simulation/report'
 import type { EngineWorld } from '@/engine/world'

@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
-import { patchAccountAtom, viewAtom } from '@/store/account'
+import { patchAccountAtom, viewAtom } from '@/services/account'
 import { describe, expect, it, vi } from 'vitest'
 import { BackendError } from '@/auth/backend'
 import type { VesselId } from '@/data/vessels'

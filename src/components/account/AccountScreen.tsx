@@ -10,7 +10,7 @@ import {
   patchAccountAtom,
   tabAtom,
   userAtom,
-} from '@/store/account'
+} from '@/services/account'
 import { ACCT_MUTED, AccountButton, VerifiedBadge } from './AccountPieces'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { GardensTab } from './GardensTab'

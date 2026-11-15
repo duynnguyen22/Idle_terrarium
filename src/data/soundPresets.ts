@@ -20,3 +20,5 @@ export const SOUND_PRESETS: readonly SoundPreset[] = [
 ]
 
 export const SOUND_PRESET_IDS: readonly SoundPresetId[] = SOUND_PRESETS.map((p) => p.id)
+
+export const DEFAULT_MUSIC_VOLUME = 0.5

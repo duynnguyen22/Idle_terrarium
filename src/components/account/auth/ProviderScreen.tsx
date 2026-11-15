@@ -1,7 +1,7 @@
 import { useAtomValue, useStore } from 'jotai'
 import type { FormEvent } from 'react'
 import { useAuthEnv } from './authEnv'
-import { busyAtom, phaseAtom, viewDataAtom } from '@/store/account'
+import { busyAtom, phaseAtom, viewDataAtom } from '@/services/account'
 import { AuthField } from './AuthField'
 import {
   AUTH_FORM,

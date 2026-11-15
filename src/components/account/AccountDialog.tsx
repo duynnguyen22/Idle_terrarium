@@ -7,7 +7,7 @@ import { useAccountActions } from '@/components/account/auth/authEnv'
 import { AuthScreen } from '@/components/account/auth/AuthScreen'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogClose, DialogOverlay, DialogPortal } from '@/components/ui/dialog'
-import { panelOpenAtom, phaseAtom, viewAtom, type AuthView } from '@/store/account'
+import { panelOpenAtom, phaseAtom, viewAtom, type AuthView } from '@/services/account'
 
 /** Which screen shows for the current phase and requested view (spec renderAuth, 5121-5122). */
 const resolvedViewAtom = atom((get): AuthView => {

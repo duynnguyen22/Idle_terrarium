@@ -1,0 +1,254 @@
+import { DEFAULT_ROOM } from '@/data/room'
+import { createStore, type Store } from 'jotai'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { PlacedItem } from '@/data/types'
+import { onWorldRestored, registerWorld, unregisterWorld } from '@/engine/engineBridge'
+import { snapshotWorld } from '@/engine/persistence'
+import { createWorld, type EngineWorld } from '@/engine/world'
+import { applyGardenSnapshot, gardenSummary, getGardenSnapshot } from '@/services/gardenSnapshot'
+import {
+  backdropAtom,
+  bindStudioStorage,
+  partialize,
+  patchStudioAtom,
+  selectedIdAtom,
+  studioStateAtom,
+  type GardenSnapshot,
+  vesselAtom,
+  worldSnapshotAtom,
+} from '@/store/studio'
+import { DEFAULT_TELEMETRY } from '@/store/telemetry'
+
+class MemoryStorage implements Storage {
+  private map = new Map<string, string>()
+  get length() {
+    return this.map.size
+  }
+  clear() {
+    this.map.clear()
+  }
+  getItem(key: string) {
+    return this.map.has(key) ? this.map.get(key)! : null
+  }
+  key(index: number) {
+    return [...this.map.keys()][index] ?? null
+  }
+  removeItem(key: string) {
+    this.map.delete(key)
+  }
+  setItem(key: string, value: string) {
+    this.map.set(key, String(value))
+  }
+}
+
+const item = (uid: string, category: PlacedItem['category']): PlacedItem => ({
+  uid,
+  id: category === 'flora' ? 'fern' : category === 'fauna' ? 'shrimp' : 'stone',
+  category,
+  x: 0.5,
+  y: 0.7,
+  scale: 1,
+  rotation: 0,
+  flipX: false,
+  zIndex: 1,
+})
+
+/** A fresh jotai store with its studio atoms bound to an in-memory save. */
+function makeStore(): Store {
+  const s = createStore()
+  bindStudioStorage(s, new MemoryStorage())
+  return s
+}
+
+let studio: Store
+let world: EngineWorld
+
+beforeEach(() => {
+  studio = makeStore()
+  world = createWorld()
+})
+afterEach(() => unregisterWorld())
+
+describe('gardenSnapshot', () => {
+  it('getGardenSnapshot carries the persisted slice plus a fresh world snapshot', () => {
+    studio.set(vesselAtom, 'globe')
+    studio.set(backdropAtom, 'karst')
+    world.items = [item('a', 'flora'), item('b', 'fauna')]
+    const snap = getGardenSnapshot(studio.get(studioStateAtom), world)
+    expect(snap).toMatchObject({
+      ...partialize(studio.get(studioStateAtom)),
+      worldSnapshot: snapshotWorld(world),
+    })
+    expect(snap.version).toBe(4)
+    expect(snap.worldSnapshot?.items.map((i) => i.uid)).toEqual(['a', 'b'])
+    // Without a world the stored snapshot is used as is.
+    studio.set(worldSnapshotAtom, { items: [item('z', 'hardscape')], terrainContour: [] })
+    expect(getGardenSnapshot(studio.get(studioStateAtom), null).worldSnapshot?.items[0]?.uid).toBe(
+      'z',
+    )
+  })
+
+  it('applyGardenSnapshot restores the store and the registered world', () => {
+    const other = makeStore()
+    other.set(patchStudioAtom, {
+      vessel: 'globe',
+      dayCount: 9,
+      cycleProgress: 0.4,
+      mineralSpots: 0.25,
+      backdrop: 'karst',
+      backdropHaze: 50,
+      envSeed: { humidity: 60, temperature: 21, soilMoisture: 40, nutrients: 50 },
+    })
+    const source = createWorld()
+    source.items = [item('p1', 'flora'), item('p2', 'flora'), item('f1', 'fauna')]
+    const snap = getGardenSnapshot(other.get(studioStateAtom), source)
+
+    world.items = [item('old', 'hardscape')]
+    world.moldPatches = [{ x: 0.1, y: 0.1 }]
+    world.env.o2 = 41
+    world.env.condensation = 0.9
+    registerWorld(world)
+    studio.set(selectedIdAtom, 'old')
+    applyGardenSnapshot(snap, studio)
+
+    expect(studio.get(studioStateAtom)).toMatchObject({
+      vessel: 'globe',
+      dayCount: 9,
+      cycleProgress: 0.4,
+      mineralSpots: 0.25,
+      backdrop: 'karst',
+      backdropHaze: 50,
+      selectedId: null,
+    })
+    expect(world.items.map((i) => i.uid)).toEqual(['p1', 'p2', 'f1'])
+    expect(world.moldPatches).toEqual([])
+    expect(world.env).toMatchObject({
+      humidity: 60,
+      temperature: 21,
+      soilMoisture: 40,
+      nutrients: 50,
+      cycleProgress: 0.4,
+      // O2 and condensation restart from the defaults rather than keeping the previous garden's.
+      o2: DEFAULT_TELEMETRY.o2Balance,
+      condensation: DEFAULT_TELEMETRY.condensation,
+    })
+    expect(world.mineralSpots).toBe(0.25)
+    expect(studio.get(studioStateAtom)).not.toHaveProperty('version')
+  })
+
+  it('applyGardenSnapshot seeds ecoTime from the garden dayCount when its world has none', () => {
+    const other = makeStore()
+    other.set(patchStudioAtom, { dayCount: 9 })
+    const source = createWorld()
+    source.items = [item('p1', 'flora')]
+    const snap = getGardenSnapshot(other.get(studioStateAtom), source)
+    delete snap.worldSnapshot?.ecoTime
+    world.ecoTime = 99
+    world.breed = { springtails: 0.5 }
+    registerWorld(world)
+    applyGardenSnapshot(snap, studio)
+    expect(world.ecoTime).toBe(8)
+
+    // A garden saved with no world at all leaves none of the previous garden's living state.
+    world.mossTufts = [{ x: 0.4, r: 3, w: 1, seed: 1 }]
+    world.breed = { springtails: 0.5 }
+    applyGardenSnapshot(
+      { ...getGardenSnapshot(other.get(studioStateAtom), null), worldSnapshot: null },
+      studio,
+    )
+    expect(world.mossTufts).toHaveLength(0)
+    expect(world.breed).toEqual({})
+
+    const withTime = getGardenSnapshot(other.get(studioStateAtom), source)
+    if (withTime.worldSnapshot) withTime.worldSnapshot.ecoTime = 2.5
+    applyGardenSnapshot(withTime, studio)
+    expect(world.ecoTime).toBe(2.5)
+  })
+
+  it('applyGardenSnapshot sanitises the away log and pace of a malformed garden', () => {
+    const good = {
+      from: 1,
+      to: 2,
+      hours: 1,
+      tankHours: 12,
+      capped: false,
+      mode: 'away',
+      reason: 'return',
+      items: [],
+      more: 0,
+      rest: [],
+      hints: [],
+    }
+    const snap = {
+      ...getGardenSnapshot(studio.get(studioStateAtom), null),
+      awayLog: [good, { from: 3, to: 4 }],
+      pace: 'warp',
+    } as unknown as GardenSnapshot
+    applyGardenSnapshot(snap, studio)
+    expect(studio.get(studioStateAtom).awayLog).toEqual([good])
+    expect(studio.get(studioStateAtom).pace).toBe('garden')
+  })
+
+  it('applyGardenSnapshot calls the restored handler once, after the world is committed', () => {
+    const source = createWorld()
+    source.items = [item('r1', 'flora')]
+    const snap = getGardenSnapshot(studio.get(studioStateAtom), source)
+    registerWorld(world)
+    const seen: string[][] = []
+    const handler = vi.fn(() => {
+      seen.push(world.items.map((i) => i.uid))
+      expect(studio.get(studioStateAtom).worldSnapshot?.items.map((i) => i.uid)).toEqual(['r1'])
+    })
+    const off = onWorldRestored(handler)
+    applyGardenSnapshot(snap, studio)
+    expect(handler).toHaveBeenCalledTimes(1)
+    expect(seen).toEqual([['r1']])
+    off()
+    applyGardenSnapshot(snap, studio)
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it('applyGardenSnapshot calls no restored handler when no world is registered', () => {
+    const handler = vi.fn()
+    const off = onWorldRestored(handler)
+    applyGardenSnapshot(getGardenSnapshot(studio.get(studioStateAtom), null), studio)
+    expect(handler).not.toHaveBeenCalled()
+    off()
+  })
+
+  it('applyGardenSnapshot migrates a v2-shaped snapshot (no room) to defaults', () => {
+    studio.set(patchStudioAtom, {
+      room: { water: 'ro', tds: 10, ph: 6.6, air: 'clean', purifier: true },
+      backdrop: 'karst',
+      backdropHaze: 70,
+      mineralSpots: 0.8,
+    })
+    const v3 = getGardenSnapshot(makeStore().get(studioStateAtom), null)
+    const v2: Partial<GardenSnapshot> = { ...v3, version: 2, vessel: 'globe' }
+    for (const k of ['room', 'backdrop', 'backdropHaze', 'mineralSpots'] as const) delete v2[k]
+    applyGardenSnapshot(v2 as GardenSnapshot, studio)
+    expect(studio.get(studioStateAtom)).toMatchObject({
+      vessel: 'globe',
+      room: DEFAULT_ROOM,
+      backdrop: 'none',
+      backdropHaze: 35,
+      mineralSpots: 0,
+    })
+  })
+
+  it('gardenSummary counts flora and fauna and floors the day', () => {
+    studio.set(patchStudioAtom, { vessel: 'globe', dayCount: 4.7 })
+    const items = [
+      item('a', 'flora'),
+      item('b', 'flora'),
+      item('c', 'fauna'),
+      item('d', 'hardscape'),
+    ]
+    expect(gardenSummary(studio.get(studioStateAtom), items)).toEqual({
+      vessel: 'globe',
+      day: 4,
+      plants: 2,
+      animals: 1,
+    })
+  })
+})

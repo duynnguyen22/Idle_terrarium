@@ -1,6 +1,6 @@
 import { useAtomValue, useStore } from 'jotai'
 import { useAuthEnv } from './authEnv'
-import { busyAtom, phaseAtom, viewDataAtom } from '@/store/account'
+import { busyAtom, phaseAtom, viewDataAtom } from '@/services/account'
 import { Button } from '@/components/ui/button'
 import {
   AUTH_SCREEN,

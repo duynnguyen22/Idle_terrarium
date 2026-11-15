@@ -1,6 +1,6 @@
+import type { EventKind } from '@/data/events'
 import type { VesselId } from '@/data/vessels'
-import type { EventKind } from '@/engine/simulation/life'
-import type { GardenSnapshot } from '@/store/gardenSnapshot'
+import type { GardenSnapshot } from '@/store/studio'
 
 export interface GardenSummary {
   vessel: VesselId
@@ -90,53 +90,55 @@ const emptyStore = (): StoreData => ({ profile: {}, gardens: {}, journal: {} })
 const isObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)
 
+/** Corrupt or missing data reads as an empty store; a storage that cannot be read throws 'unavailable'. */
+function readStore(storage: Storage, key: string): StoreData {
+  let raw: string | null
+  try {
+    raw = storage.getItem(key)
+  } catch {
+    throw new BackendError('unavailable')
+  }
+  if (raw === null) return emptyStore()
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!isObject(parsed)) return emptyStore()
+    const gardens: StoreData['gardens'] = {}
+    if (isObject(parsed.gardens)) {
+      for (const [id, g] of Object.entries(parsed.gardens)) {
+        if (isObject(g)) gardens[id] = g as unknown as Omit<GardenRecord, 'id'>
+      }
+    }
+    const journal: StoreData['journal'] = {}
+    if (isObject(parsed.journal)) {
+      for (const [id, j] of Object.entries(parsed.journal)) {
+        journal[id] = Array.isArray(j) ? (j.filter(isObject) as unknown as JournalEntry[]) : []
+      }
+    }
+    return {
+      profile: isObject(parsed.profile) ? (parsed.profile as GardenProfile) : {},
+      gardens,
+      journal,
+    }
+  } catch {
+    return emptyStore()
+  }
+}
+
+function writeStore(storage: Storage, key: string, d: StoreData): void {
+  try {
+    storage.setItem(key, JSON.stringify(d))
+  } catch {
+    throw new BackendError('quota_exceeded')
+  }
+}
+
 export function createLocalBackend(
   accountId: string,
   storage: Storage = globalThis.localStorage,
 ): GardenBackend {
   const key = `botanica_store_${accountId}`
-
-  /** Corrupt or missing data reads as an empty store; a storage that cannot be read throws 'unavailable'. */
-  const read = (): StoreData => {
-    let raw: string | null
-    try {
-      raw = storage.getItem(key)
-    } catch {
-      throw new BackendError('unavailable')
-    }
-    if (raw === null) return emptyStore()
-    try {
-      const parsed: unknown = JSON.parse(raw)
-      if (!isObject(parsed)) return emptyStore()
-      const gardens: StoreData['gardens'] = {}
-      if (isObject(parsed.gardens)) {
-        for (const [id, g] of Object.entries(parsed.gardens)) {
-          if (isObject(g)) gardens[id] = g as unknown as Omit<GardenRecord, 'id'>
-        }
-      }
-      const journal: StoreData['journal'] = {}
-      if (isObject(parsed.journal)) {
-        for (const [id, j] of Object.entries(parsed.journal)) {
-          journal[id] = Array.isArray(j) ? (j.filter(isObject) as unknown as JournalEntry[]) : []
-        }
-      }
-      return {
-        profile: isObject(parsed.profile) ? (parsed.profile as GardenProfile) : {},
-        gardens,
-        journal,
-      }
-    } catch {
-      return emptyStore()
-    }
-  }
-
-  const write = (d: StoreData): void => {
-    try {
-      storage.setItem(key, JSON.stringify(d))
-    } catch {
-      throw new BackendError('quota_exceeded')
-    }
-  }
+  const read = (): StoreData => readStore(storage, key)
+  const write = (d: StoreData): void => writeStore(storage, key, d)
 
   return {
     kind: 'local',

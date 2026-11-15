@@ -12,7 +12,7 @@ import {
   type GardenStart,
   renamingAtom,
   timeAgo,
-} from '@/store/account'
+} from '@/services/account'
 import {
   ACCT_ACTIONS,
   ACCT_H,

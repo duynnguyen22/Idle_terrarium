@@ -1,7 +1,7 @@
 import { useAtomValue } from 'jotai'
 import { Toggle } from '@/components/ui/toggle'
 import { POUR_CONTAINERS } from '@/data/substrates'
-import { getContainerVectorSVG } from '@/lib/vesselPreview'
+import { getContainerVectorSVG } from './vesselPreview'
 import { appStore } from '@/store/appStore'
 import { activePourMaterialAtom, activeToolAtom } from '@/store/studio'
 import { showToast } from '@/store/toast'

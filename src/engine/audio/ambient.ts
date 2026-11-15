@@ -1,3 +1,4 @@
+import { DEFAULT_MUSIC_VOLUME } from '@/data/soundPresets'
 import type { SoundPresetId } from '@/data/types'
 import type { AudioContextLike, GainLike, OscillatorLike } from './audioContext'
 
@@ -11,7 +12,6 @@ export interface AmbientHandle {
 export const AMBIENT_INTERVAL_MS = 260
 /** Master gain at full volume. The default volume (0.5) gives a gain of 1, the original loudness. */
 export const AMBIENT_MAX_GAIN = 2
-export const DEFAULT_MUSIC_VOLUME = 0.5
 
 const FOREST_NOTES = [392, 440, 523.25, 587.33, 659.25]
 /** C major pentatonic, C4 to E5: any two notes sound fine together, so a random walk never clashes. */

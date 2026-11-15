@@ -1,6 +1,6 @@
 import type { FormEvent } from 'react'
 import { useStore } from 'jotai'
-import { busyAtom, viewDataAtom } from '@/store/account'
+import { busyAtom, viewDataAtom } from '@/services/account'
 import { RESEND_WINDOW_MS, useAuthEnv } from './authEnv'
 import { AuthField } from './AuthField'
 import {

@@ -1,12 +1,6 @@
+import { PACE_LABELS, PACE_SUBTITLES, PACES } from '@/data/pace'
 import { describe, expect, it } from 'vitest'
-import {
-  dtDayForFrame,
-  MAX_FRAME_MS,
-  PACE_LABELS,
-  PACE_SUBTITLES,
-  PACES,
-  paceMs,
-} from '@/engine/simulation/pace'
+import { dtDayForFrame, MAX_FRAME_MS, paceMs } from '@/engine/simulation/pace'
 
 describe('pace table', () => {
   it('garden pace is 2 hours per tank day', () => expect(paceMs('garden')).toBe(2 * 36e5))

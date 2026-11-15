@@ -1,4 +1,5 @@
-import { snapshotWorld, type WorldSnapshot } from '@/engine/persistence'
+import type { WorldSnapshot } from '@/data/world'
+import { snapshotWorld } from '@/engine/persistence'
 import type { EngineWorld } from '@/engine/world'
 import { appStore } from '@/store/appStore'
 import { worldSnapshotAtom } from '@/store/studio'

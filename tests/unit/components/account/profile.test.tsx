@@ -1,7 +1,7 @@
 import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
-import { viewAtom } from '@/store/account'
+import { viewAtom } from '@/services/account'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AuthError, type AuthService, type PublicUser } from '@/auth'
 import { AccountChip } from '@/components/account/AccountChip'

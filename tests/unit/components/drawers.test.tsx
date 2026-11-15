@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { StudioLayout } from '@/components/layout/StudioLayout'
 import { appStore } from '@/store/appStore'
 import { createDefaultState, patchStudioAtom, selectedIdAtom } from '@/store/studio'
-import { WELCOME_KEY } from '@/store/account'
+import { WELCOME_KEY } from '@/services/account'
 
 beforeEach(() => {
   appStore.set(patchStudioAtom, createDefaultState())

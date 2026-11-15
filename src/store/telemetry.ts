@@ -1,5 +1,5 @@
+import type { CareIssue } from '@/data/care'
 import { atom } from 'jotai'
-import type { CareIssue } from '@/engine/care'
 
 export interface Telemetry {
   humidity: number

@@ -23,6 +23,10 @@ Want to save gardens? Sign in with the demo account **demo@botanica.app** / **te
 
 ## 🛠 Built with
 
-React 19 · TypeScript · Vite · Tailwind CSS v4 · Zustand · Canvas · Web Audio
+React 19 · TypeScript · Vite · Tailwind CSS v4 · Jotai · Canvas · Web Audio
 
-Other commands: `pnpm build`, `pnpm test`, `pnpm e2e`, `pnpm lint`. To deploy, run `pnpm build` and host the `dist/` folder on any static host.
+Other commands: `pnpm build`, `pnpm test`, `pnpm e2e`, `pnpm lint`, and `pnpm verify` (lint, format check, type check and tests in one go). To deploy, run `pnpm build` and host the `dist/` folder on any static host.
+
+## 🤝 Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code rules and how to open a pull request.

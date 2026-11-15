@@ -1,6 +1,7 @@
+import type { WorldEntity } from '@/data/world'
 import type { Rect } from '@/data/types'
 import type { StudioState } from '@/store/studio'
-import type { EngineWorld, WorldEntity } from '../world'
+import type { EngineWorld } from '../world'
 
 /** Every render function is pure and shares this signature. */
 export type RenderFn = (

@@ -1,3 +1,4 @@
+import { TERRAIN_POINTS } from '@/data/world'
 import { BIOME_PRESETS, type PresetId, type PresetItem } from '@/data/presets'
 import { findCatalogDef } from '@/data/catalog'
 import type { PlacedItem } from '@/data/types'
@@ -22,7 +23,7 @@ import {
   vesselAtom,
   waterSplitAtom,
 } from '@/store/studio'
-import { TERRAIN_POINTS, type EngineWorld } from './world'
+import type { EngineWorld } from './world'
 
 /** Falls Lake's new-build mold bloom countdown (prototype applyFallsLakePreset `state.bloomTimer = 700`). */
 export const FALLS_BLOOM_TIMER = 700

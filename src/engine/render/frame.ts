@@ -1,7 +1,134 @@
 import { isRectTank } from '@/data/vessels'
 import { getLandSurfaceNormY, getWaterTopNormY } from '../geometry'
+import type { StudioState } from '@/store/studio'
+import type { EngineWorld } from '../world'
 import { vesselMetrics, type RenderFn } from './metrics'
 import { terrainOf } from './terrain'
+
+type Ctx = CanvasRenderingContext2D
+
+/** Rimless low-iron glass: thin clear silicone seams and polished edges, plus the riparium's planter rail. */
+function drawRimlessFrame(
+  ctx: Ctx,
+  v: string,
+  leftX: number,
+  topY: number,
+  w: number,
+  h: number,
+): void {
+  ctx.strokeStyle = 'rgba(15, 23, 42, 0.55)'
+  ctx.lineWidth = 2
+  ctx.strokeRect(leftX, topY, w, h)
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'
+  ctx.lineWidth = 1.2
+  ctx.beginPath()
+  ctx.moveTo(leftX + 3, topY + 3)
+  ctx.lineTo(leftX + 3, topY + h - 3)
+  ctx.moveTo(leftX + w - 3, topY + 3)
+  ctx.lineTo(leftX + w - 3, topY + h - 3)
+  ctx.stroke()
+  // Glass reflection streak
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.07)'
+  ctx.beginPath()
+  ctx.moveTo(leftX + w * 0.7, topY)
+  ctx.lineTo(leftX + w * 0.76, topY)
+  ctx.lineTo(leftX + w * 0.64, topY + h)
+  ctx.lineTo(leftX + w * 0.58, topY + h)
+  ctx.closePath()
+  ctx.fill()
+  if (v === 'riparium_long') {
+    // Hanging planter rail along the back top edge
+    ctx.fillStyle = '#2b3a33'
+    ctx.fillRect(leftX + 6, topY + 4, w - 12, 4)
+  }
+}
+
+/** Black frame, mesh vent strip on top, two hinged front doors. */
+function drawVivariumFrame(
+  ctx: Ctx,
+  Rad: number,
+  cx: number,
+  leftX: number,
+  topY: number,
+  w: number,
+  h: number,
+): void {
+  const ventH = Rad * 0.07
+  ctx.strokeStyle = '#111827'
+  ctx.lineWidth = 5
+  ctx.strokeRect(leftX, topY, w, h)
+  ctx.fillStyle = '#1f2937'
+  ctx.fillRect(leftX, topY, w, ventH)
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.55)'
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  for (let x = leftX + 6; x < leftX + w - 4; x += 5) {
+    ctx.moveTo(x, topY + 3)
+    ctx.lineTo(x, topY + ventH - 3)
+  }
+  ctx.stroke()
+  // Centre split between the two doors
+  ctx.strokeStyle = '#111827'
+  ctx.lineWidth = 3
+  ctx.beginPath()
+  ctx.moveTo(cx, topY + ventH)
+  ctx.lineTo(cx, topY + h * 0.62)
+  ctx.stroke()
+  // Door handles
+  ctx.fillStyle = '#94a3b8'
+  for (const x of [cx - 9, cx + 5]) {
+    ctx.beginPath()
+    ctx.roundRect(x, topY + h * 0.33, 4, 16, 2)
+    ctx.fill()
+  }
+  // Lower fixed panel that holds the substrate
+  ctx.fillStyle = '#111827'
+  ctx.fillRect(leftX, topY + h * 0.62, w, 3)
+}
+
+/**
+ * Black silicone frame, front water-dam bar and glass door knob. The dam sits just above whichever is
+ * higher, the land at x = 0.6 or the pool surface, but never lower than 0.2R off the floor.
+ */
+function drawPaludariumFrame(
+  ctx: Ctx,
+  world: EngineWorld,
+  state: StudioState,
+  Rad: number,
+  cy: number,
+  leftX: number,
+  topY: number,
+  w: number,
+  h: number,
+): void {
+  const bottomY = cy + Rad * 0.84
+  const t = terrainOf(world, state)
+  const damY = Math.min(
+    cy - Rad + Math.min(getLandSurfaceNormY(t, 0.6), getWaterTopNormY(t)) * 2 * Rad - 10,
+    bottomY - Rad * 0.2,
+  )
+
+  // Black silicone structural edges
+  ctx.strokeStyle = '#111827'
+  ctx.lineWidth = 4.5
+  ctx.strokeRect(leftX, topY, w, h)
+
+  // Front water-dam horizontal divider bar
+  ctx.fillStyle = '#0f172a'
+  ctx.fillRect(leftX, damY, w, 5.5)
+
+  // Front glass door metallic handle knob
+  const knobX = leftX + Rad * 0.11
+  const knobY = damY - Rad * 0.08
+  ctx.fillStyle = '#334155'
+  ctx.beginPath()
+  ctx.arc(knobX, knobY, 6.5, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = '#94a3b8'
+  ctx.beginPath()
+  ctx.arc(knobX - 1.5, knobY - 1.5, 2.5, 0, Math.PI * 2)
+  ctx.fill()
+}
 
 /**
  * Front frame of the rectangular tanks (prototype drawPaludariumFrontFrame), spanning the tank's scaled
@@ -22,93 +149,11 @@ export const drawPaludariumFrontFrame: RenderFn = (ctx, world, state, R) => {
   const v = state.vessel
 
   if (v === 'rimless_landscape' || v === 'riparium_long') {
-    // Rimless low-iron glass: thin clear silicone seams and polished edges
-    ctx.strokeStyle = 'rgba(15, 23, 42, 0.55)'
-    ctx.lineWidth = 2
-    ctx.strokeRect(leftX, topY, w, h)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'
-    ctx.lineWidth = 1.2
-    ctx.beginPath()
-    ctx.moveTo(leftX + 3, topY + 3)
-    ctx.lineTo(leftX + 3, topY + h - 3)
-    ctx.moveTo(leftX + w - 3, topY + 3)
-    ctx.lineTo(leftX + w - 3, topY + h - 3)
-    ctx.stroke()
-    // Glass reflection streak
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.07)'
-    ctx.beginPath()
-    ctx.moveTo(leftX + w * 0.7, topY)
-    ctx.lineTo(leftX + w * 0.76, topY)
-    ctx.lineTo(leftX + w * 0.64, topY + h)
-    ctx.lineTo(leftX + w * 0.58, topY + h)
-    ctx.closePath()
-    ctx.fill()
-    if (v === 'riparium_long') {
-      // Hanging planter rail along the back top edge
-      ctx.fillStyle = '#2b3a33'
-      ctx.fillRect(leftX + 6, topY + 4, w - 12, 4)
-    }
+    drawRimlessFrame(ctx, v, leftX, topY, w, h)
   } else if (v === 'vivarium_front') {
-    // Black frame, mesh vent strip on top, two hinged front doors
-    const ventH = Rad * 0.07
-    ctx.strokeStyle = '#111827'
-    ctx.lineWidth = 5
-    ctx.strokeRect(leftX, topY, w, h)
-    ctx.fillStyle = '#1f2937'
-    ctx.fillRect(leftX, topY, w, ventH)
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.55)'
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    for (let x = leftX + 6; x < leftX + w - 4; x += 5) {
-      ctx.moveTo(x, topY + 3)
-      ctx.lineTo(x, topY + ventH - 3)
-    }
-    ctx.stroke()
-    // Centre split between the two doors
-    ctx.strokeStyle = '#111827'
-    ctx.lineWidth = 3
-    ctx.beginPath()
-    ctx.moveTo(cx, topY + ventH)
-    ctx.lineTo(cx, topY + h * 0.62)
-    ctx.stroke()
-    // Door handles
-    ctx.fillStyle = '#94a3b8'
-    for (const x of [cx - 9, cx + 5]) {
-      ctx.beginPath()
-      ctx.roundRect(x, topY + h * 0.33, 4, 16, 2)
-      ctx.fill()
-    }
-    // Lower fixed panel that holds the substrate
-    ctx.fillStyle = '#111827'
-    ctx.fillRect(leftX, topY + h * 0.62, w, 3)
+    drawVivariumFrame(ctx, Rad, cx, leftX, topY, w, h)
   } else {
-    const bottomY = cy + Rad * 0.84
-    const t = terrainOf(world, state)
-    const damY = Math.min(
-      cy - Rad + Math.min(getLandSurfaceNormY(t, 0.6), getWaterTopNormY(t)) * 2 * Rad - 10,
-      bottomY - Rad * 0.2,
-    )
-
-    // Black silicone structural edges
-    ctx.strokeStyle = '#111827'
-    ctx.lineWidth = 4.5
-    ctx.strokeRect(leftX, topY, w, h)
-
-    // Front water-dam horizontal divider bar
-    ctx.fillStyle = '#0f172a'
-    ctx.fillRect(leftX, damY, w, 5.5)
-
-    // Front glass door metallic handle knob
-    const knobX = leftX + Rad * 0.11
-    const knobY = damY - Rad * 0.08
-    ctx.fillStyle = '#334155'
-    ctx.beginPath()
-    ctx.arc(knobX, knobY, 6.5, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = '#94a3b8'
-    ctx.beginPath()
-    ctx.arc(knobX - 1.5, knobY - 1.5, 2.5, 0, Math.PI * 2)
-    ctx.fill()
+    drawPaludariumFrame(ctx, world, state, Rad, cy, leftX, topY, w, h)
   }
 
   ctx.restore()

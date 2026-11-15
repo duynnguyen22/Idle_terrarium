@@ -1,0 +1,83 @@
+import type { Store } from 'jotai'
+import type { GardenSummary } from '@/auth/backend'
+import type { PlacedItem } from '@/data/types'
+import { commitWorld, notifyWorldRestored, tryGetWorld } from '@/engine/engineBridge'
+import { seedWorldEnv } from '@/engine/envSeed'
+import { ecoTimeFromDayCount, restoreWorld, snapshotWorld } from '@/engine/persistence'
+import type { EngineWorld } from '@/engine/world'
+import {
+  migrate,
+  sanitizeAwayLog,
+  sanitizeBackdropHaze,
+  sanitizeMusicVolume,
+  sanitizePace,
+  sanitizeSoundPreset,
+} from '@/store/migrations'
+import {
+  partialize,
+  patchStudioAtom,
+  STUDIO_VERSION,
+  studioStateAtom,
+  type GardenSnapshot,
+  type StudioState,
+} from '@/store/studio'
+
+/** The persisted slice with a fresh world snapshot when a world is live (spec getSnapshot). */
+export function getGardenSnapshot(store: StudioState, world: EngineWorld | null): GardenSnapshot {
+  return {
+    ...partialize(store),
+    worldSnapshot: world ? snapshotWorld(world) : store.worldSnapshot,
+    version: STUDIO_VERSION,
+  }
+}
+
+/**
+ * Loads a saved terrarium (spec applySnapshotData): migrates it from its version, writes only the
+ * persisted keys to the store, then rebuilds the registered world from it: scene, environment
+ * gauges, cycle and glass residue. Mold and pending pour deltas belong to the previous build. Finally it tells
+ * the engine the world was restored, so a gap since the garden's last save is caught up.
+ */
+export function applyGardenSnapshot(snapshot: GardenSnapshot, store: Store): void {
+  const migrated = migrate(snapshot, snapshot.version ?? STUDIO_VERSION)
+  const patch: Record<string, unknown> = {}
+  // Only persisted keys: a stored snapshot must never overwrite an action or transient field.
+  for (const k of Object.keys(partialize(store.get(studioStateAtom))))
+    if (Object.hasOwn(migrated, k)) patch[k] = migrated[k]
+  if (Object.hasOwn(patch, 'backdropHaze'))
+    patch.backdropHaze = sanitizeBackdropHaze(patch.backdropHaze)
+  if (Object.hasOwn(patch, 'musicVolume'))
+    patch.musicVolume = sanitizeMusicVolume(patch.musicVolume)
+  if (Object.hasOwn(patch, 'soundPreset'))
+    patch.soundPreset = sanitizeSoundPreset(patch.soundPreset)
+  if (Object.hasOwn(patch, 'pace')) patch.pace = sanitizePace(patch.pace)
+  if (Object.hasOwn(patch, 'awayLog')) patch.awayLog = sanitizeAwayLog(patch.awayLog)
+  store.set(patchStudioAtom, { ...(patch as Partial<StudioState>), selectedId: null })
+
+  const world = tryGetWorld()
+  if (!world) return
+  const s = store.get(studioStateAtom)
+  if (s.worldSnapshot) restoreWorld(world, s.worldSnapshot, s.dayCount)
+  else {
+    world.ecoTime = ecoTimeFromDayCount(s.dayCount)
+    world.breed = {}
+    world.mossTufts = []
+  }
+  world.moldPatches = []
+  world.pendingSubstrates = {}
+  world.pendingWaterSplit = undefined
+  // The env flush is one-way (world -> store), so the gauges must be re-seeded from the snapshot.
+  seedWorldEnv(world, s)
+  commitWorld()
+  // The applied garden's clock may be days old: let the engine catch it up now.
+  notifyWorldRestored()
+}
+
+/** The card line for a terrarium (spec gardenSummary). */
+export function gardenSummary(store: StudioState, items: readonly PlacedItem[]): GardenSummary {
+  return {
+    vessel: store.vessel,
+    day: Math.floor(store.dayCount),
+    plants: items.filter((i) => i.category === 'flora').length,
+    animals: items.filter((i) => i.category === 'fauna').length,
+  }
+}

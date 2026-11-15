@@ -1,5 +1,5 @@
 import { findCatalogDef } from '@/data/catalog'
-import type { AiState, FaunaDef } from '@/data/types'
+import type { AiState, FaunaDef, PlacedItem } from '@/data/types'
 import type { StudioState } from '@/store/studio'
 import {
   BANK_W,
@@ -53,6 +53,17 @@ export function faunaZone(
   return { minX: LAND_MIN_X, maxX: LAND_MAX_X }
 }
 
+/** Per-frame values the ground and swim targets read; built once per `updateFauna` call. */
+interface FaunaFrame {
+  terrain: TerrainInput
+  pool: boolean
+  waterTop: number
+  poolBed: number
+  dusky: boolean
+  timestamp: number
+  still: boolean
+}
+
 /**
  * Creature AI with habitat zones and day/night behaviour (prototype 3229-3281). Nocturnal land fauna hide by day,
  * swimmers bob between water top and pool bed, and floating flora rides the water surface. Dragged items and
@@ -79,6 +90,15 @@ export function updateFauna(
   const poolBed = getPoolBedNormY(state.substrates)
   // Easing factors are capped at 1 so a long frame (or 5x speed) never overshoots the target.
   const yEase = Math.min(1, 0.08 * fs)
+  const frame: FaunaFrame = {
+    terrain,
+    pool,
+    waterTop,
+    poolBed,
+    dusky,
+    timestamp,
+    still: !!state.reducedMotion,
+  }
 
   for (const item of world.items) {
     if (item.uid === world.draggingId || item.parentUid) continue
@@ -95,75 +115,105 @@ export function updateFauna(
 
     const climber = def.habitat === 'glass'
     const hiding = !!def.nocturnal && !dusky && (def.habitat === 'land' || climber)
-    // `??` rather than the prototype's `||`: an explicit 0 means "re-roll now".
-    item.aiTimer = (item.aiTimer ?? 100) - speedMult * fs
-    if (item.aiTimer <= 0) {
-      item.aiState = hiding ? 'hiding' : AI_STATES[Math.floor(rng() * AI_STATES.length)]
-      item.aiTimer = 90 + rng() * 140
-      const spd = (def.speed || 0.25) * 0.0014
-      // Glass climbers pick a new height: tucked up high by day, roaming the middle of the pane at night.
-      if (climber) item.glassY = hiding ? 0.2 + rng() * 0.04 : 0.22 + rng() * 0.38
-      item.vx = item.aiState === 'resting' || item.aiState === 'hiding' ? 0 : (rng() - 0.5) * spd
-    }
-    if (hiding && item.aiState !== 'hiding') {
-      item.aiState = 'hiding'
-      item.vx = 0
-    }
+    tickAiState(item, def, hiding, climber, speedMult, fs, rng)
 
     const { minX, maxX } = faunaZone(def, state, dusky)
-    const vx = item.vx ?? 0
-    if (item.x < minX - 0.01 || item.x > maxX + 0.01) {
-      const target = item.x < minX ? minX : maxX
-      item.x += (target - item.x) * Math.min(1, 0.02 * speedMult * fs)
-    } else if (vx) {
-      item.x += vx * speedMult * fs
-      if (item.x < minX) {
-        item.x = minX
-        item.vx = Math.abs(vx)
-      }
-      if (item.x > maxX) {
-        item.x = maxX
-        item.vx = -Math.abs(vx)
-      }
-      item.flipX = (item.vx ?? 0) < 0
-    }
+    walkWithinZone(item, minX, maxX, speedMult, fs)
 
     if (climber) {
       item.y += ((item.glassY ?? 0.4) - item.y) * Math.min(1, 0.015 * fs)
       continue
     }
 
-    let ty: number
-    const still = !!state.reducedMotion
-    if (def.habitat === 'water' && pool) {
-      const depth = poolBed - waterTop
-      if (def.zone === 'bed') {
-        // Nerites graze the floor and now and then climb to the waterline.
-        ty = item.aiState === 'exploring' ? waterTop + 0.012 : poolBed - 0.014
-      } else if (def.zone === 'surface') {
-        // Ramshorns sit on plants or float up to the surface film.
-        ty =
-          item.aiState === 'exploring'
-            ? waterTop + 0.006
-            : poolBed - 0.012 - (depth * 0.25 * (Math.sin(item.x * 40) + 1)) / 2
-      } else if (item.id === 'amano_shrimp') {
-        // Amanos keep low, darting along the lower third.
-        const wave = still ? 0 : 0.2 * Math.sin(timestamp * 0.0011 + item.x * 9)
-        ty = waterTop + depth * (0.7 + wave)
-      } else {
-        const wave = still ? 0 : 0.28 * Math.sin(timestamp * 0.0015 + item.x * 12)
-        ty = waterTop + depth * (0.5 + wave)
-      }
-    } else if (def.hops && item.vx && !still) {
-      // Dart frogs move in short hops.
-      const hop = Math.abs(Math.sin(timestamp * 0.009 + item.x * 50)) * 0.03
-      ty = getSoilSurfaceNormalizedY(terrain, item.x) - 0.021 * (item.scale || 0.8) - hop
-    } else if (item.id === 'tree_frog' && !dusky) {
-      ty = getSoilSurfaceNormalizedY(terrain, item.x) - 0.11
-    } else {
-      ty = getSoilSurfaceNormalizedY(terrain, item.x) - 0.021 * (item.scale || 0.8)
-    }
+    const ty = targetY(item, def, frame)
     item.y += (ty - item.y) * yEase
     if (item.id === 'tree_frog') item.zIndex = dusky ? 40 : 0.5
   }
+}
+
+/** Counts down the AI timer and re-rolls state, climb height and speed when it runs out; hiders stay hidden. */
+function tickAiState(
+  item: PlacedItem,
+  def: FaunaDef,
+  hiding: boolean,
+  climber: boolean,
+  speedMult: number,
+  fs: number,
+  rng: Rng,
+): void {
+  // `??` rather than the prototype's `||`: an explicit 0 means "re-roll now".
+  item.aiTimer = (item.aiTimer ?? 100) - speedMult * fs
+  if (item.aiTimer <= 0) {
+    item.aiState = hiding ? 'hiding' : AI_STATES[Math.floor(rng() * AI_STATES.length)]
+    item.aiTimer = 90 + rng() * 140
+    const spd = (def.speed || 0.25) * 0.0014
+    // Glass climbers pick a new height: tucked up high by day, roaming the middle of the pane at night.
+    if (climber) item.glassY = hiding ? 0.2 + rng() * 0.04 : 0.22 + rng() * 0.38
+    item.vx = item.aiState === 'resting' || item.aiState === 'hiding' ? 0 : (rng() - 0.5) * spd
+  }
+  if (hiding && item.aiState !== 'hiding') {
+    item.aiState = 'hiding'
+    item.vx = 0
+  }
+}
+
+/** Eases a stray creature back into its zone, or walks it and turns it around at the zone edges. */
+function walkWithinZone(
+  item: PlacedItem,
+  minX: number,
+  maxX: number,
+  speedMult: number,
+  fs: number,
+): void {
+  const vx = item.vx ?? 0
+  if (item.x < minX - 0.01 || item.x > maxX + 0.01) {
+    const target = item.x < minX ? minX : maxX
+    item.x += (target - item.x) * Math.min(1, 0.02 * speedMult * fs)
+  } else if (vx) {
+    item.x += vx * speedMult * fs
+    if (item.x < minX) {
+      item.x = minX
+      item.vx = Math.abs(vx)
+    }
+    if (item.x > maxX) {
+      item.x = maxX
+      item.vx = -Math.abs(vx)
+    }
+    item.flipX = (item.vx ?? 0) < 0
+  }
+}
+
+/** Height a non-climbing creature eases toward: a swim depth in the pool, or just above the soil. */
+function targetY(item: PlacedItem, def: FaunaDef, f: FaunaFrame): number {
+  const { terrain, pool, waterTop, poolBed, dusky, timestamp, still } = f
+  let ty: number
+  if (def.habitat === 'water' && pool) {
+    const depth = poolBed - waterTop
+    if (def.zone === 'bed') {
+      // Nerites graze the floor and now and then climb to the waterline.
+      ty = item.aiState === 'exploring' ? waterTop + 0.012 : poolBed - 0.014
+    } else if (def.zone === 'surface') {
+      // Ramshorns sit on plants or float up to the surface film.
+      ty =
+        item.aiState === 'exploring'
+          ? waterTop + 0.006
+          : poolBed - 0.012 - (depth * 0.25 * (Math.sin(item.x * 40) + 1)) / 2
+    } else if (item.id === 'amano_shrimp') {
+      // Amanos keep low, darting along the lower third.
+      const wave = still ? 0 : 0.2 * Math.sin(timestamp * 0.0011 + item.x * 9)
+      ty = waterTop + depth * (0.7 + wave)
+    } else {
+      const wave = still ? 0 : 0.28 * Math.sin(timestamp * 0.0015 + item.x * 12)
+      ty = waterTop + depth * (0.5 + wave)
+    }
+  } else if (def.hops && item.vx && !still) {
+    // Dart frogs move in short hops.
+    const hop = Math.abs(Math.sin(timestamp * 0.009 + item.x * 50)) * 0.03
+    ty = getSoilSurfaceNormalizedY(terrain, item.x) - 0.021 * (item.scale || 0.8) - hop
+  } else if (item.id === 'tree_frog' && !dusky) {
+    ty = getSoilSurfaceNormalizedY(terrain, item.x) - 0.11
+  } else {
+    ty = getSoilSurfaceNormalizedY(terrain, item.x) - 0.021 * (item.scale || 0.8)
+  }
+  return ty
 }

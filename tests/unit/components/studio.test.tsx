@@ -1,3 +1,5 @@
+import { DEFAULT_ROOM } from '@/data/room'
+import type { CareIssue } from '@/data/care'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Toaster } from '@/components/ui/sonner'
@@ -7,13 +9,11 @@ import { LightingControls } from '@/components/nav/LightingControls'
 import { GaugeBar } from '@/components/telemetry/GaugeBar'
 import { TerrariumCanvas } from '@/components/stage/TerrariumCanvas'
 import { computeVesselRect } from '@/engine/render/renderFrame'
-import { DEFAULT_ROOM } from '@/engine/room'
 import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { createLocalBackend } from '@/auth/backend'
 import { MemoryStorage } from './auth/authHarness'
 import type { PlacedItem } from '@/data/types'
-import type { CareIssue } from '@/engine/care'
 import { appStore } from '@/store/appStore'
 import {
   autoLightSyncAtom,
@@ -35,7 +35,7 @@ import {
   telemetryAtom,
   type Telemetry,
 } from '@/store/telemetry'
-import { journalAtom, patchAccountAtom, resetAccountAtom } from '@/store/account'
+import { journalAtom, patchAccountAtom, resetAccountAtom } from '@/services/account'
 
 const item = (uid: string, category: PlacedItem['category']): PlacedItem => ({
   uid,

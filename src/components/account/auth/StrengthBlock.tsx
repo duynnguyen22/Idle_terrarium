@@ -2,7 +2,7 @@ import { useAtomValue } from 'jotai'
 import { cn } from 'cn'
 import { passwordStrength } from '@/auth'
 import { type TextKey } from './authEnv'
-import { viewDataAtom } from '@/store/account'
+import { viewDataAtom } from '@/services/account'
 import { CheckIcon } from './AuthPieces'
 
 /** Bar colour by score, weak to strong. */

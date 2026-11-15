@@ -1,6 +1,7 @@
 import { useAtom } from 'jotai'
 import { Button } from '@/components/ui/button'
-import { LineIcon, type IconName } from '@/components/ui/LineIcon'
+import { LineIcon } from '@/components/ui/LineIcon'
+import type { IconName } from '@/components/ui/lineIconPaths'
 import { Toggle } from '@/components/ui/toggle'
 import { SUBSTRATES_BY_ID, type SubstrateId } from '@/data/substrates'
 import { activePourMaterialAtom, activeToolAtom } from '@/store/studio'

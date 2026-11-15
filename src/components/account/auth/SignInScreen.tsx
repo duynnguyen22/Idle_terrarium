@@ -1,7 +1,7 @@
 import { useAtomValue, useStore } from 'jotai'
 import type { FormEvent } from 'react'
 import { RESEND_WINDOW_MS, useAuthEnv } from './authEnv'
-import { busyAtom, phaseAtom, viewDataAtom } from '@/store/account'
+import { busyAtom, phaseAtom, viewDataAtom } from '@/services/account'
 import { AuthField } from './AuthField'
 import {
   AUTH_FORM,
@@ -16,15 +16,14 @@ import {
   Providers,
   SubmitButton,
 } from './AuthPieces'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { FieldGroup } from '@/components/ui/field'
+import { SignInRememberRow } from './SignInRememberRow'
 
 /** Email and password sign-in (spec Screens.signin). */
 export function SignInScreen() {
   const { account, auth, toast } = useAuthEnv()
   const store = useStore()
   const hasEmail = !!useAtomValue(viewDataAtom).email
-  const remember = useAtomValue(viewDataAtom).remember ?? true
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
@@ -79,24 +78,7 @@ export function SignInScreen() {
             autoComplete="current-password"
             autoFocus={hasEmail}
           />
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Field orientation="horizontal" className="w-auto gap-2">
-              <Checkbox
-                id="auth-remember"
-                checked={remember}
-                onCheckedChange={(c) => account.setViewData({ remember: c === true })}
-              />
-              <FieldLabel
-                htmlFor="auth-remember"
-                className="text-[12.5px] font-normal text-ink-soft"
-              >
-                Keep me signed in
-              </FieldLabel>
-            </Field>
-            <LinkButton onClick={() => go('forgot', { email: store.get(viewDataAtom).email })}>
-              Forgot password?
-            </LinkButton>
-          </div>
+          <SignInRememberRow />
           <FormError />
           <SubmitButton>Sign in</SubmitButton>
           <LinkButton className="self-center" onClick={sendLink}>

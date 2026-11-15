@@ -1,17 +1,6 @@
-import type { MossTuft, PlacedItem } from '@/data/types'
+import { MAX_PERSISTED_GRAINS, TERRAIN_POINTS, type WorldSnapshot } from '@/data/world'
 import { ensureLife } from './simulation/life'
-import { TERRAIN_POINTS, type EngineWorld, type WorldEntity } from './world'
-
-export interface WorldSnapshot {
-  items: PlacedItem[]
-  terrainContour: number[]
-  substrateGrains?: WorldEntity[]
-  mossTufts?: MossTuft[]
-  ecoTime?: number
-  breed?: Record<string, number>
-}
-
-export const MAX_PERSISTED_GRAINS = 180
+import type { EngineWorld } from './world'
 
 /** Deep copy of the persistable world parts. Particles are never included. */
 export function snapshotWorld(world: EngineWorld): WorldSnapshot {

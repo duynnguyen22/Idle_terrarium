@@ -1,18 +1,12 @@
+import { AIR_SOURCES, WATER_SOURCES } from '@/data/room'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { EnvOptionList } from '@/components/catalog/EnvOptionList'
-import { Glyph, ICON_OFF, ICON_ON, SwitchRow } from '@/components/catalog/HardwarePanel'
+import { Glyph, SwitchRow } from '@/components/catalog/HardwareRow'
+import { ICON_OFF, ICON_ON } from '@/components/catalog/hardwareRowStyles'
+import { RoomWaterTuning } from '@/components/catalog/RoomWaterTuning'
 import type { AirSourceId, WaterSourceId } from '@/data/types'
-import {
-  AIR_SOURCES,
-  PH_RANGE,
-  TDS_RANGE,
-  WATER_SOURCES,
-  envModel,
-  qualityTier,
-  qualityWord,
-} from '@/engine/room'
+import { envModel, qualityTier, qualityWord } from '@/engine/room'
 import { hasLidAtom, roomAtom } from '@/store/studio'
-import { Slider } from '@/components/ui/slider'
 
 const WATER_OPTIONS = (Object.keys(WATER_SOURCES) as WaterSourceId[]).map((id) => ({
   id,
@@ -59,8 +53,6 @@ export function RoomTab() {
   const hasLid = useAtomValue(hasLidAtom)
   const setRoom = useSetAtom(roomAtom)
   const env = envModel(room, hasLid)
-  const fixed = room.water === 'ro' || room.water === 'rain'
-  const tdsText = `${env.tds} ppm${env.tds > 350 ? ' · hard' : env.tds < 80 ? ' · very soft' : ''}`
   const airNote = hasLid
     ? 'Sealed lid halves what reaches the tank'
     : 'Open top: the tank breathes room air'
@@ -90,46 +82,7 @@ export function RoomTab() {
           value={room.water}
           onChange={(water) => setRoom({ water })}
         />
-        <div className="mt-2 flex flex-col gap-2.5 rounded-2xl border border-sand-border bg-white p-3">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between text-xs">
-              <span id="env-tds-label" className="font-medium text-ink-soft">
-                Hardness (TDS)
-              </span>
-              <span className="text-[11px] tabular-nums text-stone">{tdsText}</span>
-            </div>
-            <Slider
-              aria-labelledby="env-tds-label"
-              min={TDS_RANGE[0]}
-              max={TDS_RANGE[1]}
-              step={10}
-              value={[room.tds]}
-              disabled={fixed}
-              onValueChange={([tds]) => setRoom({ tds: tds! })}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between text-xs">
-              <span id="env-ph-label" className="font-medium text-ink-soft">
-                pH
-              </span>
-              <span className="text-[11px] tabular-nums text-stone">pH {env.ph.toFixed(1)}</span>
-            </div>
-            <Slider
-              aria-labelledby="env-ph-label"
-              min={PH_RANGE[0] * 10}
-              max={PH_RANGE[1] * 10}
-              value={[Math.round(room.ph * 10)]}
-              disabled={fixed}
-              onValueChange={([v]) => setRoom({ ph: v! / 10 })}
-            />
-          </div>
-          <p className="text-[10.5px] text-stone">
-            {fixed
-              ? `${env.ws.name} sets these for you.`
-              : 'Read them from a TDS pen and pH strip.'}
-          </p>
-        </div>
+        <RoomWaterTuning room={room} env={env} setRoom={setRoom} />
       </section>
       <section>
         <h2 className={HEADING}>Room air</h2>

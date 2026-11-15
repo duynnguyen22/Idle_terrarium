@@ -1,4 +1,5 @@
 import { findCatalogDef } from '@/data/catalog'
+import type { EventKind } from '@/data/events'
 import type { FloraDef, PlacedItem } from '@/data/types'
 import { getSoilSurfaceNormalizedY, type TerrainInput } from '@/engine/geometry'
 import { createItemId } from '@/lib/ids'
@@ -32,21 +33,6 @@ export const LIFE: Readonly<Partial<Record<string, LifeDef>>> = {
   moss_mound: { kind: 'moss', days: 3 },
   subwassertang: { kind: 'moss', days: 4 },
 }
-
-export type EventKind =
-  | 'bud'
-  | 'open'
-  | 'fade'
-  | 'seed'
-  | 'fiddle'
-  | 'frond'
-  | 'tendril'
-  | 'spread'
-  | 'seedling'
-  | 'grown'
-  | 'hatch'
-  | 'eaten'
-  | 'rest'
 
 export interface LifeEvent {
   kind: EventKind

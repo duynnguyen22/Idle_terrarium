@@ -1,9 +1,8 @@
 import { useAtomValue } from 'jotai'
 import { useRef, type ClipboardEvent, type KeyboardEvent } from 'react'
 import { textPatch, useAuthEnv, type TextKey } from './authEnv'
-import { Field, FieldError } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
-import { viewDataAtom } from '@/store/account'
+import { OtpDigitBoxes } from './OtpDigitBoxes'
+import { viewDataAtom } from '@/services/account'
 
 const LEN = 6
 
@@ -25,7 +24,6 @@ export function OtpInput({
   const boxes = useRef<(HTMLInputElement | null)[]>([])
   // Empty boxes are stored as spaces so each digit keeps its position.
   const digits = Array.from({ length: LEN }, (_, i) => (value[i] ?? '').trim())
-  const errId = `auth-${name}-err`
 
   const focusBox = (i: number) => boxes.current[i]?.focus()
 
@@ -86,39 +84,17 @@ export function OtpInput({
   }
 
   return (
-    <Field data-invalid={err ? true : undefined} className="gap-1.5">
-      <div
-        className="grid grid-cols-6 gap-2"
-        role="group"
-        aria-label="Verification code"
-        aria-describedby={err ? errId : undefined}
-      >
-        {digits.map((d, i) => (
-          <Input
-            key={i}
-            ref={(el) => {
-              boxes.current[i] = el
-            }}
-            className="h-12 min-w-0 bg-white text-center text-xl font-semibold text-forest-ink tabular-nums md:text-xl"
-            inputMode="numeric"
-            autoComplete={i === 0 ? 'one-time-code' : 'off'}
-            maxLength={1}
-            aria-label={`Digit ${i + 1}`}
-            aria-invalid={err ? true : undefined}
-            value={d}
-            data-autofocus={i === 0 && !value.trim() ? '1' : undefined}
-            onChange={(e) => onInput(i, e.target.value)}
-            onPaste={(e) => onPaste(i, e)}
-            onKeyDown={(e) => onKeyDown(i, e)}
-            onFocus={(e) => e.target.select()}
-          />
-        ))}
-      </div>
-      {err && (
-        <FieldError id={errId} className="text-xs">
-          {err}
-        </FieldError>
-      )}
-    </Field>
+    <OtpDigitBoxes
+      name={name}
+      digits={digits}
+      value={value}
+      err={err}
+      registerBox={(i, el) => {
+        boxes.current[i] = el
+      }}
+      onInput={onInput}
+      onPaste={onPaste}
+      onKeyDown={onKeyDown}
+    />
   )
 }

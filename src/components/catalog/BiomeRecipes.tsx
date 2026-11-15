@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
-import { LineIcon, type IconName } from '@/components/ui/LineIcon'
+import { LineIcon } from '@/components/ui/LineIcon'
+import type { IconName } from '@/components/ui/lineIconPaths'
 import { BIOME_PRESETS, type BiomePreset } from '@/data/presets'
 import { mutateWorld } from '@/engine/engineBridge'
 import { applyPreset } from '@/engine/presets'

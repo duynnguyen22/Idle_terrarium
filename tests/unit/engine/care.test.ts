@@ -1,7 +1,8 @@
+import { DEFAULT_ROOM } from '@/data/room'
 import { createStore } from 'jotai'
 import { describe, expect, it } from 'vitest'
 import { findCatalogDef } from '@/data/catalog'
-import { DEFAULT_ROOM, envModel } from '@/engine/room'
+import { envModel } from '@/engine/room'
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
 import type { PlacedItem } from '@/data/types'
 import {

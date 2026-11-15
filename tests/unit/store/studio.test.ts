@@ -1,6 +1,6 @@
+import type { AwayReport } from '@/data/events'
 import { createStore } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AwayReport } from '@/engine/simulation/report'
 import {
   backdropAtom,
   backdropHazeAtom,

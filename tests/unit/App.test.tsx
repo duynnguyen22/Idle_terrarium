@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, vi } from 'vitest'
 import App from '@/App'
 import { makeRecordingContext } from './helpers/recordingContext'
-import { WELCOME_KEY } from '@/store/account'
+import { WELCOME_KEY } from '@/services/account'
 
 describe('App', () => {
   beforeEach(() => {
