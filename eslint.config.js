@@ -25,14 +25,12 @@ export default tseslint.config(
       'max-lines-per-function': ['error', { max: 80, skipBlankLines: true, skipComments: true }],
     },
   },
-  {
-    files: LEGACY_LONG_FILES,
-    rules: { 'max-lines': 'off' },
-  },
-  {
-    files: LEGACY_LONG_FUNCTIONS,
-    rules: { 'max-lines-per-function': 'off' },
-  },
+  ...(LEGACY_LONG_FILES.length > 0
+    ? [{ files: LEGACY_LONG_FILES, rules: { 'max-lines': 'off' } }]
+    : []),
+  ...(LEGACY_LONG_FUNCTIONS.length > 0
+    ? [{ files: LEGACY_LONG_FUNCTIONS, rules: { 'max-lines-per-function': 'off' } }]
+    : []),
   {
     // shadcn/ui primitives export cva variant helpers next to their components by design.
     files: ['src/components/ui/[a-z]*.tsx'],
