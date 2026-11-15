@@ -21,7 +21,7 @@ point down the table.
 | `store` | Jotai atoms: the app state, and how it is saved to and loaded from the browser | `lib`, `data` |
 | `engine` | The simulation, canvas drawing, sound and pointer input | `lib`, `data`, `store` |
 | `auth` | Sign-in, and the backend that keeps saved gardens and the journal | `lib`, `data`, `store` |
-| `services` | Tasks that use several layers at once: the account, the "while you were away" flow, garden saves, audio control | `lib`, `data`, `store`, `engine`, `auth` |
+| `services` | Tasks that use several layers at once: the account (`src/services/account/`), the "while you were away" flow, garden saves, audio control | `lib`, `data`, `store`, `engine`, `auth` |
 | `hooks` | React hooks that connect React to the layers below | all of the above |
 | `components` | React components, the screens you see | all of the above |
 
@@ -107,9 +107,9 @@ Importing `appStore` also loads the saved studio state from `localStorage` and k
 
 | I want to add... | Put it here |
 |---|---|
-| A plant, rock or animal | Its entry in the catalog tables in `src/data/` (`FLORA`, `HARDSCAPE`, `FAUNA`). Its drawing in `src/engine/sprites/` (`FLORA_SPRITES`, `HARDSCAPE_SPRITES`, `FAUNA_SPRITES`, keyed by catalog id). If it blooms or grows fronds, an entry in `LIFE` in `src/engine/simulation/life`. |
+| A plant, rock or animal | Its entry in the catalog folder `src/data/catalog/`: `FLORA` in `flora.ts`, `HARDSCAPE` in `hardscape.ts`, `FAUNA` in `fauna.ts`. Its drawing in `src/engine/sprites/`: `FLORA_SPRITES` in `flora.ts`, `HARDSCAPE_SPRITES` in `hardscape.ts`, and for animals `FAUNA_SPRITES` in `fauna/index.ts` (or `FAUNA_EXTRA_SPRITES` in `faunaExtra/index.ts`), all keyed by catalog id. An animal's draw function goes in the file for its family inside that folder (`fauna/fish.ts`, `faunaExtra/snails.ts` and so on). If it blooms or grows fronds, an entry in `LIFE` in `src/engine/simulation/life`. |
 | A vessel | Its entry in `VESSELS` in `src/data/vessels`. Its shape in `src/engine/geometry`, and its catalog thumbnail in `src/components/catalog/vesselPreview`. |
-| A care rule or care action | The rule and the action in `src/engine/care` (`computeCareReport`, `runCareAction`). A new action id or issue type in `src/data/care`. |
+| A care rule or care action | The folder `src/engine/care/`: a rule in `report.ts` (`computeCareReport`), or in `envIssues.ts` if it comes from the room (water, air, glass) or `faunaMix.ts` if it is about tankmates; an action in `actions.ts` (`runCareAction`). A new action id or issue type in `src/data/care`. |
 | A screen, panel or dialog | A component in the matching folder of `src/components/` (`layout`, `stage`, `catalog`, `account` and so on). If other code needs to open it, add an atom in `src/store/overlay`. |
 | A saved setting | See "Adding a saved setting" below. |
 | A new backend | See "Adding a backend" below. |
@@ -122,18 +122,20 @@ Studio settings are saved under one `localStorage` key, `botanica_studio_v1`, as
 `{ state, version }`. A **migration** is a step that upgrades a save written by an older version
 of the app to the current shape. The steps, all in `src/store/`:
 
-1. Add the field to `StudioState` and give it a default in `createDefaultState` (in
-   `src/store/studio`). A base atom is made for every default automatically.
-2. Add it to `partialize`, the function that picks which fields are saved. Fields not listed there
-   are not saved.
-3. Export the field's atom next to the others: `base.yourField` as it is, or wrapped in `guarded`
-   (a helper that checks or adjusts a value, such as clamping it, before writing it).
-4. Bump `STUDIO_VERSION` and add a migration step in `src/store/migrations`, for example
-   `migrateV4toV5`, that gives old saves the new field. Call it from `migrate`. `migrate` runs only
-   when a save's version differs from `STUDIO_VERSION`, and garden snapshots go through it too.
+1. Add the field to `StudioState` and give it a default in `createDefaultState` (both in
+   `src/store/studio/state.ts`). A base atom is made for every default automatically.
+2. Add it to `partialize` in `src/store/studio/persisted.ts`, the function that picks which fields
+   are saved. Fields not listed there are not saved.
+3. Export the field's atom next to the others in `src/store/studio/atoms.ts`: `base.yourField` as
+   it is, or wrapped in `guarded` (a helper that checks or adjusts a value, such as clamping it,
+   before writing it). Then add its name to the list in `src/store/studio/index.ts`.
+4. Bump `STUDIO_VERSION` (in `src/store/studio/persisted.ts`) and add a migration step in
+   `src/store/migrations`, for example `migrateV4toV5`, that gives old saves the new field. Call
+   it from `migrate`. `migrate` runs only when a save's version differs from `STUDIO_VERSION`, and
+   garden snapshots go through it too.
 5. If a hand-edited save could hold a bad value, add a `sanitize...` function in
-   `src/store/migrations` and call it from `sanitizeSaved` in `src/store/studio`. That runs on
-   every load.
+   `src/store/migrations` and call it from `sanitizeSaved` in `src/store/studio/storage.ts`. That
+   runs on every load.
 
 Never rename the storage key or change the shape of saved JSON. Old saves must keep loading.
 
@@ -165,8 +167,14 @@ src/engine/weather.ts   ->   src/engine/weather/index.ts
 ```
 
 `index.ts` is the folder's public face. It exports the same names the old file did, so every
-import of `@/engine/weather` keeps working. Each new file inside gets one job you can name. The
-folder stays in the same layer.
+import of `@/engine/weather` keeps working. Usually it holds no code of its own, only lines like
+`export { rainFall } from './rain'`. Each new file inside gets one job you can name, and the file
+name says it. Code outside the folder imports only the folder (`@/engine/weather`), never a file
+inside it. The folder stays in the same layer.
+
+Real examples: `src/engine/care/` (rules split by kind, plus `actions.ts`),
+`src/data/catalog/` (one file per family: flora, hardscape, fauna), `src/store/studio/` (state and
+defaults, saved fields, atoms, storage) and `src/services/account/`.
 
 The files listed in `eslint.legacy.js` are the ones still over the limits. They will become
 folders like this.
