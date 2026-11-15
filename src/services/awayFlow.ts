@@ -23,7 +23,7 @@ import {
 const MOLD_DAYS = 3
 const MOLD_CHANCE = 0.6
 
-export interface JournalFromReport {
+interface JournalFromReport {
   note: string
   events: { kind: EventKind; text: string }[]
   key: string

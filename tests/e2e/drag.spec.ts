@@ -25,7 +25,7 @@ test('dragging a peacock fern onto a mount point parents it to the hardscape', a
   await page.getByRole('button', { name: /Blue Peacock Fern/ }).click()
 
   const plan = await page.evaluate(async () => {
-    const catalogPath = '/src/data/catalog.ts'
+    const catalogPath = '/src/data/catalog/index.ts'
     const { findCatalogDef } = (await import(/* @vite-ignore */ catalogPath)) as {
       findCatalogDef: (
         id: string,

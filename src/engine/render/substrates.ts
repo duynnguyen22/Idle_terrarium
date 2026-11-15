@@ -16,6 +16,80 @@ import { drawWater } from './water'
 
 export type SubstratePhase = 'soil' | 'water'
 
+type SubstrateLayer = (typeof SUBSTRATE_LAYERS)[number]
+
+/** Where one land layer sits: its top edge, its height in pixels, and whether it is the topmost layer. */
+interface LayerSpan {
+  nextY: number
+  hPx: number
+  isTop: boolean
+  mmPx: number
+}
+
+/** Clips to the land side of the carved bank (the part right of the foam divider). */
+function clipToLandBank(ctx: CanvasRenderingContext2D, g: BankGeometry): void {
+  const { cx, cy, r, kx, bankTop, bankBottom } = g
+  ctx.beginPath()
+  ctx.moveTo(bankBottom.x, bankBottom.y)
+  ctx.lineTo(bankTop.x, bankTop.y)
+  ctx.lineTo(bankTop.x, cy - r)
+  ctx.lineTo(cx + r * kx, cy - r)
+  ctx.lineTo(cx + r * kx, bankBottom.y)
+  ctx.closePath()
+  ctx.clip()
+}
+
+/** The slice of substrate grains that belongs to one land layer; leaf litter is drawn as leaves. */
+function drawLayerGrains(
+  ctx: CanvasRenderingContext2D,
+  world: EngineWorld,
+  g: BankGeometry,
+  layer: SubstrateLayer,
+  layerIdx: number,
+  span: LayerSpan,
+  contourMm: (nx: number) => number,
+): void {
+  const { cx, r, kx } = g
+  const { nextY, hPx, isTop, mmPx } = span
+  world.substrateGrains.slice(layerIdx * 30, (layerIdx + 1) * 30).forEach((gr) => {
+    const gx = cx - r * 0.8 * kx + num(gr, 'rx') * (r * 1.6 * kx)
+    const gy = nextY + 3 + num(gr, 'ry') * Math.max(2, hPx - 5)
+    const shade = num(gr, 'shade')
+    ctx.beginPath()
+    if (layer.id === 'leaflitter') {
+      ctx.fillStyle = shade > 0.66 ? '#b5853f' : shade > 0.33 ? '#9a6b35' : '#6f4620'
+      const lift = isTop ? contourMm(0.5 + (gx - cx) / (2 * r * kx)) * mmPx : 0
+      ctx.ellipse(
+        gx,
+        nextY + 2 + num(gr, 'ry') * Math.max(2, hPx - 2) - lift,
+        num(gr, 'r') * 1.5,
+        num(gr, 'r') * 0.6,
+        num(gr, 'angle'),
+        0,
+        Math.PI * 2,
+      )
+    } else {
+      ctx.fillStyle = shade > 0.5 ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.22)'
+      ctx.ellipse(gx, gy, num(gr, 'r'), num(gr, 'r') * 0.7, num(gr, 'angle'), 0, Math.PI * 2)
+    }
+    ctx.fill()
+  })
+}
+
+/** Fibreglass mesh barrier above the drainage layer. */
+function drawMeshBarrier(ctx: CanvasRenderingContext2D, g: BankGeometry, nextY: number): void {
+  const { cx, r, kx } = g
+  ctx.save()
+  ctx.strokeStyle = 'rgba(15, 23, 20, 0.6)'
+  ctx.lineWidth = 1.4
+  ctx.setLineDash([4, 2])
+  ctx.beginPath()
+  ctx.moveTo(cx - r * kx, nextY)
+  ctx.lineTo(cx + r * kx, nextY)
+  ctx.stroke()
+  ctx.restore()
+}
+
 /** Land strata, clipped along the carved bank when there is a pool; mesh barrier above the drainage layer. */
 function drawLandStrata(
   ctx: CanvasRenderingContext2D,
@@ -24,22 +98,13 @@ function drawLandStrata(
   g: BankGeometry,
   pool: boolean,
 ): void {
-  const { cx, cy, r, kx, bottomY, bankTop, bankBottom } = g
+  const { cx, r, kx, bottomY } = g
   const mmPx = MM_TO_NORM * 2 * r
   const contour = world.terrainContour
   const contourMm = (nx: number) => (Array.isArray(contour) ? sampleContour(contour, nx) : 0)
 
   ctx.save()
-  if (pool) {
-    ctx.beginPath()
-    ctx.moveTo(bankBottom.x, bankBottom.y)
-    ctx.lineTo(bankTop.x, bankTop.y)
-    ctx.lineTo(bankTop.x, cy - r)
-    ctx.lineTo(cx + r * kx, cy - r)
-    ctx.lineTo(cx + r * kx, bankBottom.y)
-    ctx.closePath()
-    ctx.clip()
-  }
+  if (pool) clipToLandBank(ctx, g)
 
   const active = LAND_LAYER_IDS.flatMap((id) => {
     const layer = SUBSTRATE_LAYERS.find((l) => l.id === id)
@@ -68,42 +133,9 @@ function drawLandStrata(
     ctx.closePath()
     ctx.fill()
 
-    world.substrateGrains.slice(layerIdx * 30, (layerIdx + 1) * 30).forEach((gr) => {
-      const gx = cx - r * 0.8 * kx + num(gr, 'rx') * (r * 1.6 * kx)
-      const gy = nextY + 3 + num(gr, 'ry') * Math.max(2, hPx - 5)
-      const shade = num(gr, 'shade')
-      ctx.beginPath()
-      if (layer.id === 'leaflitter') {
-        ctx.fillStyle = shade > 0.66 ? '#b5853f' : shade > 0.33 ? '#9a6b35' : '#6f4620'
-        const lift = isTop ? contourMm(0.5 + (gx - cx) / (2 * r * kx)) * mmPx : 0
-        ctx.ellipse(
-          gx,
-          nextY + 2 + num(gr, 'ry') * Math.max(2, hPx - 2) - lift,
-          num(gr, 'r') * 1.5,
-          num(gr, 'r') * 0.6,
-          num(gr, 'angle'),
-          0,
-          Math.PI * 2,
-        )
-      } else {
-        ctx.fillStyle = shade > 0.5 ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.22)'
-        ctx.ellipse(gx, gy, num(gr, 'r'), num(gr, 'r') * 0.7, num(gr, 'angle'), 0, Math.PI * 2)
-      }
-      ctx.fill()
-    })
+    drawLayerGrains(ctx, world, g, layer, layerIdx, { nextY, hPx, isTop, mmPx }, contourMm)
 
-    if (layer.id === 'pebbles') {
-      // Fibreglass mesh barrier above the drainage layer
-      ctx.save()
-      ctx.strokeStyle = 'rgba(15, 23, 20, 0.6)'
-      ctx.lineWidth = 1.4
-      ctx.setLineDash([4, 2])
-      ctx.beginPath()
-      ctx.moveTo(cx - r * kx, nextY)
-      ctx.lineTo(cx + r * kx, nextY)
-      ctx.stroke()
-      ctx.restore()
-    }
+    if (layer.id === 'pebbles') drawMeshBarrier(ctx, g, nextY)
     currentY = nextY
   })
   ctx.restore()

@@ -108,66 +108,99 @@ export function stepPourParticles(
 
     const r = num(p, 'r')
     if (mat === 'water') {
-      if (!hasPool(waterSplit)) {
-        world.pendingWaterSplit = NEW_POOL_SPLIT
-        world.env.cycleProgress = 0
-        onToast?.(NEW_POOL_TOAST)
-      }
-      const before = effectiveSubstrate(world, state.substrates, 'water')
-      const next = Math.min(MAX_WATER_MM, before + 0.14)
-      setEffectiveSubstrate(world, state.substrates, 'water', next)
-      if (before < 1 && next >= 1) world.env.cycleProgress = 0
-      // prototype 2633: landings feed the mist boost, which the environment model eases into humidity
-      world.env.mistBoost = Math.min(20, world.env.mistBoost + 0.05)
+      landWater(world, state, waterSplit, onToast)
     } else if (inPool) {
-      if (mat === 'rivergravel' || mat === 'pebbles') {
-        setEffectiveSubstrate(
-          world,
-          state.substrates,
-          'rivergravel',
-          Math.min(
-            MAX_GRAVEL_MM,
-            effectiveSubstrate(world, state.substrates, 'rivergravel') + 0.06,
-          ),
-        )
-      }
-      world.surfaceGrains.push({
-        x: Math.max(0.16, px),
-        yOffset: (rng() - 0.5) * 0.01,
-        rx: r * 1.15,
-        ry: r * 0.75,
-        rot: rng() * Math.PI,
-        color: p.color,
-      })
+      landInPool(world, state, p, mat, px, r, rng)
     } else {
-      setEffectiveSubstrate(
-        world,
-        state.substrates,
-        mat,
-        Math.min(MAX_LAND_MM, effectiveSubstrate(world, state.substrates, mat) + 0.08),
-      )
-      const c = world.terrainContour
-      const clampedX = Math.max(CONTOUR_X_MIN, Math.min(CONTOUR_X_MAX, px))
-      const cIdx = Math.round(
-        ((clampedX - CONTOUR_X_MIN) / (CONTOUR_X_MAX - CONTOUR_X_MIN)) * (c.length - 1),
-      )
-      if (c[cIdx] !== undefined) {
-        c[cIdx] = Math.min(MAX_CONTOUR_MM, c[cIdx] + 0.22)
-        if (cIdx > 0) c[cIdx - 1] = Math.min(MAX_CONTOUR_MM, c[cIdx - 1] + 0.11)
-        if (cIdx < c.length - 1) c[cIdx + 1] = Math.min(MAX_CONTOUR_MM, c[cIdx + 1] + 0.11)
-      }
-      world.surfaceGrains.push({
-        x: Math.max(0.16, Math.min(0.84, px + (rng() - 0.5) * 0.02)),
-        yOffset: (rng() - 0.5) * 0.012,
-        rx: r * 1.15,
-        ry: r * 0.75,
-        rot: rng() * Math.PI,
-        color: p.color,
-      })
+      landOnSoil(world, state, p, mat, px, r, rng)
     }
     if (world.surfaceGrains.length > MAX_SURFACE_GRAINS) world.surfaceGrains.shift()
     world.fallingStreams.splice(i, 1)
   }
   if (hadParticles && world.fallingStreams.length === 0 && !world.isPouring)
     world.pourSettled = true
+}
+
+/** A water drop lands: starts a pool if there is none, raises the water and feeds the mist boost. */
+function landWater(
+  world: EngineWorld,
+  state: PourState,
+  waterSplit: number,
+  onToast: ((msg: string) => void) | undefined,
+): void {
+  if (!hasPool(waterSplit)) {
+    world.pendingWaterSplit = NEW_POOL_SPLIT
+    world.env.cycleProgress = 0
+    onToast?.(NEW_POOL_TOAST)
+  }
+  const before = effectiveSubstrate(world, state.substrates, 'water')
+  const next = Math.min(MAX_WATER_MM, before + 0.14)
+  setEffectiveSubstrate(world, state.substrates, 'water', next)
+  if (before < 1 && next >= 1) world.env.cycleProgress = 0
+  // prototype 2633: landings feed the mist boost, which the environment model eases into humidity
+  world.env.mistBoost = Math.min(20, world.env.mistBoost + 0.05)
+}
+
+/** A solid grain sinks in the pool: gravel builds the pool bed, and every grain leaves a surface grain. */
+function landInPool(
+  world: EngineWorld,
+  state: PourState,
+  p: WorldEntity,
+  mat: string,
+  px: number,
+  r: number,
+  rng: Rng,
+): void {
+  if (mat === 'rivergravel' || mat === 'pebbles') {
+    setEffectiveSubstrate(
+      world,
+      state.substrates,
+      'rivergravel',
+      Math.min(MAX_GRAVEL_MM, effectiveSubstrate(world, state.substrates, 'rivergravel') + 0.06),
+    )
+  }
+  world.surfaceGrains.push({
+    x: Math.max(0.16, px),
+    yOffset: (rng() - 0.5) * 0.01,
+    rx: r * 1.15,
+    ry: r * 0.75,
+    rot: rng() * Math.PI,
+    color: p.color,
+  })
+}
+
+/** A solid grain lands on land: deepens its layer, raises the contour around it and leaves a surface grain. */
+function landOnSoil(
+  world: EngineWorld,
+  state: PourState,
+  p: WorldEntity,
+  mat: string,
+  px: number,
+  r: number,
+  rng: Rng,
+): void {
+  setEffectiveSubstrate(
+    world,
+    state.substrates,
+    mat,
+    Math.min(MAX_LAND_MM, effectiveSubstrate(world, state.substrates, mat) + 0.08),
+  )
+  const c = world.terrainContour
+  const clampedX = Math.max(CONTOUR_X_MIN, Math.min(CONTOUR_X_MAX, px))
+  const cIdx = Math.round(
+    ((clampedX - CONTOUR_X_MIN) / (CONTOUR_X_MAX - CONTOUR_X_MIN)) * (c.length - 1),
+  )
+  if (c[cIdx] !== undefined) {
+    c[cIdx] = Math.min(MAX_CONTOUR_MM, c[cIdx] + 0.22)
+    if (cIdx > 0) c[cIdx - 1] = Math.min(MAX_CONTOUR_MM, c[cIdx - 1] + 0.11)
+    if (cIdx < c.length - 1) c[cIdx + 1] = Math.min(MAX_CONTOUR_MM, c[cIdx + 1] + 0.11)
+  }
+  world.surfaceGrains.push({
+    x: Math.max(0.16, Math.min(0.84, px + (rng() - 0.5) * 0.02)),
+    yOffset: (rng() - 0.5) * 0.012,
+    rx: r * 1.15,
+    ry: r * 0.75,
+    rot: rng() * Math.PI,
+    color: p.color,
+  })
 }

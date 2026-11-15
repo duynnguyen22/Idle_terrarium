@@ -1,19 +1,18 @@
 import type { MistBead, SprayParticle } from '../simulation/mist'
+import type { EngineWorld } from '../world'
 import { normToPx, normToPy, vesselMetrics, type RenderFn } from './metrics'
 
-/**
- * Draw-only half of the artifact's drawMistSpray: spray droplets (fine mist puffs and falling drops),
- * glistening beads on leaves and soil, and the spray-bottle cursor while the Mist tool is active.
- * Spawning, motion and landing belong to the simulation tick.
- */
-export const drawMist: RenderFn = (ctx, world, state, R) => {
-  const { r: Rad } = vesselMetrics(R)
-  const toPx = (nx: number) => normToPx(R, nx)
-  const toPy = (ny: number) => normToPy(R, ny)
-  const spray = world.sprayParticles as unknown as SprayParticle[]
-  const beads = world.mistBeads as unknown as MistBead[]
+type Ctx = CanvasRenderingContext2D
+type ToPixel = (n: number) => number
 
-  ctx.save()
+/** Spray droplets: fine mist puffs and falling drops. */
+function drawSprayParticles(
+  ctx: Ctx,
+  spray: SprayParticle[],
+  toPx: ToPixel,
+  toPy: ToPixel,
+  Rad: number,
+): void {
   for (const p of spray) {
     if (p.fine) {
       ctx.fillStyle = `rgba(236, 246, 255, ${(0.22 * p.life).toFixed(3)})`
@@ -41,7 +40,16 @@ export const drawMist: RenderFn = (ctx, world, state, R) => {
       ctx.fill()
     }
   }
+}
 
+/** Glistening beads on leaves and soil. */
+function drawMistBeads(
+  ctx: Ctx,
+  beads: MistBead[],
+  toPx: ToPixel,
+  toPy: ToPixel,
+  Rad: number,
+): void {
   for (const b of beads) {
     const bx = toPx(b.x)
     const by = toPy(b.y)
@@ -55,52 +63,85 @@ export const drawMist: RenderFn = (ctx, world, state, R) => {
     ctx.arc(bx - br * 0.35, by - br * 0.35, br * 0.35, 0, Math.PI * 2)
     ctx.fill()
   }
+}
 
-  // Spray bottle that follows the pointer
+/** The bottle body, water level, neck, head, nozzle and trigger, in a frame translated to the cursor. */
+function drawSprayBottleBody(ctx: Ctx, squeeze: number): void {
+  // Bottle body and water level
+  ctx.fillStyle = '#e6f4ea'
+  ctx.strokeStyle = '#1b3b2b'
+  ctx.lineWidth = 1.6
+  ctx.beginPath()
+  ctx.roundRect(-30, -12, 22, 36, 6)
+  ctx.fill()
+  ctx.stroke()
+  ctx.fillStyle = 'rgba(56, 189, 248, 0.45)'
+  ctx.beginPath()
+  ctx.roundRect(-28.5, 4, 19, 18.5, 4)
+  ctx.fill()
+  // Neck, head and nozzle
+  ctx.fillStyle = '#2d5a43'
+  ctx.beginPath()
+  ctx.roundRect(-26, -20, 14, 9, 2)
+  ctx.fill()
+  ctx.beginPath()
+  ctx.roundRect(-30, -28, 26, 9, 3)
+  ctx.fill()
+  ctx.fillRect(-4, -26, 6, 5)
+  // Trigger, pulled back while spraying
+  ctx.strokeStyle = '#2d5a43'
+  ctx.lineWidth = 3
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(-8, -19)
+  ctx.quadraticCurveTo(-4 - squeeze, -12, -6 - squeeze, -5)
+  ctx.stroke()
+}
+
+/** Spray bottle that follows the pointer. */
+function drawSprayBottle(
+  ctx: Ctx,
+  world: EngineWorld,
+  toPx: ToPixel,
+  toPy: ToPixel,
+  Rad: number,
+): void {
+  const bx = toPx(world.pointerNorm.x)
+  const by = toPy(world.pointerNorm.y)
+  const s = Math.max(0.8, Rad / 300)
+  ctx.save()
+  ctx.translate(bx, by)
+  ctx.scale(s, s)
+  ctx.rotate(-0.35)
+  const squeeze = world.isMisting ? 3 : 0
+  drawSprayBottleBody(ctx, squeeze)
+  ctx.restore()
+  if (!world.isMisting) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+    ctx.font = '600 11px Inter, sans-serif'
+    ctx.fillText('Hold to mist', bx + 14 * s, by + 30 * s)
+  }
+}
+
+/**
+ * Draw-only half of the artifact's drawMistSpray: spray droplets (fine mist puffs and falling drops),
+ * glistening beads on leaves and soil, and the spray-bottle cursor while the Mist tool is active.
+ * Spawning, motion and landing belong to the simulation tick.
+ */
+export const drawMist: RenderFn = (ctx, world, state, R) => {
+  const { r: Rad } = vesselMetrics(R)
+  const toPx = (nx: number) => normToPx(R, nx)
+  const toPy = (ny: number) => normToPy(R, ny)
+  const spray = world.sprayParticles as unknown as SprayParticle[]
+  const beads = world.mistBeads as unknown as MistBead[]
+
+  ctx.save()
+  drawSprayParticles(ctx, spray, toPx, toPy, Rad)
+
+  drawMistBeads(ctx, beads, toPx, toPy, Rad)
+
   if (state.activeTool === 'mist' && !state.relaxMode && world.pointerInCanvas) {
-    const bx = toPx(world.pointerNorm.x)
-    const by = toPy(world.pointerNorm.y)
-    const s = Math.max(0.8, Rad / 300)
-    ctx.save()
-    ctx.translate(bx, by)
-    ctx.scale(s, s)
-    ctx.rotate(-0.35)
-    const squeeze = world.isMisting ? 3 : 0
-    // Bottle body and water level
-    ctx.fillStyle = '#e6f4ea'
-    ctx.strokeStyle = '#1b3b2b'
-    ctx.lineWidth = 1.6
-    ctx.beginPath()
-    ctx.roundRect(-30, -12, 22, 36, 6)
-    ctx.fill()
-    ctx.stroke()
-    ctx.fillStyle = 'rgba(56, 189, 248, 0.45)'
-    ctx.beginPath()
-    ctx.roundRect(-28.5, 4, 19, 18.5, 4)
-    ctx.fill()
-    // Neck, head and nozzle
-    ctx.fillStyle = '#2d5a43'
-    ctx.beginPath()
-    ctx.roundRect(-26, -20, 14, 9, 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.roundRect(-30, -28, 26, 9, 3)
-    ctx.fill()
-    ctx.fillRect(-4, -26, 6, 5)
-    // Trigger, pulled back while spraying
-    ctx.strokeStyle = '#2d5a43'
-    ctx.lineWidth = 3
-    ctx.lineCap = 'round'
-    ctx.beginPath()
-    ctx.moveTo(-8, -19)
-    ctx.quadraticCurveTo(-4 - squeeze, -12, -6 - squeeze, -5)
-    ctx.stroke()
-    ctx.restore()
-    if (!world.isMisting) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
-      ctx.font = '600 11px Inter, sans-serif'
-      ctx.fillText('Hold to mist', bx + 14 * s, by + 30 * s)
-    }
+    drawSprayBottle(ctx, world, toPx, toPy, Rad)
   }
   ctx.restore()
 }
