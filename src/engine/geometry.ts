@@ -130,79 +130,75 @@ export function traceVesselPath(ctx: CanvasRenderingContext2D, vessel: string, R
       ctx.roundRect(cx - r * 0.65, cy - r * 0.85, r * 1.3, r * 1.7, 8)
       break
     case 'teardrop':
-      ctx.moveTo(cx - r * 0.22, cy - r * 0.86)
-      ctx.lineTo(cx + r * 0.22, cy - r * 0.86)
-      ctx.bezierCurveTo(
-        cx + r * 0.38,
-        cy - r * 0.35,
-        cx + r * 0.88,
-        cy + r * 0.15,
-        cx + r * 0.8,
-        cy + r * 0.65,
-      )
-      ctx.bezierCurveTo(
-        cx + r * 0.75,
-        cy + r * 0.85,
-        cx + r * 0.4,
-        cy + r * 0.85,
-        cx,
-        cy + r * 0.85,
-      )
-      ctx.bezierCurveTo(
-        cx - r * 0.4,
-        cy + r * 0.85,
-        cx - r * 0.75,
-        cy + r * 0.85,
-        cx - r * 0.8,
-        cy + r * 0.65,
-      )
-      ctx.bezierCurveTo(
-        cx - r * 0.88,
-        cy + r * 0.15,
-        cx - r * 0.38,
-        cy - r * 0.35,
-        cx - r * 0.22,
-        cy - r * 0.86,
-      )
-      ctx.closePath()
+      traceTeardrop(ctx, cx, cy, r)
       break
     default:
       // apothecary
-      ctx.moveTo(cx - r * 0.4, cy - r * 0.86)
-      ctx.lineTo(cx + r * 0.4, cy - r * 0.86)
-      ctx.bezierCurveTo(
-        cx + r * 0.5,
-        cy - r * 0.6,
-        cx + r * 0.86,
-        cy - r * 0.2,
-        cx + r * 0.86,
-        cy + r * 0.4,
-      )
-      ctx.bezierCurveTo(
-        cx + r * 0.86,
-        cy + r * 0.75,
-        cx + r * 0.65,
-        cy + r * 0.84,
-        cx,
-        cy + r * 0.84,
-      )
-      ctx.bezierCurveTo(
-        cx - r * 0.65,
-        cy + r * 0.84,
-        cx - r * 0.86,
-        cy + r * 0.75,
-        cx - r * 0.86,
-        cy + r * 0.4,
-      )
-      ctx.bezierCurveTo(
-        cx - r * 0.86,
-        cy - r * 0.2,
-        cx - r * 0.5,
-        cy - r * 0.6,
-        cx - r * 0.4,
-        cy - r * 0.86,
-      )
-      ctx.closePath()
+      traceApothecary(ctx, cx, cy, r)
       break
   }
+}
+
+/** Teardrop outline: narrow neck widening to a round base (path already begun). */
+function traceTeardrop(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
+  ctx.moveTo(cx - r * 0.22, cy - r * 0.86)
+  ctx.lineTo(cx + r * 0.22, cy - r * 0.86)
+  ctx.bezierCurveTo(
+    cx + r * 0.38,
+    cy - r * 0.35,
+    cx + r * 0.88,
+    cy + r * 0.15,
+    cx + r * 0.8,
+    cy + r * 0.65,
+  )
+  ctx.bezierCurveTo(cx + r * 0.75, cy + r * 0.85, cx + r * 0.4, cy + r * 0.85, cx, cy + r * 0.85)
+  ctx.bezierCurveTo(
+    cx - r * 0.4,
+    cy + r * 0.85,
+    cx - r * 0.75,
+    cy + r * 0.85,
+    cx - r * 0.8,
+    cy + r * 0.65,
+  )
+  ctx.bezierCurveTo(
+    cx - r * 0.88,
+    cy + r * 0.15,
+    cx - r * 0.38,
+    cy - r * 0.35,
+    cx - r * 0.22,
+    cy - r * 0.86,
+  )
+  ctx.closePath()
+}
+
+/** Apothecary jar outline: wide shoulders over a rounded body (path already begun). */
+function traceApothecary(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
+  ctx.moveTo(cx - r * 0.4, cy - r * 0.86)
+  ctx.lineTo(cx + r * 0.4, cy - r * 0.86)
+  ctx.bezierCurveTo(
+    cx + r * 0.5,
+    cy - r * 0.6,
+    cx + r * 0.86,
+    cy - r * 0.2,
+    cx + r * 0.86,
+    cy + r * 0.4,
+  )
+  ctx.bezierCurveTo(cx + r * 0.86, cy + r * 0.75, cx + r * 0.65, cy + r * 0.84, cx, cy + r * 0.84)
+  ctx.bezierCurveTo(
+    cx - r * 0.65,
+    cy + r * 0.84,
+    cx - r * 0.86,
+    cy + r * 0.75,
+    cx - r * 0.86,
+    cy + r * 0.4,
+  )
+  ctx.bezierCurveTo(
+    cx - r * 0.86,
+    cy - r * 0.2,
+    cx - r * 0.5,
+    cy - r * 0.6,
+    cx - r * 0.4,
+    cy - r * 0.86,
+  )
+  ctx.closePath()
 }
