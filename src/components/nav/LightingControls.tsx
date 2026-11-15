@@ -1,5 +1,6 @@
 import { useAtomValue, useSetAtom } from 'jotai'
-import { LineIcon, type IconName } from '@/components/ui/LineIcon'
+import { LineIcon } from '@/components/ui/LineIcon'
+import type { IconName } from '@/components/ui/lineIconPaths'
 import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
