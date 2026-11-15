@@ -70,7 +70,7 @@ function plantScreen(page: Page, uid: string): Promise<{ x: number; y: number }>
   return page.evaluate(async (id) => {
     const paths = {
       vessels: '/src/data/vessels.ts',
-      studio: '/src/store/studio.ts',
+      studio: '/src/store/studio/index.ts',
       frame: '/src/engine/render/renderFrame.ts',
     }
     const { vesselKX } = (await import(/* @vite-ignore */ paths.vessels)) as {
@@ -107,7 +107,7 @@ function plantScreen(page: Page, uid: string): Promise<{ x: number; y: number }>
 /** A loose plant that cannot snap onto a rock, brought to the front so nothing else takes a grab. */
 function pickLoosePlant(page: Page): Promise<string> {
   return page.evaluate(async () => {
-    const catalogPath = '/src/data/catalog.ts'
+    const catalogPath = '/src/data/catalog/index.ts'
     const { findCatalogDef } = (await import(/* @vite-ignore */ catalogPath)) as {
       findCatalogDef: (id: string) => { category: string; canMountOnRock?: boolean } | null
     }
