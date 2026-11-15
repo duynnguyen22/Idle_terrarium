@@ -4,10 +4,6 @@
 // Files longer than 300 lines.
 export const LEGACY_LONG_FILES = [
   'src/components/stage/TerrariumCanvas.tsx',
-  'src/data/catalog.ts',
-  'src/engine/render/backdropPainters.ts',
-  'src/engine/sprites/fauna.ts',
-  'src/engine/sprites/faunaExtra.ts',
   'src/store/studio.ts',
 ]
 
@@ -17,10 +13,5 @@ export const LEGACY_LONG_FUNCTIONS = [
   'src/components/stage/ItemInspector.tsx',
   'src/components/stage/RelaxDock.tsx',
   'src/components/stage/TerrariumCanvas.tsx',
-  'src/engine/render/backdropPainters.ts',
-  'src/engine/render/frame.ts',
-  'src/engine/render/mist.ts',
-  'src/engine/render/specimens.ts',
-  'src/engine/render/substrates.ts',
   'src/hooks/useTerrariumEngine.ts',
 ]
