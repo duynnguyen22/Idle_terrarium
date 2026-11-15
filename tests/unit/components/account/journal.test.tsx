@@ -1,7 +1,7 @@
 import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
-import { patchAccountAtom, viewAtom } from '@/store/account'
+import { patchAccountAtom, viewAtom } from '@/services/account'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BackendError, type JournalEntry } from '@/auth/backend'
 import { AuthScreen } from '@/components/account/auth/AuthScreen'

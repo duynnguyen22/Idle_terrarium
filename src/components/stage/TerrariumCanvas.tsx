@@ -25,7 +25,7 @@ import {
 } from '@/engine/viewInput'
 import type { EngineWorld, Point } from '@/engine/world'
 import { getCanvasCssSize, registerTerrariumCanvas, setCanvasCssSize } from '@/lib/terrariumCanvas'
-import { play } from '@/hooks/useAudio'
+import { play } from '@/services/audio'
 import { useTerrariumEngine } from '@/hooks/useTerrariumEngine'
 import { appStore } from '@/store/appStore'
 import {

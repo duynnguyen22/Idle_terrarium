@@ -15,7 +15,7 @@ import {
   type AccountState,
   type AuthView,
   type ViewData,
-} from '@/store/account'
+} from '@/services/account'
 import { bindStudioStorage } from '@/store/studio'
 
 export class MemoryStorage implements Storage {

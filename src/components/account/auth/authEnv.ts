@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { authService, type AuthService } from '@/auth'
-import { account, type Account, type ViewData } from '@/store/account'
+import { account, type Account, type ViewData } from '@/services/account'
 import { showToast } from '@/store/toast'
 
 /** How long before another code or link can be requested. */
@@ -12,7 +12,7 @@ export const RESEND_WINDOW_MS = 30_000
  * (its `deps.auth` / `deps.toast`): the screens call them directly while the account's own actions
  * use the deps, and two different services would split the session and the messages.
  *
- * The account *state* is read with the atoms in `@/store/account` (`useAtomValue(phaseAtom)`), from
+ * The account *state* is read with the atoms in `@/services/account` (`useAtomValue(phaseAtom)`), from
  * the nearest jotai `<Provider>`'s store: none in the app (the default store, which `account` is
  * bound to); a test that injects an `account` wraps the tree in `<Provider store={itsStore}>`.
  */

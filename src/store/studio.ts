@@ -190,6 +190,9 @@ export function partialize(s: StudioState) {
 
 export type PersistedStudio = ReturnType<typeof partialize>
 
+/** One saved terrarium: the persisted studio slice, stamped with the version it was written at. */
+export type GardenSnapshot = PersistedStudio & { version?: number }
+
 // ---------------------------------------------------------------------------------------------
 // Base atoms: one raw primitive per field. `patchStudioAtom` and hydration write these directly
 // (no validation, like the old `setState`); the exported field atoms below add the setter rules.

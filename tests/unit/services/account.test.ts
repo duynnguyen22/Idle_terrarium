@@ -7,7 +7,7 @@ import { onWorldRestored, registerWorld, tryGetWorld, unregisterWorld } from '@/
 import { poolScore } from '@/engine/simulation/ecology'
 import { envModel } from '@/engine/room'
 import { createWorld, type EngineWorld } from '@/engine/world'
-import { getGardenSnapshot, gardenSummary } from '@/store/gardenSnapshot'
+import { getGardenSnapshot, gardenSummary } from '@/services/gardenSnapshot'
 import {
   accountStateAtom,
   avatarColor,
@@ -17,7 +17,7 @@ import {
   patchAccountAtom,
   timeAgo,
   type Account,
-} from '@/store/account'
+} from '@/services/account'
 import {
   bindStudioStorage,
   patchStudioAtom,

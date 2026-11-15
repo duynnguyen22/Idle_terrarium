@@ -15,7 +15,7 @@ import {
   restLine,
   sinceLabel,
 } from '@/engine/simulation/report'
-import { startEveningVisit } from '@/store/awayFlow'
+import { startEveningVisit } from '@/services/awayFlow'
 import { appStore } from '@/store/appStore'
 import { awayIndexAtom } from '@/store/overlay'
 import { awayLogAtom, paceAtom, relaxModeAtom, selectedIdAtom } from '@/store/studio'

@@ -5,12 +5,7 @@ import type { PlacedItem } from '@/data/types'
 import { onWorldRestored, registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { snapshotWorld } from '@/engine/persistence'
 import { createWorld, type EngineWorld } from '@/engine/world'
-import {
-  applyGardenSnapshot,
-  gardenSummary,
-  getGardenSnapshot,
-  type GardenSnapshot,
-} from '@/store/gardenSnapshot'
+import { applyGardenSnapshot, gardenSummary, getGardenSnapshot } from '@/services/gardenSnapshot'
 import {
   backdropAtom,
   bindStudioStorage,
@@ -18,6 +13,7 @@ import {
   patchStudioAtom,
   selectedIdAtom,
   studioStateAtom,
+  type GardenSnapshot,
   vesselAtom,
   worldSnapshotAtom,
 } from '@/store/studio'

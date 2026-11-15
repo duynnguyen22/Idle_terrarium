@@ -15,16 +15,16 @@ import { poolScore } from '@/engine/simulation/ecology'
 import { envModel } from '@/engine/room'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { applyGardenSnapshot, gardenSummary, getGardenSnapshot } from './gardenSnapshot'
-import { appStore } from './appStore'
+import { appStore } from '@/store/appStore'
 import {
   dayCountAtom,
   patchStudioAtom,
   studioStateAtom,
   waterSplitAtom,
   worldSnapshotAtom,
-} from './studio'
-import { telemetryAtom } from './telemetry'
-import { showToast } from './toast'
+} from '@/store/studio'
+import { telemetryAtom } from '@/store/telemetry'
+import { showToast } from '@/store/toast'
 
 export type AccountPhase = 'checking' | 'signedout' | 'onboarding' | 'cloud'
 export type AuthView =

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { AUTH_SESSION_KEY, AUTH_USERS_KEY } from '@/auth'
-import { account, phaseAtom } from '@/store/account'
+import { account, phaseAtom } from '@/services/account'
 import { appStore } from '@/store/appStore'
 import { persistedStudioAtom, type PersistedStudio } from '@/store/studio'
 

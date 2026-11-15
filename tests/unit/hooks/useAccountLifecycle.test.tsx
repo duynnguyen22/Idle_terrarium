@@ -5,7 +5,7 @@ import { AUTH_SESSION_KEY, AUTH_USERS_KEY } from '@/auth'
 import { snapshotWorld } from '@/engine/persistence'
 import { createWorld } from '@/engine/world'
 import { useAccountLifecycle } from '@/hooks/useAccountLifecycle'
-import { account, patchAccountAtom, resetAccountAtom } from '@/store/account'
+import { account, patchAccountAtom, resetAccountAtom } from '@/services/account'
 import { appStore } from '@/store/appStore'
 import {
   createDefaultState,

@@ -12,18 +12,15 @@ import {
   sanitizeMusicVolume,
   sanitizePace,
   sanitizeSoundPreset,
-} from './migrations'
+} from '@/store/migrations'
 import {
   partialize,
   patchStudioAtom,
   STUDIO_VERSION,
   studioStateAtom,
-  type PersistedStudio,
+  type GardenSnapshot,
   type StudioState,
-} from './studio'
-
-/** One saved terrarium: the persisted studio slice, stamped with the version it was written at. */
-export type GardenSnapshot = PersistedStudio & { version?: number }
+} from '@/store/studio'
 
 /** The persisted slice with a fresh world snapshot when a world is live (spec getSnapshot). */
 export function getGardenSnapshot(store: StudioState, world: EngineWorld | null): GardenSnapshot {

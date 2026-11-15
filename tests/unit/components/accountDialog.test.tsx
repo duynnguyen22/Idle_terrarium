@@ -6,7 +6,7 @@ import { TopNav } from '@/components/layout/TopNav'
 import type { PublicUser } from '@/auth'
 import { makeEnv, renderIn } from './auth/authHarness'
 import { appStore } from '@/store/appStore'
-import { account, panelOpenAtom, patchAccountAtom, resetAccountAtom } from '@/store/account'
+import { account, panelOpenAtom, patchAccountAtom, resetAccountAtom } from '@/services/account'
 
 const user: PublicUser = {
   id: 'u1',

@@ -12,7 +12,7 @@ export const LEGACY_LONG_FILES = [
   'src/engine/render/backdropPainters.ts',
   'src/engine/sprites/fauna.ts',
   'src/engine/sprites/faunaExtra.ts',
-  'src/store/account.ts',
+  'src/services/account.ts',
   'src/store/studio.ts',
 ]
 
@@ -43,5 +43,5 @@ export const LEGACY_LONG_FUNCTIONS = [
   'src/engine/simulation/fauna.ts',
   'src/engine/simulation/pouring.ts',
   'src/hooks/useTerrariumEngine.ts',
-  'src/store/account.ts',
+  'src/services/account.ts',
 ]

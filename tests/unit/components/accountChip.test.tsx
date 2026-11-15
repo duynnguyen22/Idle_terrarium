@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TopNav } from '@/components/layout/TopNav'
 import type { PublicUser } from '@/auth'
 import { appStore } from '@/store/appStore'
-import { panelOpenAtom, patchAccountAtom, resetAccountAtom } from '@/store/account'
+import { panelOpenAtom, patchAccountAtom, resetAccountAtom } from '@/services/account'
 
 const user: PublicUser = {
   id: 'u1',

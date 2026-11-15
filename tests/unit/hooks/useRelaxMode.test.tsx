@@ -4,8 +4,9 @@ import { RelaxDock } from '@/components/stage/RelaxDock'
 import { UtilityActions } from '@/components/nav/UtilityActions'
 import { setAudioContextFactory } from '@/engine/audio/audioContext'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
-import { play, stopAudio, useAudio } from '@/hooks/useAudio'
+import { useAudio } from '@/hooks/useAudio'
 import { RELAX_IDLE_MS, useRelaxMode } from '@/hooks/useRelaxMode'
+import { play, stopAudio } from '@/services/audio'
 import { appStore } from '@/store/appStore'
 import {
   audioEnabledAtom,

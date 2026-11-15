@@ -3,7 +3,7 @@ import { vesselKX } from '@/data/vessels'
 import { tryGetWorld } from '@/engine/engineBridge'
 import { computeVesselRect } from '@/engine/render/renderFrame'
 import { camHome, framePlants } from '@/engine/view'
-import { startAudioFromGesture } from '@/hooks/useAudio'
+import { startAudioFromGesture } from '@/services/audio'
 import { appStore } from '@/store/appStore'
 import { relaxModeAtom, selectedIdAtom, vesselAtom } from '@/store/studio'
 

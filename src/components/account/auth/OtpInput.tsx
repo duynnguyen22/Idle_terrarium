@@ -3,7 +3,7 @@ import { useRef, type ClipboardEvent, type KeyboardEvent } from 'react'
 import { textPatch, useAuthEnv, type TextKey } from './authEnv'
 import { Field, FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { viewDataAtom } from '@/store/account'
+import { viewDataAtom } from '@/services/account'
 
 const LEN = 6
 

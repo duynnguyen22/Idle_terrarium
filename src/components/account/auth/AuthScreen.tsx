@@ -1,6 +1,6 @@
 import { AccountScreen } from '@/components/account/AccountScreen'
 import { AUTH_SCREEN, AuthSub, AuthTitle } from './AuthPieces'
-import type { AuthView } from '@/store/account'
+import type { AuthView } from '@/services/account'
 import { ForgotScreen } from './ForgotScreen'
 import { MagicSentScreen } from './MagicSentScreen'
 import { OnboardingScreen } from './OnboardingScreen'

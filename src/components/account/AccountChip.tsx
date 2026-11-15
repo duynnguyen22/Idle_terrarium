@@ -15,7 +15,7 @@ import {
   userAtom,
   writingAtom,
   type AccountState,
-} from '@/store/account'
+} from '@/services/account'
 
 const TICK_MS = 30_000
 

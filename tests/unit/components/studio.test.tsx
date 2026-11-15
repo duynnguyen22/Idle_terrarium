@@ -35,7 +35,7 @@ import {
   telemetryAtom,
   type Telemetry,
 } from '@/store/telemetry'
-import { journalAtom, patchAccountAtom, resetAccountAtom } from '@/store/account'
+import { journalAtom, patchAccountAtom, resetAccountAtom } from '@/services/account'
 
 const item = (uid: string, category: PlacedItem['category']): PlacedItem => ({
   uid,

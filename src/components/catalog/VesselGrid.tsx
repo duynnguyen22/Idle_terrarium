@@ -1,7 +1,7 @@
 import { useAtom } from 'jotai'
 import { Toggle } from '@/components/ui/toggle'
 import { VESSELS_FOR_PICKER } from '@/data/vessels'
-import { getVesselPreviewSVG } from '@/lib/vesselPreview'
+import { getVesselPreviewSVG } from './vesselPreview'
 import { vesselAtom } from '@/store/studio'
 
 export function VesselGrid() {

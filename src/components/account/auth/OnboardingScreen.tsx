@@ -7,7 +7,7 @@ import {
   type GardenStart,
   userAtom,
   viewDataAtom,
-} from '@/store/account'
+} from '@/services/account'
 import { useAuthEnv } from './authEnv'
 import { AUTH_LABEL, AuthField } from './AuthField'
 import {

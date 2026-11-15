@@ -9,7 +9,7 @@ import {
   InputGroupInput,
 } from '@/components/ui/input-group'
 import { textPatch, useAuthEnv, type TextKey } from './authEnv'
-import { viewDataAtom } from '@/store/account'
+import { viewDataAtom } from '@/services/account'
 import { AUTH_INPUT, EyeIcon, EyeOffIcon } from './AuthPieces'
 
 export interface AuthFieldProps {

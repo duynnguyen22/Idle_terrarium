@@ -1,6 +1,6 @@
 import type { EventKind } from '@/data/events'
 import type { VesselId } from '@/data/vessels'
-import type { GardenSnapshot } from '@/store/gardenSnapshot'
+import type { GardenSnapshot } from '@/store/studio'
 
 export interface GardenSummary {
   vessel: VesselId

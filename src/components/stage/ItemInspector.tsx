@@ -16,7 +16,7 @@ import {
   rotateItem,
   scaleItem,
 } from '@/engine/items'
-import { play } from '@/hooks/useAudio'
+import { play } from '@/services/audio'
 import type { EngineWorld } from '@/engine/world'
 import { appStore } from '@/store/appStore'
 import {

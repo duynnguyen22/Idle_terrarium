@@ -6,7 +6,7 @@ import { cn } from 'cn'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { qualityTier } from '@/engine/room'
-import { activeIdAtom, gardensAtom, journalAtom } from '@/store/account'
+import { activeIdAtom, gardensAtom, journalAtom } from '@/services/account'
 import {
   ACCT_H,
   ACCT_MUTED,

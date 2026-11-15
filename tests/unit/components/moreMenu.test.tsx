@@ -16,7 +16,7 @@ import {
 import { awayIndexAtom, resetOverlayAtom } from '@/store/overlay'
 import { toastAtom } from '@/store/toast'
 import { perfHudAtom, smoothDrawingAtom } from '@/store/view'
-import { account, patchAccountAtom, resetAccountAtom } from '@/store/account'
+import { account, patchAccountAtom, resetAccountAtom } from '@/services/account'
 
 const click = (el: HTMLElement) => act(() => void fireEvent.click(el))
 /** Radix opens its menu on pointerdown or Enter, not on click. */

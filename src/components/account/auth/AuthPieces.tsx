@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
 import { RESEND_WINDOW_MS, useAuthEnv, useSecondsLeft } from './authEnv'
-import { busyAtom, viewDataAtom } from '@/store/account'
+import { busyAtom, viewDataAtom } from '@/services/account'
 
 /** Shared layout classes for the auth screens. */
 export const AUTH_SCREEN = 'grid gap-4'

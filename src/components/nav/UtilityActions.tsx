@@ -12,12 +12,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { LineIcon } from '@/components/ui/LineIcon'
-import { startAudioFromGesture, stopAudio } from '@/hooks/useAudio'
+import { startAudioFromGesture, stopAudio } from '@/services/audio'
 import { mutateWorld } from '@/engine/engineBridge'
 import { applyPreset } from '@/engine/presets'
 import { exportSnapshotPng, snapshotFilename } from '@/lib/snapshot'
 import { getTerrariumCanvas } from '@/lib/terrariumCanvas'
-import { previewGap } from '@/store/awayFlow'
+import { previewGap } from '@/services/awayFlow'
 import { appStore } from '@/store/appStore'
 import { growthBoardOpenAtom, openAwayAtom, openGrowthBoardAtom } from '@/store/overlay'
 import {

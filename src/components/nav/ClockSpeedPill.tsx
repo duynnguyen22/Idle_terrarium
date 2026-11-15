@@ -7,7 +7,7 @@ import type { IconName } from '@/components/ui/lineIconPaths'
 import { Separator } from '@/components/ui/separator'
 import type { LightingId } from '@/data/types'
 import { useLocalClock } from '@/hooks/useLocalClock'
-import { plusOneDay } from '@/store/awayFlow'
+import { plusOneDay } from '@/services/awayFlow'
 import { dayCountAtom, lightingAtom, realTimeModeAtom, timeSpeedAtom } from '@/store/studio'
 import { showToast } from '@/store/toast'
 

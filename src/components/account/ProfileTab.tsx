@@ -14,7 +14,7 @@ import {
   timeAgo,
   userAtom,
   viewDataAtom,
-} from '@/store/account'
+} from '@/services/account'
 import {
   ACCT_ACTIONS,
   ACCT_H,
