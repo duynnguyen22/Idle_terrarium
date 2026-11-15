@@ -1,5 +1,6 @@
+import { DEFAULT_ROOM } from '@/data/room'
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_ROOM, envModel, qualityTier, qualityWord } from '@/engine/room'
+import { envModel, qualityTier, qualityWord } from '@/engine/room'
 
 describe('envModel', () => {
   it('defaults score 100 water and 100 air with the lid sealed', () => {

@@ -1,16 +1,12 @@
+import type { CareIssue } from '@/data/care'
 import type { MossTuft, PlacedItem, SubstrateDepths } from '@/data/types'
-import type { CareIssue } from './care'
+import { TERRAIN_POINTS, type WorldEntity } from '@/data/world'
 import { createView, type ViewState } from './view'
-
-/** Loose shape for per-frame particles; the engine narrows these in later tasks. */
-export type WorldEntity = Record<string, unknown>
 
 export interface Point {
   x: number
   y: number
 }
-
-export const TERRAIN_POINTS = 21
 
 /** The v6 environment model: every gauge eases toward a target set by the build (prototype 3174-3213). */
 export interface EnvState {

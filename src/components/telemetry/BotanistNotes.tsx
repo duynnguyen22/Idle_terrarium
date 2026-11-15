@@ -1,6 +1,7 @@
+import type { CareIssue } from '@/data/care'
 import { useAtomValue } from 'jotai'
 import { Button } from '@/components/ui/button'
-import { computeCareReport, runCareAction, type CareIssue } from '@/engine/care'
+import { computeCareReport, runCareAction } from '@/engine/care'
 import { mutateWorld } from '@/engine/engineBridge'
 import { play } from '@/hooks/useAudio'
 import { appStore } from '@/store/appStore'

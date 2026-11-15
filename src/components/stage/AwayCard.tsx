@@ -1,3 +1,4 @@
+import type { AwayReport } from '@/data/events'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { XIcon } from 'lucide-react'
 import { useEffect, useId } from 'react'
@@ -13,7 +14,6 @@ import {
   etaLabel,
   restLine,
   sinceLabel,
-  type AwayReport,
 } from '@/engine/simulation/report'
 import { startEveningVisit } from '@/store/awayFlow'
 import { appStore } from '@/store/appStore'

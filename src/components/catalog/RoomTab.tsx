@@ -1,16 +1,9 @@
+import { AIR_SOURCES, PH_RANGE, TDS_RANGE, WATER_SOURCES } from '@/data/room'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { EnvOptionList } from '@/components/catalog/EnvOptionList'
 import { Glyph, ICON_OFF, ICON_ON, SwitchRow } from '@/components/catalog/HardwarePanel'
 import type { AirSourceId, WaterSourceId } from '@/data/types'
-import {
-  AIR_SOURCES,
-  PH_RANGE,
-  TDS_RANGE,
-  WATER_SOURCES,
-  envModel,
-  qualityTier,
-  qualityWord,
-} from '@/engine/room'
+import { envModel, qualityTier, qualityWord } from '@/engine/room'
 import { hasLidAtom, roomAtom } from '@/store/studio'
 import { Slider } from '@/components/ui/slider'
 

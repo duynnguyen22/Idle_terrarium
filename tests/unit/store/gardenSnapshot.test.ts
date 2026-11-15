@@ -1,9 +1,9 @@
+import { DEFAULT_ROOM } from '@/data/room'
 import { createStore, type Store } from 'jotai'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PlacedItem } from '@/data/types'
 import { onWorldRestored, registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { snapshotWorld } from '@/engine/persistence'
-import { DEFAULT_ROOM } from '@/engine/room'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import {
   applyGardenSnapshot,

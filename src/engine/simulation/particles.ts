@@ -1,4 +1,5 @@
-import type { EngineWorld, WorldEntity } from '../world'
+import type { WorldEntity } from '@/data/world'
+import type { EngineWorld } from '../world'
 import { frameScale, type Rng } from './constants'
 
 /** initParticlesAndGrains (prototype 729-781). */

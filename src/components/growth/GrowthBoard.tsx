@@ -1,3 +1,4 @@
+import { PACE_LABELS, PACE_SUBTITLES, type PaceId } from '@/data/pace'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useId, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
@@ -8,7 +9,6 @@ import { PING_MS, pingItem } from '@/engine/marks'
 import { focusOn } from '@/engine/view'
 import { breedConditions } from '@/engine/simulation/breed'
 import { lightDose } from '@/engine/simulation/life'
-import { PACE_LABELS, PACE_SUBTITLES, type PaceId } from '@/engine/simulation/pace'
 import { appStore } from '@/store/appStore'
 import { growthBoardOpenAtom } from '@/store/overlay'
 import {

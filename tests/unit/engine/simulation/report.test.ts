@@ -1,9 +1,10 @@
+import type { EventKind } from '@/data/events'
+import { PACES } from '@/data/pace'
 import { describe, expect, it } from 'vitest'
 import { findCatalogDef } from '@/data/catalog'
 import type { PlacedItem } from '@/data/types'
-import type { EventKind, LifeEvent } from '@/engine/simulation/life'
+import type { LifeEvent } from '@/engine/simulation/life'
 import { PHASES, phaseAt } from '@/engine/simulation/phases'
-import { PACES } from '@/engine/simulation/pace'
 import {
   buildReport,
   DOT_COLOURS,

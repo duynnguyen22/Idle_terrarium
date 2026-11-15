@@ -1,9 +1,9 @@
+import type { AwayReport } from '@/data/events'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AwayCard } from '@/components/stage/AwayCard'
 import { UtilityActions } from '@/components/nav/UtilityActions'
 import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
-import type { AwayReport } from '@/engine/simulation/report'
 import { createWorld } from '@/engine/world'
 import { appStore } from '@/store/appStore'
 import {

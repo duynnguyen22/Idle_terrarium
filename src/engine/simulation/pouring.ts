@@ -1,3 +1,4 @@
+import type { WorldEntity } from '@/data/world'
 import { LAND_LAYER_IDS, SUBSTRATE_LAYERS } from '@/data/substrates'
 import type { StudioState } from '@/store/studio'
 import {
@@ -8,7 +9,7 @@ import {
   hasPool,
   isInPool,
 } from '../geometry'
-import type { EngineWorld, WorldEntity } from '../world'
+import type { EngineWorld } from '../world'
 import { frameScale, type Rng } from './constants'
 import { effectiveSubstrate, effectiveSubstrates, setEffectiveSubstrate } from './telemetry'
 

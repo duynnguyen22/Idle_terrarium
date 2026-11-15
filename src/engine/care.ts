@@ -1,5 +1,6 @@
 /** The v6 care report, ideal ranges and one-click care actions (prototype 2907-3020). */
 import { findCatalogDef } from '@/data/catalog'
+import type { CareActionId, CareIssue } from '@/data/care'
 import type { CatalogDef, PlacedItem, RoomEnv } from '@/data/types'
 import type { Store } from 'jotai'
 import {
@@ -17,27 +18,6 @@ import { poolHasWater } from './geometry'
 import { wakeResting, wokeToast } from './simulation/ecology'
 import { envModel, type EnvModel } from './room'
 import type { EngineWorld } from './world'
-
-export type CareActionId =
-  | 'mist'
-  | 'openLid'
-  | 'closeLid'
-  | 'fogOff'
-  | 'pumpGentle'
-  | 'feed'
-  | 'widenPool'
-  | 'waterTreat'
-  | 'waterRO'
-  | 'airClean'
-  | 'purifierOn'
-  | 'wipeGlass'
-
-export interface CareIssue {
-  level: 'warn' | 'info'
-  species?: string[]
-  text: string
-  action?: { id: CareActionId; label: string }
-}
 
 export const CYCLE_DAYS = 21
 

@@ -1,3 +1,4 @@
+import type { AwayReport, EventKind } from '@/data/events'
 import { findCatalogDef } from '@/data/catalog'
 import type { PlacedItem } from '@/data/types'
 import { hashStr, mulberry32, type Rng } from '@/lib/rng'
@@ -14,25 +15,22 @@ import { breedConditions, breedStep, huntStep } from './breed'
 import { slowStep, type DayState } from './dayTick'
 import { ecologyStep } from './ecology'
 import {
+  type Emit,
+  type LifeEnv,
+  type LifeEvent,
   lifePace,
   lifeStep,
   lightDose,
   nextStep,
   onCrossing,
-  type Emit,
-  type EventKind,
-  type LifeEnv,
-  type LifeEvent,
 } from './life'
 import { paceMs } from './pace'
-import { buildReport, NOTABLE, upcomingHints, type AwayReport } from './report'
+import { buildReport, NOTABLE, upcomingHints } from './report'
 
 /** Shortest absence (ms) that triggers an offline catch-up. */
 export const CATCHUP_MIN_GAP_MS = 600_000
 /** Longest absence a catch-up simulates, in tank days; longer gaps are capped. */
 export const CATCHUP_MAX_DAYS = 30
-/** Most away reports kept in the persisted log. */
-export const AWAY_LOG_MAX = 12
 
 /** Tank hours below which a catch-up never nudges a plant. */
 const NUDGE_MIN_TANK_HOURS = 8

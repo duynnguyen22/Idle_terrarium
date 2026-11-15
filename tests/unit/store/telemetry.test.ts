@@ -1,6 +1,6 @@
+import type { CareIssue } from '@/data/care'
 import { createStore } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { CareIssue } from '@/engine/care'
 import { bindStudioStorage } from '@/store/studio'
 import {
   createDefaultTelemetry,

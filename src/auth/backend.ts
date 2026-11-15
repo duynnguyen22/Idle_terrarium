@@ -1,5 +1,5 @@
+import type { EventKind } from '@/data/events'
 import type { VesselId } from '@/data/vessels'
-import type { EventKind } from '@/engine/simulation/life'
 import type { GardenSnapshot } from '@/store/gardenSnapshot'
 
 export interface GardenSummary {

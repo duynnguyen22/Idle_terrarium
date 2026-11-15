@@ -1,3 +1,8 @@
+import type { WorldSnapshot } from '@/data/world'
+import { DEFAULT_MUSIC_VOLUME } from '@/data/soundPresets'
+import { DEFAULT_ROOM } from '@/data/room'
+import { AWAY_LOG_MAX, type AwayReport } from '@/data/events'
+import type { PaceId } from '@/data/pace'
 import { atom, type Atom, type PrimitiveAtom, type Store, type WritableAtom } from 'jotai'
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
 import type {
@@ -10,12 +15,6 @@ import type {
   SubstrateDepths,
 } from '@/data/types'
 import type { VesselId } from '@/data/vessels'
-import type { WorldSnapshot } from '@/engine/persistence'
-import { DEFAULT_MUSIC_VOLUME } from '@/engine/audio/ambient'
-import { DEFAULT_ROOM } from '@/engine/room'
-import { AWAY_LOG_MAX } from '@/engine/simulation/catchup'
-import type { PaceId } from '@/engine/simulation/pace'
-import type { AwayReport } from '@/engine/simulation/report'
 import { clamp } from '@/lib/clamp'
 import { importPrototypeSave } from './importPrototypeSave'
 import {

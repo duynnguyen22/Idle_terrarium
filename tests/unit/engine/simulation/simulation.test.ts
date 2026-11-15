@@ -1,3 +1,4 @@
+import type { WorldEntity } from '@/data/world'
 import { createStore, type Store } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FAUNA, FAUNA_BY_ID } from '@/data/catalog'
@@ -35,7 +36,7 @@ import {
   TELEMETRY_INTERVAL_MS,
 } from '@/engine/simulation/telemetry'
 import { syncChildren, tick } from '@/engine/simulation/tick'
-import { createWorld, type EngineWorld, type WorldEntity } from '@/engine/world'
+import { createWorld, type EngineWorld } from '@/engine/world'
 import {
   activePourMaterialAtom,
   activeToolAtom,
