@@ -1,49 +1,14 @@
 import { useEffect, type RefObject } from 'react'
 import { ALL_CATALOG_DEFS, type CatalogId } from '@/data/catalog'
-import { vesselKX } from '@/data/vessels'
-import {
-  commitWorld,
-  isOwnSnapshot,
-  onWorldRestored,
-  tryGetWorld,
-  registerWorld,
-  unregisterWorld,
-} from '@/engine/engineBridge'
-import { seedWorldEnv } from '@/engine/envSeed'
-import { seedInitialScene } from '@/engine/presets'
-import { ecoTimeFromDayCount, restoreWorld } from '@/engine/persistence'
-import { createPerf, perfStep, perfSummary, sampleFrame } from '@/engine/render/perf'
-import { computeVesselRect, renderFrame } from '@/engine/render/renderFrame'
-import { runCatchUpIfDue } from '@/engine/simulation/catchup'
+import { commitWorld, unregisterWorld } from '@/engine/engineBridge'
 import { flushEnvSeed, flushTelemetry } from '@/engine/simulation/telemetry'
-import { tick } from '@/engine/simulation/tick'
 import { warmSpriteCache } from '@/engine/sprites/spriteCache'
-import { updateCamera } from '@/engine/view'
-import { createWorld, type EngineWorld } from '@/engine/world'
-import { getCanvasCssSize } from '@/lib/terrariumCanvas'
-import { play } from '@/services/audio'
-import { recordReport } from '@/services/awayFlow'
-import { phaseAtom } from '@/services/account'
+import type { EngineWorld } from '@/engine/world'
+import { startCatchUp } from '@/hooks/engineCatchUp'
+import { createFrameLoop } from '@/hooks/engineFrameLoop'
+import { createEngineWorld, followWorldSnapshots } from '@/hooks/engineWorldSetup'
 import { appStore, type AppStore } from '@/store/appStore'
-import { awayIndexAtom } from '@/store/overlay'
-import {
-  dayCountAtom,
-  lastSimulatedAtAtom,
-  studioStateAtom,
-  worldSnapshotAtom,
-} from '@/store/studio'
-import { showToast } from '@/store/toast'
-import {
-  depthOnAtom,
-  perfHudAtom,
-  perfTextAtom,
-  smoothDrawingAtom,
-  zoomPctAtom,
-} from '@/store/view'
-
-/** Longest simulated step; a backgrounded tab resumes with a clamped dt instead of a huge jump. */
-const MAX_DT_MS = 100
-const MAX_DPR = 2
+import { lastSimulatedAtAtom } from '@/store/studio'
 
 declare global {
   interface Window {
@@ -70,49 +35,8 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const world = createWorld()
-    seedWorldEnv(world, appStore.get(studioStateAtom))
-    const initial = appStore.get(worldSnapshotAtom)
-    const dayCount = appStore.get(dayCountAtom)
-    world.ecoTime = ecoTimeFromDayCount(dayCount)
-    if (initial) restoreWorld(world, initial, dayCount)
-    registerWorld(world)
-    seedInitialScene(world)
-    // Time away: catch the tank up on load, after a saved garden replaces it, and on each return to the tab,
-    // outside the rAF frame.
-    const catchUp = () => {
-      try {
-        const r = runCatchUpIfDue(world, appStore, Date.now())
-        if (r) {
-          recordReport(r, { journal: true })
-          // Persist the caught-up world alongside the already-advanced lastSimulatedAt.
-          commitWorld()
-        }
-      } catch (e) {
-        // Never block the engine: skip this gap instead of retrying it on every reload.
-        console.error('Catch-up failed', e)
-        appStore.set(lastSimulatedAtAtom, Date.now())
-      }
-    }
-    // While the account check runs, sign-in may still replace this garden with a saved one, so the catch-up
-    // waits for the phase to settle and then runs against whichever garden is in place.
-    let catchUpPending = false
-    const catchUpWhenSettled = () => {
-      if (appStore.get(phaseAtom) === 'checking') catchUpPending = true
-      else catchUp()
-    }
-    // Pending is only set while the phase is 'checking', so leaving it is always a phase change.
-    const unsubscribeAccount = appStore.sub(phaseAtom, () => {
-      if (!catchUpPending || appStore.get(phaseAtom) === 'checking') return
-      catchUpPending = false
-      catchUp()
-    })
-    const offRestored = onWorldRestored(() => {
-      // An open card showed the previous garden's log; the applied one reopens it only for its own gap.
-      appStore.set(awayIndexAtom, null)
-      catchUpWhenSettled()
-    })
-    catchUpWhenSettled()
+    const world = createEngineWorld()
+    const { catchUpWhenSettled, unsubscribeAccount, offRestored } = startCatchUp(world)
     if (import.meta.env.DEV)
       window.__botanica = {
         world: () => world,
@@ -120,100 +44,9 @@ export function useTerrariumEngine(canvasRef: RefObject<HTMLCanvasElement | null
       }
     warmSpriteCache([...ALL_CATALOG_DEFS.map((d) => d.id as CatalogId), 'bumblebee_millipede_curl'])
 
-    // External snapshot changes (e.g. a preset load) replace the world's persistable parts;
-    // snapshots the bridge wrote itself are skipped so mid-interaction item objects are not replaced.
-    let prevSnapshot = appStore.get(worldSnapshotAtom)
-    const unsubscribe = appStore.sub(worldSnapshotAtom, () => {
-      const snap = appStore.get(worldSnapshotAtom)
-      const prev = prevSnapshot
-      prevSnapshot = snap
-      if (snap && snap !== prev && !isOwnSnapshot(snap))
-        restoreWorld(world, snap, appStore.get(dayCountAtom))
-    })
+    const unsubscribe = followWorldSnapshots(world)
 
-    let rafId = 0
-    let last = 0
-    const perf = createPerf()
-    let zoomPct = Math.round(world.view.cam.z * 100)
-    appStore.set(zoomPctAtom, zoomPct)
-
-    const frame = (timestamp: number) => {
-      rafId = requestAnimationFrame(frame)
-      const dt = Math.min(timestamp - (last || timestamp), MAX_DT_MS)
-      last = timestamp
-
-      world.view.fastDraw = appStore.get(smoothDrawingAtom)
-      world.view.depthOn = appStore.get(depthOnAtom)
-      if (sampleFrame(perf, timestamp) !== null) perfStep(perf, world.view, timestamp)
-
-      // Read before tick: this frame renders the state the frame started with.
-      const state = appStore.get(studioStateAtom)
-      tick(world, dt, timestamp, { onCue: play, onToast: showToast, commit: commitWorld })
-      if (world.pourSettled) {
-        // Pointer-up committed before the last particles landed; commit once more outside the frame.
-        world.pourSettled = false
-        queueMicrotask(() => {
-          if (tryGetWorld() === world) commitWorld()
-        })
-      }
-
-      // Until TerrariumCanvas records the element's CSS size, the canvas is the browser's 300 x 150
-      // default: the camera's one-time phone start would latch a close-up on it.
-      const css = getCanvasCssSize()
-      if (!css || css.w <= 0 || css.h <= 0) return
-      const W = css.w
-      const H = css.h
-      const scale =
-        Math.min(window.devicePixelRatio || 1, MAX_DPR) *
-        (world.view.fastDraw ? world.view.renderScale : 1)
-      const bw = Math.floor(W * scale)
-      const bh = Math.floor(H * scale)
-      if (canvas.width !== bw || canvas.height !== bh) {
-        canvas.width = bw
-        canvas.height = bh
-      }
-
-      const R = computeVesselRect(W, H, state.relaxMode, vesselKX(state.vessel))
-      const pointerLive = world.pointerInCanvas && !document.body.classList.contains('relax-idle')
-      updateCamera(world.view, world, state, R, { w: W, h: H }, dt, timestamp, pointerLive)
-      const pct = Math.round(world.view.cam.z * 100)
-      if (pct !== zoomPct) {
-        zoomPct = pct
-        appStore.set(zoomPctAtom, pct)
-      }
-
-      ctx.save()
-      ctx.setTransform(scale, 0, 0, scale, 0, 0)
-      ctx.imageSmoothingEnabled = true
-      ctx.imageSmoothingQuality = world.view.fastDraw ? 'low' : 'high'
-      renderFrame(ctx, world, state, R, timestamp, { w: W, h: H })
-      ctx.restore()
-
-      if (world.frame % 20 === 0 && appStore.get(perfHudAtom)) {
-        const sum = perfSummary(perf)
-        if (sum) {
-          // The view's values, which this frame drew with, not the atoms.
-          const smooth = world.view.fastDraw ? 'on' : 'off'
-          const detail = Math.round(world.view.renderScale * 100)
-          appStore.set(
-            perfTextAtom,
-            `${sum.fps} fps · slowest ${sum.slowest} ms · ${canvas.width}×${canvas.height} · detail ${detail}% · smooth ${smooth}`,
-          )
-        }
-      }
-    }
-
-    const start = () => {
-      if (rafId) return
-      last = 0
-      perf.last = 0
-      rafId = requestAnimationFrame(frame)
-    }
-    const stop = () => {
-      if (!rafId) return
-      cancelAnimationFrame(rafId)
-      rafId = 0
-    }
+    const { start, stop } = createFrameLoop(canvas, ctx, world)
     const saveNow = () => {
       // Push the latest day count and cycle progress now, not up to 250 ms late.
       flushTelemetry(world, appStore)
