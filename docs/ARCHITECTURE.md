@@ -31,7 +31,8 @@ Two smaller rules:
 
 - `src/components/ui/` holds the [shadcn/ui](https://ui.shadcn.com) primitives (button, dialog,
   slider and so on). They stay free of app knowledge, so they may import only `lib` and each other.
-- Inside one layer, any file may import any other file.
+- Inside one layer, any file may import any other file. The exception is a folder module (see
+  "Growing a file into a folder"): its files are reached through its `index.ts`.
 
 ```
    components
@@ -54,8 +55,8 @@ goes in `services`.
 
 ### Keeping to the table
 
-The table is the rule. A lint rule that enforces it is prepared and will be switched on in
-`eslint.config.js`. Until then, check your imports against the table yourself.
+The table is the rule. Nothing in lint enforces it yet. Enforcement by lint is planned, but it is not in place. Until
+then, check your imports against the table by hand.
 
 When an import breaks the table, move the code, not the rule. Usually a type or a constant needs
 to move down to `data`, or a function that uses several layers needs to move up to `services`.
@@ -172,12 +173,14 @@ import of `@/engine/weather` keeps working. Usually it holds no code of its own,
 name says it. Code outside the folder imports only the folder (`@/engine/weather`), never a file
 inside it. The folder stays in the same layer.
 
+Plain sibling files are fine when a component or hook has extracted parts that only it uses. See
+`src/components/stage/` and `src/hooks/engine*.ts`.
+
 Real examples: `src/engine/care/` (rules split by kind, plus `actions.ts`),
 `src/data/catalog/` (one file per family: flora, hardscape, fauna), `src/store/studio/` (state and
 defaults, saved fields, atoms, storage) and `src/services/account/`.
 
-The files listed in `eslint.legacy.js` are the ones still over the limits. They will become
-folders like this.
+No file is exempt from the limits.
 
 ## More
 
