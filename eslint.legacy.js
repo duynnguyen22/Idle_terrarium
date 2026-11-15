@@ -4,8 +4,6 @@
 // Files longer than 300 lines.
 export const LEGACY_LONG_FILES = [
   'src/auth/localAuthService.ts',
-  'src/components/account/auth/AuthPieces.tsx',
-  'src/components/growth/GrowthBoard.tsx',
   'src/components/stage/TerrariumCanvas.tsx',
   'src/data/catalog.ts',
   'src/engine/render/backdropPainters.ts',
@@ -18,15 +16,6 @@ export const LEGACY_LONG_FILES = [
 export const LEGACY_LONG_FUNCTIONS = [
   'src/auth/backend.ts',
   'src/auth/localAuthService.ts',
-  'src/components/account/auth/OtpInput.tsx',
-  'src/components/account/auth/SignInScreen.tsx',
-  'src/components/account/auth/SignUpScreen.tsx',
-  'src/components/catalog/BackdropSection.tsx',
-  'src/components/catalog/HardwarePanel.tsx',
-  'src/components/catalog/RoomTab.tsx',
-  'src/components/growth/GrowthBoard.tsx',
-  'src/components/layout/RightTelemetry.tsx',
-  'src/components/nav/UtilityActions.tsx',
   'src/components/stage/AwayCard.tsx',
   'src/components/stage/ItemInspector.tsx',
   'src/components/stage/RelaxDock.tsx',

@@ -3,12 +3,10 @@ import { cn } from 'cn'
 import { useMemo } from 'react'
 import { BotanistNotes, CareList } from '@/components/telemetry/BotanistNotes'
 import { EcoStats } from '@/components/telemetry/EcoStats'
-import { GaugeBar } from '@/components/telemetry/GaugeBar'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import type { PlacedItem } from '@/data/types'
-import { idealRange } from '@/engine/care'
-import { envModel, qualityWord } from '@/engine/room'
+import { envModel } from '@/engine/room'
 import { isLampOn } from '@/engine/simulation/clock'
 import {
   hasGrowLampAtom,
@@ -18,14 +16,13 @@ import {
   worldSnapshotAtom,
 } from '@/store/studio'
 import { telemetryAtom } from '@/store/telemetry'
+import { BiosphereGauges } from './BiosphereGauges'
 
 const NO_ITEMS: PlacedItem[] = []
 const itemsAtom = atom((get) => get(worldSnapshotAtom)?.items ?? NO_ITEMS)
 const lampOnAtom = atom((get) =>
   isLampOn({ hasGrowLamp: get(hasGrowLampAtom), lighting: get(lightingAtom) }),
 )
-
-const toF = (c: number) => ((c * 9) / 5 + 32).toFixed(1)
 
 function badge(warns: number): [label: string, cls: string] {
   if (warns === 0) return ['Thriving', 'bg-emerald-100 text-emerald-800']
@@ -40,10 +37,6 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
   const room = useAtomValue(roomAtom)
   const hasLid = useAtomValue(hasLidAtom)
   const m = useMemo(() => envModel(room, hasLid), [room, hasLid])
-  const hum = idealRange(items, 'hum')
-  const tmp = idealRange(items, 'temp')
-  // A corrupt or missing reading must not render as "NaN °C".
-  const tempKnown = Number.isFinite(t.temperature)
   const [badgeLabel, badgeCls] = badge(t.careIssues.filter((i) => i.level === 'warn').length)
 
   return (
@@ -61,90 +54,7 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
         <Badge className={cn('text-[11px] font-semibold', badgeCls)}>{badgeLabel}</Badge>
       </div>
       <BotanistNotes />
-      <div className="flex flex-col gap-3.5 rounded-2xl border border-card-line bg-white p-3.5">
-        <GaugeBar
-          gaugeKey="humidity"
-          label="Air humidity"
-          value={t.humidity}
-          min={0}
-          max={100}
-          text={`${Math.round(t.humidity)}%`}
-          band={{ ...hum, tol: 3 }}
-          hint={
-            hum.conflict && hum.names
-              ? `No humidity suits both ${hum.names.lo} and ${hum.names.hi}`
-              : `Ideal ${hum.lo}–${hum.hi}% for what lives here`
-          }
-        />
-        <GaugeBar
-          gaugeKey="temperature"
-          label="Temperature"
-          value={t.temperature}
-          min={15}
-          max={35}
-          text={tempKnown ? `${t.temperature.toFixed(1)} °C` : '— °C'}
-          band={{ ...tmp, tol: 1 }}
-          hint={
-            !tempKnown
-              ? undefined
-              : tmp.conflict
-                ? 'Inhabitants want different temperatures'
-                : `Ideal ${tmp.lo}–${tmp.hi} °C · ${toF(t.temperature)} °F now`
-          }
-        />
-        <GaugeBar
-          gaugeKey="moisture"
-          label="Substrate moisture"
-          value={t.soilMoisture}
-          min={0}
-          max={100}
-          text={`${Math.round(t.soilMoisture)}%`}
-          band={{ lo: 55, hi: 85, tol: 2 }}
-          hint="Evenly moist with no standing water"
-        />
-        <GaugeBar
-          gaugeKey="nutrients"
-          label="Nutrients"
-          value={t.nutrients}
-          min={0}
-          max={100}
-          text={`${Math.round(t.nutrients)}%`}
-          band={{ lo: 40, hi: 100, tol: 0 }}
-          hint="Leaf litter and isopods recycle nutrients slowly"
-        />
-        <GaugeBar
-          gaugeKey="water"
-          label="Water quality"
-          value={m.water}
-          min={0}
-          max={100}
-          text={`${m.water} · ${qualityWord(m.water)}`}
-          band={{ lo: 70, hi: 100, tol: 0 }}
-          hint={`${m.ws.name} · ${m.tds} ppm · pH ${m.ph.toFixed(1)}`}
-        />
-        <GaugeBar
-          gaugeKey="air"
-          label="Air quality"
-          value={m.airEff}
-          min={0}
-          max={100}
-          text={`${m.airEff} · ${qualityWord(m.airEff)}`}
-          band={{ lo: 70, hi: 100, tol: 0 }}
-          hint={`${m.as.name}${room.purifier ? ' · purifier on' : ''}`}
-        />
-        <GaugeBar
-          gaugeKey="o2"
-          label="O₂ / CO₂ balance"
-          value={t.o2Balance}
-          min={40}
-          max={100}
-          text={`${Math.round(t.o2Balance)}%`}
-          band={{ lo: lampOn ? 80 : 55, hi: 100, tol: 2 }}
-          hint={
-            lampOn ? 'Lamp on: plants are photosynthesising' : 'Lamp off: plants respire overnight'
-          }
-        />
-      </div>
+      <BiosphereGauges t={t} items={items} lampOn={lampOn} room={room} m={m} />
       <CareList />
       <EcoStats />
       <div className="mt-auto flex flex-col gap-3">
