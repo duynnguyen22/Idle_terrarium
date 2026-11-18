@@ -6,10 +6,12 @@ import {
   backdropHazeAtom,
   bindStudioStorage,
   catchupEnabledAtom,
+  createDefaultState,
   cycleProgressAtom,
   dayCountAtom,
   envSeedAtom,
   hardwareAtoms,
+  lampColorAtom,
   lastSimulatedAtAtom,
   mineralSpotsAtom,
   musicVolumeAtom,
@@ -23,6 +25,7 @@ import {
   setSubstrateAtom,
   setupDayAtom,
   STUDIO_STORAGE_KEY,
+  STUDIO_VERSION,
   studioStateAtom,
   substratesAtom,
   toggleHardwareAtom,
@@ -148,7 +151,7 @@ describe('studio store', () => {
     expect(stateOf(store)).toMatchObject({ hasLid: false, dayCount: 2, selectedId: 'x' })
     expect(stateOf(store).substrates.sand).toBe(5)
     const stored = storedSave()
-    expect(stored.version).toBe(4)
+    expect(stored.version).toBe(5)
     expect(stored.state.dayCount).toBe(2)
     expect(stored.state).not.toHaveProperty('selectedId')
     store.set(resetStudioAtom)
@@ -315,7 +318,7 @@ describe('studio store', () => {
     expect(s.substrates).not.toHaveProperty('lavarock')
     // Like the persist middleware, a migrated save is written back at once at the current version.
     const stored = storedSave()
-    expect(stored.version).toBe(4)
+    expect(stored.version).toBe(5)
     expect(stored.state).toMatchObject({ dayCount: 7, substrates: migrated })
   })
 
@@ -351,7 +354,7 @@ describe('studio store', () => {
     store.set(backdropAtom, 'karst')
     store.set(mineralSpotsAtom, 0.5)
     const stored = storedSave()
-    expect(stored.version).toBe(4)
+    expect(stored.version).toBe(5)
     expect(stored.state).toMatchObject({
       room: { water: 'rain', air: 'smoke' },
       backdrop: 'karst',
@@ -466,5 +469,21 @@ describe('studio store', () => {
     expect(store.get(mineralSpotsAtom)).toBe(1)
     store.set(mineralSpotsAtom, -1)
     expect(store.get(mineralSpotsAtom)).toBe(0)
+  })
+
+  it('lampColor defaults to white and is saved', () => {
+    expect(stateOf(createStudio()).lampColor).toBe('white')
+    expect(partialize(createDefaultState())).toHaveProperty('lampColor', 'white')
+    const store = createStudio()
+    store.set(lampColorAtom, 'warm')
+    expect(storedSave().state.lampColor).toBe('warm')
+  })
+
+  it('a current save with lampColor "cool" loads as white', () => {
+    memoryStorage.setItem(
+      STUDIO_STORAGE_KEY,
+      JSON.stringify({ state: { lampColor: 'cool' }, version: STUDIO_VERSION }),
+    )
+    expect(stateOf(createStudio()).lampColor).toBe('white')
   })
 })

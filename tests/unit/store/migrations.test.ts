@@ -4,6 +4,7 @@ import {
   mapLegacySubstrates,
   migrate,
   sanitizeAwayLog,
+  sanitizeLampColor,
   sanitizePace,
   sanitizeRoom,
 } from '@/store/migrations'
@@ -181,15 +182,16 @@ describe('migrate', () => {
     })
   })
 
-  it('returns v4 state unchanged', () => {
+  it('returns v5 state unchanged', () => {
     const v4 = {
+      lampColor: 'warm',
       pace: 'calm',
       lastSimulatedAt: 5,
       catchupEnabled: false,
       worldSeed: 'abcd1234',
       awayLog: [],
     }
-    expect(migrate(v4, 4)).toEqual(v4)
+    expect(migrate(v4, 5)).toEqual(v4)
   })
 
   it('returns v3 room state unchanged apart from the v4 fields', () => {
@@ -213,9 +215,30 @@ describe('migrate', () => {
     expect(out.room).toMatchObject({ tds: 600, ph: 5.5 })
   })
 
+  it('v4 saves gain lampColor white', () => {
+    const v4 = {
+      vessel: 'globe',
+      dayCount: 9,
+      pace: 'brisk',
+      lastSimulatedAt: 5,
+      catchupEnabled: false,
+      worldSeed: 'abcd1234',
+      awayLog: [],
+    }
+    expect(migrate(v4, 4)).toEqual({ ...v4, lampColor: 'white' })
+  })
+
   it('returns non-object persisted values as an empty object', () => {
     expect(migrate(null, 1)).toEqual({})
     expect(migrate('x', 1)).toEqual({})
+  })
+})
+
+describe('sanitizeLampColor', () => {
+  it('keeps warm and falls back to white otherwise', () => {
+    expect(sanitizeLampColor('warm')).toBe('warm')
+    for (const v of ['white', 'WARM', 'cool', 42, null, undefined])
+      expect(sanitizeLampColor(v)).toBe('white')
   })
 })
 

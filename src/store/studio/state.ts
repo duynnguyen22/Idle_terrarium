@@ -17,6 +17,9 @@ import type { VesselId } from '@/data/vessels'
 import { DEFAULT_BACKDROP, DEFAULT_BACKDROP_HAZE } from '../migrations'
 import { DEFAULT_TELEMETRY } from '../telemetry'
 
+/** Grow-lamp light colour: cool white (6500 K) or warm (3000 K). */
+export type LampColor = 'white' | 'warm'
+
 export type HardwareKey = 'hasLid' | 'hasGrowLamp' | 'hasFogger'
 export type ActiveTab = 'vessel' | 'substrate' | 'flora' | 'hardscape' | 'fauna' | (string & {})
 export type ActiveTool = 'select' | 'plant' | 'pour' | (string & {})
@@ -33,6 +36,7 @@ export interface StudioState {
   vessel: VesselId
   hasLid: boolean
   hasGrowLamp: boolean
+  lampColor: LampColor
   hasFogger: boolean
   pumpFlow: PumpFlow
   /** Fraction of the tank width given to the pool, 0 to MAX_WATER_SPLIT. */
@@ -91,6 +95,7 @@ export function createDefaultState(): StudioState {
     vessel: 'paludarium_tank',
     hasLid: true,
     hasGrowLamp: true,
+    lampColor: 'white',
     hasFogger: true,
     pumpFlow: 'gentle',
     waterSplit: 0.32,

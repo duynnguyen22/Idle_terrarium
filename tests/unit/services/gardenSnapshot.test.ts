@@ -79,7 +79,7 @@ describe('gardenSnapshot', () => {
       ...partialize(studio.get(studioStateAtom)),
       worldSnapshot: snapshotWorld(world),
     })
-    expect(snap.version).toBe(4)
+    expect(snap.version).toBe(5)
     expect(snap.worldSnapshot?.items.map((i) => i.uid)).toEqual(['a', 'b'])
     // Without a world the stored snapshot is used as is.
     studio.set(worldSnapshotAtom, { items: [item('z', 'hardscape')], terrainContour: [] })

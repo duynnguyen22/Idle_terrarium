@@ -51,6 +51,7 @@ function guarded<K extends keyof StudioState, A>(
 export const vesselAtom = base.vessel
 export const hasLidAtom = base.hasLid
 export const hasGrowLampAtom = base.hasGrowLamp
+export const lampColorAtom = base.lampColor
 export const hasFoggerAtom = base.hasFogger
 export const pumpFlowAtom = base.pumpFlow
 export const setupDayAtom = base.setupDay

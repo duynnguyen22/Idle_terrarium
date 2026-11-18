@@ -260,4 +260,21 @@ describe('importPrototypeSave', () => {
       dayCount: 6,
     })
   })
+
+  it('reads lampColor warm, else white', () => {
+    const save = (lampColor: unknown) =>
+      localStorage.setItem(
+        KEY,
+        JSON.stringify({ vessel: 'paludarium_tank', items: [{ uid: 'a', id: 'fern' }], lampColor }),
+      )
+    save('warm')
+    expect(importPrototypeSave(localStorage)?.lampColor).toBe('warm')
+    save('cool')
+    expect(importPrototypeSave(localStorage)?.lampColor).toBe('white')
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({ vessel: 'paludarium_tank', items: [{ uid: 'a', id: 'fern' }] }),
+    )
+    expect(importPrototypeSave(localStorage)?.lampColor).toBe('white')
+  })
 })

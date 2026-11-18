@@ -2,7 +2,7 @@ import type { StudioState } from './state'
 
 export const STUDIO_STORAGE_KEY = 'botanica_studio_v1'
 /** Persisted-state version; `migrate` upgrades anything older (saves and garden snapshots alike). */
-export const STUDIO_VERSION = 4
+export const STUDIO_VERSION = 5
 
 /** Fields written to localStorage. Transient UI is excluded; live telemetry lives in its own atom. */
 export function partialize(s: StudioState) {
@@ -10,6 +10,7 @@ export function partialize(s: StudioState) {
     vessel: s.vessel,
     hasLid: s.hasLid,
     hasGrowLamp: s.hasGrowLamp,
+    lampColor: s.lampColor,
     hasFogger: s.hasFogger,
     pumpFlow: s.pumpFlow,
     waterSplit: s.waterSplit,
