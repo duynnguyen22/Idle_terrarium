@@ -20,6 +20,7 @@ import {
   type LifeEvent,
   lifePace,
   lifeStep,
+  growthFactor,
   lightDose,
   nextStep,
   onCrossing,
@@ -57,6 +58,7 @@ export interface CatchUpOpts {
 function lifeEnv(state: CatchUpState): LifeEnv {
   return {
     lightDose: lightDose(state),
+    growthFactor: growthFactor(state),
     terrain: { substrates: state.substrates, waterSplit: state.waterSplit },
   }
 }
