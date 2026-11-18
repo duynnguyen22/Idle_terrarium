@@ -58,12 +58,27 @@ export interface FloraDef extends BaseDef {
   o2Rate: number
 }
 
-export interface HardscapeDef extends BaseDef {
-  category: 'hardscape'
-  isWaterfall?: boolean
+export type DecorTheme = 'village' | 'japan' | 'people' | 'animals' | 'lights'
+
+/** Night-glow fields shared by hardscape and decor. `glowAt` is the design-space anchor, `glowR` the radius. */
+export interface GlowFields {
   glowsAtNight?: boolean
   glowColor?: string
+  glowAt?: readonly [number, number]
+  glowR?: number
+}
+
+export interface HardscapeDef extends BaseDef, GlowFields {
+  category: 'hardscape'
+  isWaterfall?: boolean
   mountPoints?: readonly MountPoint[]
+}
+
+export interface DecorDef extends BaseDef, GlowFields {
+  category: 'decor'
+  theme: DecorTheme
+  material: string
+  canMountOnRock?: boolean
 }
 
 export interface FaunaDef extends BaseDef {
@@ -87,7 +102,7 @@ export interface FaunaDef extends BaseDef {
   moldEatRate?: number
 }
 
-export type CatalogDef = FloraDef | HardscapeDef | FaunaDef
+export type CatalogDef = FloraDef | HardscapeDef | DecorDef | FaunaDef
 
 export interface SubstrateDepths {
   pebbles: number
@@ -117,7 +132,7 @@ export interface MossTuft {
 export interface PlacedItem {
   uid: string
   id: string
-  category: 'flora' | 'hardscape' | 'fauna'
+  category: 'flora' | 'hardscape' | 'decor' | 'fauna'
   isWaterfall?: boolean
   x: number
   y: number

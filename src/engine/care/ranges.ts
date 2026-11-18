@@ -3,7 +3,7 @@ import { findCatalogDef } from '@/data/catalog'
 import type { CatalogDef, PlacedItem } from '@/data/types'
 
 export function humRange(d: CatalogDef | null): readonly [number, number] | undefined {
-  return d && d.category !== 'hardscape' ? d.idealHumidity : undefined
+  return d && (d.category === 'flora' || d.category === 'fauna') ? d.idealHumidity : undefined
 }
 
 export function tempRange(d: CatalogDef | null): readonly [number, number] | undefined {
