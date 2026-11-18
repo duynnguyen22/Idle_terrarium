@@ -1,4 +1,5 @@
 import type { CatalogId } from '@/data/catalog'
+import { DECOR_SPRITES } from './decor'
 import { FAUNA_SPRITES, type DrawFn } from './fauna'
 import { FAUNA_EXTRA_SPRITES, MILLIPEDE_CURL_SPRITE } from './faunaExtra'
 import { FLORA_SPRITES } from './flora'
@@ -14,6 +15,7 @@ export type SpriteId = CatalogId | PoseSpriteId
 const SPRITES: Partial<Record<SpriteId, DrawFn>> = {
   ...HARDSCAPE_SPRITES,
   ...FLORA_SPRITES,
+  ...DECOR_SPRITES,
   ...FAUNA_SPRITES,
   ...FAUNA_EXTRA_SPRITES,
   bumblebee_millipede_curl: MILLIPEDE_CURL_SPRITE,
