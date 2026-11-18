@@ -8,13 +8,13 @@ import { hasPool } from '../geometry'
 import type { EngineWorld } from '../world'
 import { breedConditions, breedStep, huntStep } from './breed'
 import { ecologyStep } from './ecology'
-import { lifeStep, lightDose, type Emit } from './life'
+import { growthFactor, lifeStep, lightDose, type Emit } from './life'
 import { countCleanupCrew } from './mold'
 import { dtDayForFrame } from './pace'
 
 export type DayState = Pick<
   StudioState,
-  'timeSpeed' | 'pace' | 'hasGrowLamp' | 'pumpFlow' | 'substrates' | 'waterSplit'
+  'timeSpeed' | 'pace' | 'hasGrowLamp' | 'lampColor' | 'pumpFlow' | 'substrates' | 'waterSplit'
 >
 
 /** Sprout `growthProgress` gained per tank day. */
@@ -54,12 +54,13 @@ export function slowStep(
   world.ecoTime += dtDay
   const env = world.env
 
+  const sproutRate = SPROUT_RATE * growthFactor(state)
   let flora = 0
   for (const item of world.items) {
     if (item.category !== 'flora') continue
     flora++
     if (item.stage !== 'sprout') continue
-    const gp = (item.growthProgress ?? SPROUT_START) + SPROUT_RATE * dtDay
+    const gp = (item.growthProgress ?? SPROUT_START) + sproutRate * dtDay
     item.growthProgress = gp
     if (gp >= 1) {
       item.stage = 'mature'
@@ -112,6 +113,7 @@ export function stepDays(
   ecologyStep(world, dtDay, { away: false }, emit)
   lifeStep(world, dtDay, rng, emit, {
     lightDose: lightDose(state),
+    growthFactor: growthFactor(state),
     terrain: { substrates: state.substrates, waterSplit: state.waterSplit },
   })
   breedStep(world, dtDay, rng, emit, breedConditions(world, state))

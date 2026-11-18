@@ -106,7 +106,7 @@ describe('catalog data', () => {
         if ('parentIndex' in it) expect(it.parentIndex).toBeLessThan(i)
       })
     }
-    expect(BIOME_PRESETS[0].items).toHaveLength(17)
+    expect(BIOME_PRESETS[0].items).toHaveLength(21)
     expect(BIOME_PRESETS[0].substrates.water).toBe(45)
     expect(BIOME_PRESETS[3].substrates.sand).toBe(22)
   })
@@ -257,6 +257,10 @@ describe('v6 data model', () => {
       'vampire_crab',
       'springtails',
       'isopod',
+      'deco_cottage',
+      'deco_raincoat_kid',
+      'deco_mushrooms',
+      'deco_fisher',
     ])
   })
 })

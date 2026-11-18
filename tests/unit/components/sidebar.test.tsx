@@ -192,7 +192,7 @@ describe('LeftSidebar panels', () => {
     expect(world.items).toHaveLength(0)
     click(screen.getByRole('button', { name: /Falls Lake/ }))
     expect(state().substrates.water).toBe(45)
-    expect(world.items).toHaveLength(17)
+    expect(world.items).toHaveLength(21)
     expect(toast()).toBe('Falls Lake: 30% pool, waterfall and moss wall')
   })
 
@@ -258,6 +258,49 @@ describe('LeftSidebar panels', () => {
     click(cards[0])
     expect(world.items.map((i) => i.category)).toEqual(['hardscape', 'fauna'])
     expect(world.items[1].aiState).toBe('wandering')
+  })
+})
+
+describe('Decor tab', () => {
+  it('has six tabs in spec order', () => {
+    render(<LeftSidebar />)
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
+      'Vessel',
+      'Flora',
+      'Hardscape',
+      'Decor',
+      'Fauna',
+      'Room',
+    ])
+  })
+
+  it('decor tab lists 26 pieces in five headed groups', () => {
+    render(<LeftSidebar />)
+    click(screen.getByRole('tab', { name: /Decor/ }))
+    const grid = screen.getByTestId('catalog-decor')
+    expect(within(grid).getAllByRole('button')).toHaveLength(26)
+    const headings = within(grid)
+      .getAllByRole('heading', { level: 3 })
+      .map((h) => h.textContent)
+    expect(headings).toEqual([
+      'Village and garden9',
+      'Japanese garden3',
+      'Little people4',
+      'Animals7',
+      'Mushrooms and lights3',
+    ])
+    expect(screen.getByText(/rock ledges/)).toBeInTheDocument()
+  })
+
+  it('decor cards show material, Glows and Mountable chips', () => {
+    render(<LeftSidebar />)
+    click(screen.getByRole('tab', { name: /Decor/ }))
+    const cottage = screen.getByRole('button', { name: /Moss-Roof Cottage/ })
+    expect(within(cottage).getByText('Glows')).toBeInTheDocument()
+    expect(within(cottage).getByText('Resin')).toBeInTheDocument()
+    const fox = screen.getByRole('button', { name: /Sitting Fox/ })
+    expect(within(fox).getByText('Resin')).toBeInTheDocument()
+    expect(within(fox).getByText('Mountable')).toBeInTheDocument()
   })
 })
 
@@ -361,6 +404,13 @@ describe('ItemInspector', () => {
       expect(screen.getByTestId('insp-meta')).toHaveTextContent(meta)
       unmount()
     }
+  })
+
+  it('inspector names decor with its material', () => {
+    const it = addItem(world, 'deco_fox', 'mature', { terrain: TERRAIN })!
+    act(() => appStore.set(selectedIdAtom, it.uid))
+    render(<ItemInspector />)
+    expect(screen.getByTestId('insp-meta')).toHaveTextContent('Decoration · Resin')
   })
 
   it('hides the grow button for non-flora', () => {

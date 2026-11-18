@@ -79,6 +79,7 @@ const st = {
   substrates: DEFAULT_SUBSTRATES,
   waterSplit: 0.32,
   lighting: 'sunlight',
+  lampColor: 'white',
 } as const
 const terrain = { substrates: st.substrates, waterSplit: st.waterSplit }
 

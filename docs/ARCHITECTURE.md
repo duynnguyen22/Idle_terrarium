@@ -109,6 +109,7 @@ Importing `appStore` also loads the saved studio state from `localStorage` and k
 | I want to add... | Put it here |
 |---|---|
 | A plant, rock or animal | Its entry in the catalog folder `src/data/catalog/`: `FLORA` in `flora.ts`, `HARDSCAPE` in `hardscape.ts`, `FAUNA` in `fauna.ts`. Its drawing in `src/engine/sprites/`: `FLORA_SPRITES` in `flora.ts`, `HARDSCAPE_SPRITES` in `hardscape.ts`, and for animals `FAUNA_SPRITES` in `fauna/index.ts` (or `FAUNA_EXTRA_SPRITES` in `faunaExtra/index.ts`), all keyed by catalog id. An animal's draw function goes in the file for its family inside that folder (`fauna/fish.ts`, `faunaExtra/snails.ts` and so on). If it blooms or grows fronds, an entry in `LIFE` in `src/engine/simulation/life`. |
+| A decor figurine | Its entry in `DECOR` in `src/data/catalog/decor.ts`. Its drawing in `src/engine/sprites/decor/`, keyed by catalog id. If it glows at night, set `glowAt` and `glowR` on its entry. |
 | A vessel | Its entry in `VESSELS` in `src/data/vessels`. Its shape in `src/engine/geometry`, and its catalog thumbnail in `src/components/catalog/vesselPreview`. |
 | A care rule or care action | The folder `src/engine/care/`: a rule in `report.ts` (`computeCareReport`), or in `envIssues.ts` if it comes from the room (water, air, glass) or `faunaMix.ts` if it is about tankmates; an action in `actions.ts` (`runCareAction`). A new action id or issue type in `src/data/care`. |
 | A screen, panel or dialog | A component in the matching folder of `src/components/` (`layout`, `stage`, `catalog`, `account` and so on). If other code needs to open it, add an atom in `src/store/overlay`. |
@@ -137,6 +138,8 @@ of the app to the current shape. The steps, all in `src/store/`:
 5. If a hand-edited save could hold a bad value, add a `sanitize...` function in
    `src/store/migrations` and call it from `sanitizeSaved` in `src/store/studio/storage.ts`. That
    runs on every load.
+   Garden snapshots load through `applyGardenSnapshot` in `src/services/gardenSnapshot.ts`, which
+   keeps its own per-field sanitize list, so a new `sanitize...` must be called there too.
 
 Never rename the storage key or change the shape of saved JSON. Old saves must keep loading.
 

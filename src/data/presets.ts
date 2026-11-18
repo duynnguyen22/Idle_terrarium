@@ -1,3 +1,4 @@
+import { DECOR_BY_ID, decorFootN, type DecorId } from './catalog'
 import type { GrowthStage, PumpFlow, SubstrateDepths } from './types'
 
 /** Item template; `y` in the prototype is `soilSurfaceY + yOffset` for the preset's own substrates. */
@@ -47,7 +48,13 @@ const FALLS_CONTOUR: readonly number[] = FLAT_CONTOUR.map((_, i) =>
 
 const M: GrowthStage = 'mature'
 
-// Falls Lake item list (applyFallsLakePreset). Index: 0 moss wall, 1 falls, 2 boulders, 3-11 flora, 12-16 fauna.
+/** A decor piece resting on the surface at its own x, foot on the ground (spec line 3197). */
+function decorAt(defId: DecorId, x: number, flipX: boolean, zIndex: number): PresetItem {
+  const scale = DECOR_BY_ID[defId].baseScale
+  return { defId, x, yOffset: -decorFootN(scale), scale, flipX, zIndex, anchor: 'surface' }
+}
+
+// Falls Lake item list (applyFallsLakePreset). Index: 0 moss wall, 1 falls, 2 boulders, 3-11 flora, 12-16 fauna, then 4 decor.
 // Mounted items carry the parent's x/yOffset plus their own offset as a rough standalone position.
 const FALLS_ITEMS: readonly PresetItem[] = [
   { defId: 'moss_wall_cliff', x: 0.6, yOffset: -0.25, scale: 1.85, flipX: false, zIndex: 1 },
@@ -199,6 +206,10 @@ const FALLS_ITEMS: readonly PresetItem[] = [
     zIndex: 24,
     anchor: 'surface',
   },
+  decorAt('deco_cottage', 0.645, false, 16),
+  decorAt('deco_raincoat_kid', 0.575, false, 17),
+  decorAt('deco_mushrooms', 0.795, true, 18),
+  decorAt('deco_fisher', 0.415, true, 19),
 ]
 
 export const BIOME_PRESETS = [

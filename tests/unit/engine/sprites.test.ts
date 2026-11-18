@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { ALL_CATALOG_DEFS, FAUNA, type CatalogId } from '@/data/catalog'
+import { ALL_CATALOG_DEFS, DECOR, FAUNA, type CatalogId } from '@/data/catalog'
+import { DECOR_SPRITES } from '@/engine/sprites/decor'
 import { FAUNA_SPRITES } from '@/engine/sprites/fauna'
 import { FAUNA_EXTRA_SPRITES, MILLIPEDE_CURL_SPRITE } from '@/engine/sprites/faunaExtra'
 import { record } from '../helpers/recordingContext'
@@ -76,6 +77,19 @@ describe('drawSprite', () => {
     drawSprite(ctx, 'nope' as CatalogId)
     expect(calls).toContain('arc')
     expect(calls).toContain('fill')
+  })
+})
+
+describe('decor sprites', () => {
+  it('has a sprite for every decor piece', () => {
+    expect(Object.keys(DECOR_SPRITES).sort()).toEqual(DECOR.map((d) => d.id).sort())
+  })
+
+  it('draws every decor piece without the fallback blob', () => {
+    for (const d of DECOR) {
+      const { fillStyles } = record((ctx) => drawSprite(ctx, d.id))
+      expect(fillStyles).not.toContain('#84cc16')
+    }
   })
 })
 

@@ -4,7 +4,12 @@ import type { PlacedItem, PumpFlow, SubstrateDepths } from '@/data/types'
 import { VESSELS_BY_ID, type VesselId } from '@/data/vessels'
 import { clamp } from '@/lib/clamp'
 import { finiteOr } from '@/lib/finite'
-import { legacyPoolFields, mapLegacySubstrates, MAX_WATER_SPLIT } from './migrations'
+import {
+  legacyPoolFields,
+  mapLegacySubstrates,
+  MAX_WATER_SPLIT,
+  sanitizeLampColor,
+} from './migrations'
 import type { EnvSeed, StudioState } from './studio'
 import { DEFAULT_TELEMETRY } from './telemetry'
 
@@ -104,6 +109,7 @@ function readPrototypeSave(
       vessel,
       hasLid: typeof saved.hasLid === 'boolean' ? saved.hasLid : true,
       hasGrowLamp: typeof saved.hasGrowLamp === 'boolean' ? saved.hasGrowLamp : true,
+      lampColor: sanitizeLampColor(saved.lampColor),
       hasFogger: typeof saved.hasFogger === 'boolean' ? saved.hasFogger : true,
       substrates,
       dayCount,

@@ -90,6 +90,7 @@ let auth: AuthService
 let backend: GardenBackend
 let world: EngineWorld
 let welcome: MemoryStorage
+let welcomeTarget: EventTarget
 let toast: ReturnType<typeof vi.fn<(m: string) => void>>
 /** The jotai store holding both the account atoms and the studio atoms the account saves. */
 let store: Store
@@ -109,6 +110,7 @@ function makeAccount(s: Store): Account {
     getWorld: tryGetWorld,
     toast,
     welcomeStorage: welcome,
+    welcomeTarget,
   })
 }
 
@@ -156,6 +158,7 @@ beforeEach(() => {
   world = createWorld()
   registerWorld(world)
   welcome = new MemoryStorage()
+  welcomeTarget = new EventTarget()
   toast = vi.fn<(m: string) => void>()
   // A fresh store per test: default account, studio and telemetry atoms.
   store = makeStore()
@@ -170,18 +173,80 @@ afterEach(() => {
 })
 
 describe('account store: session', () => {
-  it('initAccount with no session opens sign-up once with the welcome banner, then never again', async () => {
+  it('first visit: no prompt until the first pointer or key press', async () => {
     await account.initAccount()
+    expect(state()).toMatchObject({ phase: 'signedout', panelOpen: false })
+    expect(welcome.getItem('botanica_signin_prompt_seen_v1')).toBeNull()
+    vi.advanceTimersByTime(10_000)
+    expect(state().panelOpen).toBe(false)
+    expect(welcome.getItem('botanica_signin_prompt_seen_v1')).toBeNull()
+  })
+
+  it('first visit: the prompt opens 2.5 s after the first input', async () => {
+    await account.initAccount()
+    welcomeTarget.dispatchEvent(new Event('pointerdown'))
+    vi.advanceTimersByTime(2499)
+    expect(state().panelOpen).toBe(false)
+    vi.advanceTimersByTime(1)
     expect(state()).toMatchObject({ phase: 'signedout', panelOpen: true, view: 'signup' })
     expect(state().viewData.banner).toEqual({ kind: 'info', text: WELCOME })
     expect(welcome.getItem('botanica_signin_prompt_seen_v1')).toBe('1')
+  })
 
-    const againStore = makeStore()
-    await makeAccount(againStore).initAccount()
-    expect(againStore.get(accountStateAtom)).toMatchObject({
-      phase: 'signedout',
-      panelOpen: false,
+  it('later inputs do not schedule a second prompt', async () => {
+    const openAuth = vi.spyOn(account, 'openAuth')
+    await account.initAccount()
+    welcomeTarget.dispatchEvent(new Event('keydown'))
+    welcomeTarget.dispatchEvent(new Event('keydown'))
+    vi.advanceTimersByTime(5000)
+    expect(openAuth).toHaveBeenCalledTimes(1)
+  })
+
+  it('no prompt when relax mode is on as the timer fires', async () => {
+    await account.initAccount()
+    welcomeTarget.dispatchEvent(new Event('pointerdown'))
+    store.set(patchStudioAtom, { relaxMode: true })
+    vi.advanceTimersByTime(2500)
+    expect(state().panelOpen).toBe(false)
+    expect(welcome.getItem('botanica_signin_prompt_seen_v1')).toBeNull()
+  })
+
+  it('no prompt when the panel is already open or the user signed in during the delay', async () => {
+    await account.initAccount()
+    welcomeTarget.dispatchEvent(new Event('pointerdown'))
+    account.openAuth('signin')
+    vi.advanceTimersByTime(2500)
+    expect(state().view).toBe('signin')
+    expect(welcome.getItem('botanica_signin_prompt_seen_v1')).toBeNull()
+
+    const otherStore = makeStore()
+    const other = makeAccount(otherStore)
+    await other.initAccount()
+    welcomeTarget.dispatchEvent(new Event('pointerdown'))
+    otherStore.set(patchAccountAtom, { phase: 'cloud' })
+    vi.advanceTimersByTime(2500)
+    expect(otherStore.get(accountStateAtom).panelOpen).toBe(false)
+    expect(welcome.getItem('botanica_signin_prompt_seen_v1')).toBeNull()
+  })
+
+  it('seen visitors get no listener', async () => {
+    welcome.setItem('botanica_signin_prompt_seen_v1', '1')
+    const openAuth = vi.spyOn(account, 'openAuth')
+    await account.initAccount()
+    welcomeTarget.dispatchEvent(new Event('pointerdown'))
+    vi.advanceTimersByTime(5000)
+    expect(openAuth).not.toHaveBeenCalled()
+    expect(state().panelOpen).toBe(false)
+  })
+
+  it('storage that throws counts as seen', async () => {
+    vi.spyOn(welcome, 'getItem').mockImplementation(() => {
+      throw new Error('blocked')
     })
+    await account.initAccount()
+    welcomeTarget.dispatchEvent(new Event('pointerdown'))
+    vi.advanceTimersByTime(5000)
+    expect(state()).toMatchObject({ phase: 'signedout', panelOpen: false })
   })
 
   it('initAccount after an expiry or a revoke opens sign-in with the matching banner', async () => {

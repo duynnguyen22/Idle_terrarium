@@ -1,6 +1,7 @@
 import { findCatalogDef, type CatalogId } from '@/data/catalog'
 import type { CatalogDef, PlacedItem, Rect } from '@/data/types'
 import type { StudioState } from '@/store/studio'
+import { canMount } from '../interaction'
 import { babyScale } from '../simulation/breed'
 import { sproutScale } from '../simulation/dayTick'
 import { gpuImage } from '../sprites/gpuImage'
@@ -8,6 +9,7 @@ import type { SpriteId } from '../sprites/drawSprite'
 import { getSharpSprite, getSprite } from '../sprites/spriteCache'
 import type { ViewState } from '../view'
 import type { EngineWorld } from '../world'
+import { drawNightGlow } from './glow'
 import { hazedSprite, planeOf, planeShiftFor } from './depth'
 import { normToPx, vesselMetrics, type RenderFn } from './metrics'
 import { drawGroundShadow, drawMountShadow, lightK, silhouetteOf } from './shadows'
@@ -92,28 +94,6 @@ function drawClimberOnGlass(
     drawSize,
   )
   ctx.globalAlpha = ga
-}
-
-/** Night bioluminescence glow for crystals & lanterns. */
-function drawNightGlow(
-  ctx: CanvasRenderingContext2D,
-  state: StudioState,
-  def: CatalogDef,
-  drawSize: number,
-): void {
-  if (
-    def.category === 'hardscape' &&
-    def.glowsAtNight &&
-    (state.lighting === 'night' || state.lighting === 'twilight')
-  ) {
-    const g = ctx.createRadialGradient(0, 0, 4, 0, 0, drawSize * 0.65)
-    g.addColorStop(0, def.glowColor ?? 'rgba(0,0,0,0)')
-    g.addColorStop(1, 'rgba(0,0,0,0)')
-    ctx.fillStyle = g
-    ctx.beginPath()
-    ctx.arc(0, 0, drawSize * 0.65, 0, Math.PI * 2)
-    ctx.fill()
-  }
 }
 
 /** Vector sprite (redrawn at 512 px when zoomed in), washed with the air colour when it stands further back. */
@@ -250,7 +230,7 @@ function drawSelectionHalo(
   }
 }
 
-/** Magnetic ledge nodes when dragging a mountable plant or fauna. */
+/** Magnetic ledge nodes when dragging a mountable plant, decor piece or fauna. */
 function drawMountNodes(
   ctx: CanvasRenderingContext2D,
   world: EngineWorld,
@@ -261,12 +241,7 @@ function drawMountNodes(
   if (world.draggingId && def.category === 'hardscape' && def.mountPoints) {
     const draggedItem = world.items.find((i) => i.uid === world.draggingId)
     const draggedDef = draggedItem ? findCatalogDef(draggedItem.id) : null
-    if (
-      draggedItem &&
-      draggedDef &&
-      ((draggedDef.category === 'flora' && draggedDef.canMountOnRock) ||
-        draggedItem.category === 'fauna')
-    ) {
+    if (draggedItem && draggedDef && canMount(draggedItem, draggedDef)) {
       def.mountPoints.forEach((mp) => {
         const nx = px + mp.ox * drawSize
         const ny = py + mp.oy * drawSize

@@ -4,6 +4,7 @@ import {
   migrate,
   sanitizeAwayLog,
   sanitizeBackdropHaze,
+  sanitizeLampColor,
   sanitizeMusicVolume,
   sanitizePace,
   sanitizeSoundPreset,
@@ -26,6 +27,7 @@ function sanitizeSaved(saved: Partial<StudioState>): Partial<StudioState> {
     out.backdropHaze = sanitizeBackdropHaze(saved.backdropHaze)
   if (Object.hasOwn(saved, 'musicVolume')) out.musicVolume = sanitizeMusicVolume(saved.musicVolume)
   if (Object.hasOwn(saved, 'soundPreset')) out.soundPreset = sanitizeSoundPreset(saved.soundPreset)
+  if (Object.hasOwn(saved, 'lampColor')) out.lampColor = sanitizeLampColor(saved.lampColor)
   if (Object.hasOwn(saved, 'pace')) out.pace = sanitizePace(saved.pace)
   if (Object.hasOwn(saved, 'awayLog')) out.awayLog = sanitizeAwayLog(saved.awayLog)
   return out

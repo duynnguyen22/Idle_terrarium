@@ -1,10 +1,11 @@
 import type { PublicUser, Session } from '@/auth'
 import { applyGardenSnapshot } from '@/services/gardenSnapshot'
 import { clearRetryTimer, clearSaveTimer } from './cloudSave'
-import { EXPIRED_TEXT, REVOKED_TEXT, WELCOME_KEY, WELCOME_TEXT } from './constants'
+import { EXPIRED_TEXT, REVOKED_TEXT, WELCOME_KEY } from './constants'
 import type { AccountActions } from './contract'
 import type { AccountContext } from './context'
 import type { ViewData } from './state'
+import { deferWelcome } from './welcome'
 
 const endedBanner = (ended: string | undefined): ViewData['banner'] => ({
   kind: 'info',
@@ -69,13 +70,11 @@ export function sessionActions(ctx: AccountContext): SessionActions {
       }
       let seen = true
       try {
-        const storage = deps.welcomeStorage ?? globalThis.localStorage
-        seen = storage.getItem(WELCOME_KEY) === '1'
-        storage.setItem(WELCOME_KEY, '1')
+        seen = (deps.welcomeStorage ?? globalThis.localStorage).getItem(WELCOME_KEY) === '1'
       } catch {
         seen = true
       }
-      if (!seen) actions.openAuth('signup', { banner: { kind: 'info', text: WELCOME_TEXT } })
+      if (!seen) deferWelcome(ctx)
     },
 
     beginSession: (user, session, o) => beginSession(ctx, user, session, o),

@@ -61,4 +61,6 @@ export interface AccountDeps {
   now?: () => number
   /** Where the "sign-up prompt already shown" flag lives; defaults to localStorage. */
   welcomeStorage?: Storage
+  /** Hears the first pointer or key input that schedules the sign-up prompt; defaults to window. */
+  welcomeTarget?: Pick<Window, 'addEventListener' | 'removeEventListener'>
 }

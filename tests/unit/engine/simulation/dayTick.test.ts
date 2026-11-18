@@ -11,6 +11,7 @@ const state: DayState = {
   timeSpeed: 1,
   pace: 'garden',
   hasGrowLamp: true,
+  lampColor: 'white',
   pumpFlow: 'gentle',
   substrates: DEFAULT_SUBSTRATES,
   waterSplit: 0.32,
@@ -40,6 +41,24 @@ describe('dayTick', () => {
     expect(w.ecoTime).toBeCloseTo(1, 6)
     expect(w.items[0].growthProgress).toBeCloseTo(0.8, 6)
     expect(w.items[0].stage).toBe('sprout')
+  })
+
+  it('a warm grow lamp slows sprout and life-cycle growth to 9/10 of white; no lamp ignores the colour', () => {
+    const gains = (s: DayState) => {
+      const w = createWorld()
+      w.items.push(
+        flora('s', { stage: 'sprout', growthProgress: 0.2 }),
+        flora('f', { id: 'fittonia', vitality: 100, life: { cyc: 0, n: 0, tendrils: 0 } }),
+      )
+      for (let i = 0; i < 40; i++) dayTick(w, s, 250, () => 0.5, noEmit)
+      return { sprout: w.items[0].growthProgress! - 0.2, cycle: w.items[1].life!.cyc }
+    }
+    const white = gains(state)
+    const warm = gains({ ...state, lampColor: 'warm' })
+    expect(warm.sprout / white.sprout).toBeCloseTo(0.9, 9)
+    expect(warm.cycle / white.cycle).toBeCloseTo(0.9, 9)
+    const dark = { ...state, hasGrowLamp: false }
+    expect(gains({ ...dark, lampColor: 'warm' })).toEqual(gains(dark))
   })
 
   it('5x runs five times as fast and caps the frame at 250 ms', () => {

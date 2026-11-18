@@ -4,6 +4,7 @@ import { AIR_SOURCES, DEFAULT_ROOM, PH_RANGE, TDS_RANGE, WATER_SOURCES } from '@
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
 import { DEFAULT_MUSIC_VOLUME, SOUND_PRESET_IDS } from '@/data/soundPresets'
 import type { BackdropId, PumpFlow, RoomEnv, SoundPresetId, SubstrateDepths } from '@/data/types'
+import type { LampColor } from './studio'
 import { clamp } from '@/lib/clamp'
 import { finiteOr } from '@/lib/finite'
 
@@ -98,6 +99,11 @@ export function sanitizePace(raw: unknown): PaceId {
   return typeof raw === 'string' && Object.hasOwn(PACES, raw) ? (raw as PaceId) : 'garden'
 }
 
+/** Only 'warm' is kept; anything else (a hand-edited save, a removed colour) falls back to white. */
+export function sanitizeLampColor(raw: unknown): LampColor {
+  return raw === 'warm' ? 'warm' : 'white'
+}
+
 const isRecordList = (v: unknown): boolean => Array.isArray(v) && v.every(isRecord)
 
 /**
@@ -151,11 +157,16 @@ function migrateV3toV4(persisted: Record<string, unknown>): Record<string, unkno
   }
 }
 
+function migrateV4toV5(persisted: Record<string, unknown>): Record<string, unknown> {
+  return Object.hasOwn(persisted, 'lampColor') ? persisted : { ...persisted, lampColor: 'white' }
+}
+
 /**
  * Persisted-state migration. Version 0 (unversioned) shares the v1 shape.
  * v1 -> v2: legacy substrate keys map onto the v6 set and pool/pump/cycle fields are added.
  * v2 -> v3: the room, backdrop, backdrop haze and mineral-spot fields are added.
  * v3 -> v4: the pace, last-simulated time, catch-up toggle, world seed and away log are added.
+ * v4 -> v5: the grow-lamp colour is added (white).
  * A saved room is also sanitized here, but persist only calls `migrate` when the stored version
  * differs from the current one; the store's `merge` sanitizes every hydration, current saves included.
  */
@@ -165,5 +176,6 @@ export function migrate(persisted: unknown, version: number): Record<string, unk
   if (version < 2) out = migrateV1toV2(out)
   if (version < 3) out = migrateV2toV3(out)
   if (version < 4) out = migrateV3toV4(out)
+  if (version < 5) out = migrateV4toV5(out)
   return Object.hasOwn(out, 'room') ? { ...out, room: sanitizeRoom(out.room) } : out
 }

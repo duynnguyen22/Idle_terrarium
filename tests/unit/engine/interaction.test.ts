@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { HardscapeDef } from '@/data/types'
+import { decorFootN } from '@/data/catalog'
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
+import { getSoilSurfaceNormalizedY } from '@/engine/geometry'
 import { addItem } from '@/engine/items'
 import {
   applyTool,
@@ -177,6 +179,54 @@ describe('drag', () => {
     updateDrag(world, plant.x + 0.2, plant.y - 0.2)
     expect(plant.parentUid).toBeNull()
     expect(world.hoveredSnapTarget).toBeNull()
+  })
+})
+
+describe('decor drag', () => {
+  const ground = (x: number) => getSoilSurfaceNormalizedY(terrain, x)
+
+  function dragOntoFirstMount(decorId: string) {
+    const host = place('moss_wall_cliff', 0.5, 0.6)
+    const piece = place(decorId, 0.3, 0.4)
+    const mp = { ox: -0.25, oy: -0.32 }
+    const size = 0.18 * host.scale
+    const mpx = host.x + mp.ox * size
+    const mpy = host.y + mp.oy * size
+    beginDrag(world, piece, piece.x, piece.y)
+    updateDrag(world, mpx, mpy - decorFootN(piece.scale))
+    return { host, piece, mpy }
+  }
+
+  it('updateDrag › mountable decor snaps with its feet on the ledge', () => {
+    const { host, piece, mpy } = dragOntoFirstMount('deco_fox')
+    expect(piece.parentUid).toBe(host.uid)
+    expect(piece.y).toBeCloseTo(mpy - decorFootN(piece.scale), 5)
+    expect(piece.offsetY).toBeCloseTo(piece.y - host.y, 5)
+  })
+
+  it('updateDrag › decor without canMountOnRock does not snap', () => {
+    const { piece } = dragOntoFirstMount('deco_cottage')
+    expect(piece.parentUid).toBeNull()
+  })
+
+  it('endDrag › settles a dropped decor piece when given terrain', () => {
+    const piece = place('deco_fox', 0.6, 0.5)
+    const target = ground(0.6) - decorFootN(piece.scale) - 0.02
+    beginDrag(world, piece, piece.x, piece.y)
+    updateDrag(world, 0.6, target)
+    endDrag(world, terrain)
+    expect(piece.y).toBeCloseTo(ground(piece.x) - decorFootN(piece.scale), 5)
+    expect(world.draggingId).toBeNull()
+  })
+
+  it('endDrag › without terrain only clears the drag', () => {
+    const piece = place('deco_fox', 0.6, 0.5)
+    const target = ground(0.6) - decorFootN(piece.scale) - 0.02
+    beginDrag(world, piece, piece.x, piece.y)
+    updateDrag(world, 0.6, target)
+    endDrag(world)
+    expect(piece.y).toBeCloseTo(target, 10)
+    expect(world.draggingId).toBeNull()
   })
 })
 

@@ -10,8 +10,8 @@ const liveItemCount = (page: Page) =>
       ).__botanica?.world().items.length ?? 0,
   )
 
-/** Items in the v6 Falls Lake scene: moss wall, falls, boulders, 9 flora, 5 fauna. */
-const FALLS_ITEM_COUNT = 17
+/** Items in the v6 Falls Lake scene: moss wall, falls, boulders, 9 flora, 5 fauna, 4 decor. */
+const FALLS_ITEM_COUNT = 21
 
 test.beforeEach(({ page }) => dismissWelcomePrompt(page))
 
@@ -88,7 +88,7 @@ test('studio journey: biome, 5x, relax, persistence', async ({ page }) => {
     }
   })
   // STUDIO_VERSION in src/store/studio/persisted.ts; importing it here would run the store, which needs localStorage.
-  expect(persisted).toEqual({ version: 4, items: count, pumpFlow: 'strong', waterSplit: 0.32 })
+  expect(persisted).toEqual({ version: 5, items: count, pumpFlow: 'strong', waterSplit: 0.32 })
   await expect.poll(() => liveItemCount(page)).toBe(count)
   await expect(
     page.getByRole('radiogroup', { name: 'Waterfall pump' }).getByRole('radio', { name: 'Strong' }),

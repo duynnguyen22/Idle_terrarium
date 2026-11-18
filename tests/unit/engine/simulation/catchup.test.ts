@@ -22,6 +22,7 @@ const state: CatchUpState = {
   timeSpeed: 1,
   pace: 'garden',
   hasGrowLamp: true,
+  lampColor: 'white',
   pumpFlow: 'gentle',
   substrates: DEFAULT_SUBSTRATES,
   waterSplit: 0.32,
@@ -255,6 +256,31 @@ describe('advanceWorld', () => {
       true,
     )
     expect(b.ecoTime).toBeCloseTo(4 / 24, 9)
+  })
+})
+
+describe('advanceWorld with a warm lamp', () => {
+  it('advances sprout and life-cycle growth at 9/10 of white', () => {
+    const gains = (lampColor: CatchUpState['lampColor']) => {
+      const w = createWorld()
+      w.items.push(
+        plant('s', 'boston_fern', 0, { stage: 'sprout', growthProgress: 0.2 }),
+        plant('f', 'fittonia', 0),
+      )
+      advanceWorld(
+        w,
+        12,
+        { ...state, lampColor },
+        () => 0.5,
+        () => {},
+        false,
+      )
+      return { sprout: w.items[0].growthProgress! - 0.2, cycle: w.items[1].life!.cyc }
+    }
+    const white = gains('white')
+    const warm = gains('warm')
+    expect(warm.sprout / white.sprout).toBeCloseTo(0.9, 9)
+    expect(warm.cycle / white.cycle).toBeCloseTo(0.9, 9)
   })
 })
 

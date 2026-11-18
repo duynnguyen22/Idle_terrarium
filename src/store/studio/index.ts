@@ -6,6 +6,7 @@ export {
   type ActiveTool,
   type EnvSeed,
   type HardwareKey,
+  type LampColor,
   type StudioState,
 } from './state'
 export {
@@ -32,6 +33,7 @@ export {
   hasFoggerAtom,
   hasGrowLampAtom,
   hasLidAtom,
+  lampColorAtom,
   lastSimulatedAtAtom,
   lightingAtom,
   mineralSpotsAtom,

@@ -79,7 +79,7 @@ describe('gardenSnapshot', () => {
       ...partialize(studio.get(studioStateAtom)),
       worldSnapshot: snapshotWorld(world),
     })
-    expect(snap.version).toBe(4)
+    expect(snap.version).toBe(5)
     expect(snap.worldSnapshot?.items.map((i) => i.uid)).toEqual(['a', 'b'])
     // Without a world the stored snapshot is used as is.
     studio.set(worldSnapshotAtom, { items: [item('z', 'hardscape')], terrainContour: [] })
@@ -187,6 +187,15 @@ describe('gardenSnapshot', () => {
     applyGardenSnapshot(snap, studio)
     expect(studio.get(studioStateAtom).awayLog).toEqual([good])
     expect(studio.get(studioStateAtom).pace).toBe('garden')
+  })
+
+  it('applyGardenSnapshot loads a v5 garden with lampColor "cool" as white', () => {
+    const snap = {
+      ...getGardenSnapshot(studio.get(studioStateAtom), null),
+      lampColor: 'cool',
+    } as unknown as GardenSnapshot
+    applyGardenSnapshot(snap, studio)
+    expect(studio.get(studioStateAtom).lampColor).toBe('white')
   })
 
   it('applyGardenSnapshot calls the restored handler once, after the world is committed', () => {

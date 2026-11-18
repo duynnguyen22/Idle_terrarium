@@ -3,6 +3,7 @@ import { isLampOn } from '@/engine/simulation/clock'
 import { autoLightSyncAtom, hasFoggerAtom, hasGrowLampAtom, lightingAtom } from '@/store/studio'
 import { Glyph, SwitchRow } from './HardwareRow'
 import { ICON_LIT, ICON_OFF, ICON_ON } from './hardwareRowStyles'
+import { LampColorControl } from './LampColorControl'
 import { PumpFlowControl } from './PumpFlowControl'
 
 /** Grow lamp, fogger and waterfall pump (prototype `syncHardwareButtons`). */
@@ -41,6 +42,7 @@ export function HardwarePanel() {
         }
         onToggle={() => setHasGrowLamp(!hasGrowLamp)}
       />
+      <LampColorControl />
       <SwitchRow
         label="Mist fogger"
         sub={hasFogger ? 'Running, about +7% humidity' : 'Off; air relies on the pool'}

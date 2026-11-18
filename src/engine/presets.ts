@@ -119,6 +119,9 @@ export function applyPreset(
         offsetY: p.offsetY ?? 0,
       })
     }
+    if (def.category === 'decor') {
+      Object.assign(item, { stage: 'mature', parentUid: null, offsetX: 0, offsetY: 0 })
+    }
     if (def.category === 'fauna') {
       Object.assign(item, { vx: 0.0003, vy: 0, aiState: 'wandering', aiTimer: 120 })
     }
