@@ -1,6 +1,7 @@
 import { createStore, type Store } from 'jotai'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
+import { DECOR_BY_ID, decorFootN, type DecorId } from '@/data/catalog'
 import { applyPreset, seedInitialScene } from '@/engine/presets'
 import {
   getLandSurfaceNormY,
@@ -42,8 +43,8 @@ describe('seedInitialScene', () => {
     const world = createWorld()
     registerWorld(world)
     expect(seedInitialScene(world)).toBe(true)
-    expect(world.items).toHaveLength(17)
-    expect(appStore.get(worldSnapshotAtom)?.items).toHaveLength(17)
+    expect(world.items).toHaveLength(21)
+    expect(appStore.get(worldSnapshotAtom)?.items).toHaveLength(21)
   })
 
   it('leaves a populated world untouched', () => {
@@ -78,7 +79,7 @@ describe('applyPreset', () => {
       hasGrowLamp: true,
       hasFogger: true,
     })
-    expect(w.items).toHaveLength(17)
+    expect(w.items).toHaveLength(21)
     expect(
       w.items
         .filter((i) => i.category === 'flora')
@@ -149,6 +150,34 @@ describe('applyPreset', () => {
     })
   })
 
+  it('falls places the four decor pieces on the soil', () => {
+    applyPreset(w, 'falls', store)
+    const t = {
+      substrates: store.get(studioStateAtom).substrates,
+      waterSplit: 0.32,
+      terrainContour: w.terrainContour,
+    }
+    const expected = [
+      { id: 'deco_cottage', x: 0.645, flipX: false, zIndex: 16 },
+      { id: 'deco_raincoat_kid', x: 0.575, flipX: false, zIndex: 17 },
+      { id: 'deco_mushrooms', x: 0.795, flipX: true, zIndex: 18 },
+      { id: 'deco_fisher', x: 0.415, flipX: true, zIndex: 19 },
+    ]
+    for (const e of expected) {
+      const piece = w.items.find((i) => i.id === e.id)!
+      const scale = DECOR_BY_ID[e.id as DecorId].baseScale
+      expect(piece).toMatchObject({
+        x: e.x,
+        scale,
+        flipX: e.flipX,
+        zIndex: e.zIndex,
+        stage: 'mature',
+        parentUid: null,
+      })
+      expect(piece.y).toBeCloseTo(getSoilSurfaceNormalizedY(t, e.x) - decorFootN(scale), 6)
+    }
+  })
+
   it('desert recipe clears the pool and the fogger', () => {
     applyPreset(w, 'falls', store)
     w.surfaceGrains.push({ x: 0.5 })
@@ -158,7 +187,7 @@ describe('applyPreset', () => {
     expect(store.get(studioStateAtom).hasLid).toBe(false)
     expect(w.surfaceGrains).toHaveLength(0)
     expect(w.terrainContour.every((v) => v === 0)).toBe(true)
-    expect(w.items).toHaveLength(17)
+    expect(w.items).toHaveLength(21)
   })
 
   it('lagoon recipe sets the pool and a cycled env without touching the bloom timer', () => {

@@ -192,7 +192,7 @@ describe('LeftSidebar panels', () => {
     expect(world.items).toHaveLength(0)
     click(screen.getByRole('button', { name: /Falls Lake/ }))
     expect(state().substrates.water).toBe(45)
-    expect(world.items).toHaveLength(17)
+    expect(world.items).toHaveLength(21)
     expect(toast()).toBe('Falls Lake: 30% pool, waterfall and moss wall')
   })
 
