@@ -672,3 +672,37 @@ describe('camera transform', () => {
     expect(calls.slice(camera - 1, camera + 3)).toEqual(['save', 'translate', 'scale', 'translate'])
   })
 })
+
+describe('lamp colour', () => {
+  const lit = (lampColor: 'white' | 'warm', lighting: StudioState['lighting'] = 'sunlight') => ({
+    ...createDefaultState(),
+    hasGrowLamp: true,
+    lampColor,
+    lighting,
+    autoLightSync: true,
+  })
+  const trace = (state: StudioState) => {
+    const t = makeTraceContext()
+    renderFrame(t.ctx, createWorld(), state, computeVesselRect(800, 600), 0)
+    return t.trace.join('\n')
+  }
+
+  it('a warm lamp tints the tank', () => {
+    const out = trace(lit('warm'))
+    expect(out).toContain('"#ffd9a0"')
+    expect(out).toContain('"rgba(255, 222, 170, 0.32)"')
+    const multiply = out.indexOf('globalCompositeOperation=multiply')
+    expect(multiply).toBeGreaterThan(-1)
+    expect(out.indexOf('globalCompositeOperation=screen', multiply)).toBeGreaterThan(multiply)
+  })
+
+  it('a white lamp adds no tint', () => {
+    const out = trace(lit('white'))
+    expect(out).not.toContain('globalCompositeOperation=multiply')
+    expect(out).toContain('"#e0f2fe"')
+  })
+
+  it('a warm lamp resting at night adds no tint', () => {
+    expect(trace(lit('warm', 'night'))).not.toContain('globalCompositeOperation=multiply')
+  })
+})

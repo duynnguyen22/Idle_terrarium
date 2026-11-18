@@ -28,9 +28,10 @@ export const drawLampCone: RenderFn = (ctx, _world, state, R) => {
       cy - r * 0.1,
       r * 0.95 * kx,
     )
-    coneGrad.addColorStop(0, 'rgba(255, 255, 255, 0.26)')
-    coneGrad.addColorStop(0.5, 'rgba(224, 242, 254, 0.10)')
-    coneGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    const warm = state.lampColor === 'warm'
+    coneGrad.addColorStop(0, warm ? 'rgba(255, 222, 170, 0.32)' : 'rgba(255, 255, 255, 0.26)')
+    coneGrad.addColorStop(0.5, warm ? 'rgba(255, 196, 120, 0.13)' : 'rgba(224, 242, 254, 0.10)')
+    coneGrad.addColorStop(1, warm ? 'rgba(255, 196, 120, 0)' : 'rgba(255, 255, 255, 0)')
     ctx.fillStyle = coneGrad
     ctx.fillRect(R.x, R.y, R.w, R.h)
   }

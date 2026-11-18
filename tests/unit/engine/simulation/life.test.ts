@@ -98,8 +98,13 @@ describe('life stepping', () => {
   })
 
   it('lightDose is 0.55 with a grow lamp and 0.1 without', () => {
-    expect(lightDose({ hasGrowLamp: true })).toBe(0.55)
-    expect(lightDose({ hasGrowLamp: false })).toBe(0.1)
+    expect(lightDose({ hasGrowLamp: true, lampColor: 'white' })).toBe(0.55)
+    expect(lightDose({ hasGrowLamp: false, lampColor: 'white' })).toBe(0.1)
+  })
+
+  it('a warm lamp gives 10% less light, and no lamp ignores the colour', () => {
+    expect(lightDose({ hasGrowLamp: true, lampColor: 'warm' })).toBeCloseTo(0.495, 10)
+    expect(lightDose({ hasGrowLamp: false, lampColor: 'warm' })).toBe(0.1)
   })
 
   it('nextStep is the first threshold above cyc, null without life', () => {

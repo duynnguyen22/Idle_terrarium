@@ -11,6 +11,7 @@ import { growthBoardOpenAtom } from '@/store/overlay'
 import {
   dayCountAtom,
   hasGrowLampAtom,
+  lampColorAtom,
   paceAtom,
   pumpFlowAtom,
   selectedIdAtom,
@@ -45,6 +46,7 @@ export function GrowthBoard() {
   const pumpFlow = useAtomValue(pumpFlowAtom)
   const waterSplit = useAtomValue(waterSplitAtom)
   const hasGrowLamp = useAtomValue(hasGrowLampAtom)
+  const lampColor = useAtomValue(lampColorAtom)
   const substrates = useAtomValue(substratesAtom)
   const setPace = useSetAtom(paceAtom)
   useGrowthBoardLifecycle(open, setOpen)
@@ -52,7 +54,7 @@ export function GrowthBoard() {
   if (!open) return null
 
   const world = tryGetWorld()
-  const dose = lightDose({ hasGrowLamp })
+  const dose = lightDose({ hasGrowLamp, lampColor })
   const plants: FloraRow[] = world
     ? world.items.filter((i) => i.category === 'flora').map((i) => floraRow(i, dose, pace))
     : []

@@ -83,9 +83,9 @@ const SEEDLING_LIFT = 0.05
 /** Frames a falling leaf lives before it fades out. */
 export const LEAF_TTL = 240
 
-/** Light a bloom plant receives: a grow lamp is strong, ambient room light is weak. */
-export function lightDose(state: Pick<StudioState, 'hasGrowLamp'>): number {
-  return state.hasGrowLamp ? 0.55 : 0.1
+/** Light a bloom plant receives: a grow lamp is strong (warm light 10% less), ambient room light is weak. */
+export function lightDose(state: Pick<StudioState, 'hasGrowLamp' | 'lampColor'>): number {
+  return state.hasGrowLamp ? 0.55 * (state.lampColor === 'warm' ? 0.9 : 1) : 0.1
 }
 
 /** How fast a plant moves through its cycle: 0 resting or struggling, 0.4 stressed, 1 healthy; blooms halve in low light. */

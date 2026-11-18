@@ -160,7 +160,7 @@ export function restLine(names: string[]): string {
 /** The nearest `open` first, then the soonest other step; one hint per species. */
 export function upcomingHints(
   world: EngineWorld,
-  state: Pick<StudioState, 'hasGrowLamp'>,
+  state: Pick<StudioState, 'hasGrowLamp' | 'lampColor'>,
   limit = 2,
 ): Hint[] {
   const dose = lightDose(state)

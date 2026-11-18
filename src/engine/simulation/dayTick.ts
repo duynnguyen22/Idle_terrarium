@@ -14,7 +14,7 @@ import { dtDayForFrame } from './pace'
 
 export type DayState = Pick<
   StudioState,
-  'timeSpeed' | 'pace' | 'hasGrowLamp' | 'pumpFlow' | 'substrates' | 'waterSplit'
+  'timeSpeed' | 'pace' | 'hasGrowLamp' | 'lampColor' | 'pumpFlow' | 'substrates' | 'waterSplit'
 >
 
 /** Sprout `growthProgress` gained per tank day. */

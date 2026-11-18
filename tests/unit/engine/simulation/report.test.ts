@@ -228,7 +228,7 @@ describe('labels', () => {
 })
 
 describe('upcomingHints', () => {
-  const lamp = { hasGrowLamp: true }
+  const lamp = { hasGrowLamp: true, lampColor: 'white' } as const
 
   it('puts an open first then the soonest, one per species', () => {
     const world = createWorld()
@@ -259,7 +259,7 @@ describe('upcomingHints', () => {
     )
     const lit = upcomingHints(world, lamp, 5)
     expect(lit.map((h) => h.uid)).toEqual(['pogo'])
-    const dim = upcomingHints(world, { hasGrowLamp: false }, 5)
+    const dim = upcomingHints(world, { hasGrowLamp: false, lampColor: 'white' }, 5)
     expect(dim[0].eta).toBeCloseTo(lit[0].eta * 2, 6)
   })
 })

@@ -8,7 +8,7 @@ import { drawMiniatureBackdrop } from './backdrop'
 import { drawCondensation, drawMineralSpots } from './condensation'
 import { drawGlassDepth, planeShiftFor } from './depth'
 import { drawLid, drawPaludariumFrontFrame } from './frame'
-import { drawLamp } from './lamp'
+import { drawLamp, drawLampTint } from './lamp'
 import { vesselMetrics } from './metrics'
 import { drawMist } from './mist'
 import { drawParticles } from './particles'
@@ -87,6 +87,8 @@ export function renderFrame(
   drawPouring(ctx, world, state, R, timestamp)
   // 6C. Mist spray droplets, beads on leaves & soil, spray-bottle cursor
   drawMist(ctx, world, state, R, timestamp)
+  // 6D. Warm lamp colour cast over everything drawn so far
+  drawLampTint(ctx, world, state, R, timestamp)
   // 7. Ambient spores, micro-droplets & night fireflies
   drawParticles(ctx, world, state, R, timestamp)
   // 7B. Condensation fog & droplets on the inside of the glass

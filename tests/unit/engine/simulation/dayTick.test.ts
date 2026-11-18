@@ -11,6 +11,7 @@ const state: DayState = {
   timeSpeed: 1,
   pace: 'garden',
   hasGrowLamp: true,
+  lampColor: 'white',
   pumpFlow: 'gentle',
   substrates: DEFAULT_SUBSTRATES,
   waterSplit: 0.32,
