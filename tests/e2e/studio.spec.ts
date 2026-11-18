@@ -11,7 +11,7 @@ const liveItemCount = (page: Page) =>
   )
 
 /** Items in the v6 Falls Lake scene: moss wall, falls, boulders, 9 flora, 5 fauna. */
-const FALLS_ITEM_COUNT = 17
+const FALLS_ITEM_COUNT = 21
 
 test.beforeEach(({ page }) => dismissWelcomePrompt(page))
 

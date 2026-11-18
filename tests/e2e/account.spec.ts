@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test'
 /** From the first-visit sign-up prompt: sign in as the seeded demo account and finish onboarding. */
 async function signInAsDemo(page: Page) {
   await page.goto('/')
+  await page.mouse.click(5, 5) // the prompt is deferred until the first input
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('heading', { name: 'Create your account' })).toBeVisible()
   await dialog.getByRole('button', { name: 'Sign in' }).click()
