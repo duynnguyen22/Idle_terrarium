@@ -1,4 +1,4 @@
-import { CATALOG, FAUNA_BY_ID, FAUNA_GROUPS } from '@/data/catalog'
+import { CATALOG, DECOR_BY_ID, DECOR_GROUPS, FAUNA_BY_ID, FAUNA_GROUPS } from '@/data/catalog'
 import { computeCareReport } from '@/engine/care'
 import { mutateWorld } from '@/engine/engineBridge'
 import { addItem } from '@/engine/items'
@@ -7,6 +7,7 @@ import { appStore } from '@/store/appStore'
 import { selectedIdAtom, studioStateAtom } from '@/store/studio'
 import { showToast } from '@/store/toast'
 import { CatalogCard } from './CatalogCard'
+import { GroupedCatalogGrid } from './GroupedCatalogGrid'
 
 export type CatalogCategory = keyof typeof CATALOG
 
@@ -42,24 +43,22 @@ export function CatalogGrid({ category }: { category: CatalogCategory }) {
   }
   if (category === 'fauna') {
     return (
-      <div className="grid grid-cols-2 gap-2.5" data-testid="catalog-fauna">
-        {FAUNA_GROUPS.map((group, i) => (
-          <section key={group.label} className="contents" aria-label={group.label}>
-            <h3
-              className={`col-span-2 mx-0.5 flex items-center gap-1.5 text-xs font-semibold text-forest-ink ${i ? 'mt-2.5' : ''}`}
-            >
-              {group.label}
-              <span className="rounded-full bg-[#e4e8e0] px-[7px] text-[10.5px] font-semibold text-[#5b665e]">
-                {group.ids.length}
-              </span>
-            </h3>
-            {group.ids.map((id) => {
-              const def = { ...FAUNA_BY_ID[id], id }
-              return <CatalogCard key={id} def={def} onSelect={() => place(id)} />
-            })}
-          </section>
-        ))}
-      </div>
+      <GroupedCatalogGrid
+        category="fauna"
+        groups={FAUNA_GROUPS}
+        byId={FAUNA_BY_ID}
+        onPlace={place}
+      />
+    )
+  }
+  if (category === 'decor') {
+    return (
+      <GroupedCatalogGrid
+        category="decor"
+        groups={DECOR_GROUPS}
+        byId={DECOR_BY_ID}
+        onPlace={place}
+      />
     )
   }
   return (

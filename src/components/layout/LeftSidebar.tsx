@@ -13,6 +13,7 @@ const TABS = [
   { id: 'vessel', label: 'Vessel' },
   { id: 'flora', label: 'Flora' },
   { id: 'hardscape', label: 'Hardscape' },
+  { id: 'decor', label: 'Decor' },
   { id: 'fauna', label: 'Fauna' },
   { id: 'room', label: 'Room' },
 ] as const satisfies readonly { id: TabIconName; label: string }[]
@@ -43,6 +44,17 @@ function ActivePanel({ tab }: { tab: string }) {
             plants onto rock ledges to anchor them.
           </p>
           <CatalogGrid category="hardscape" />
+        </div>
+      )
+    case 'decor':
+      return (
+        <div className={PANEL}>
+          <p className={BLURB}>
+            Miniature figurines and ornaments. Click to place, then drag. Small pieces snap onto{' '}
+            <strong className={STRONG}>rock ledges</strong>. One to three pieces usually look best;
+            let the plants stay the star.
+          </p>
+          <CatalogGrid category="decor" />
         </div>
       )
     case 'fauna':
@@ -76,7 +88,7 @@ export function LeftSidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
           !drawerOpen && 'max-lg:invisible max-lg:-translate-x-full',
         )}
       >
-        <TabsList className="grid w-full grid-cols-5 gap-1 rounded-none border-b border-sand-border bg-sand-light p-2 group-data-horizontal/tabs:h-auto">
+        <TabsList className="grid w-full grid-cols-6 gap-1 rounded-none border-b border-sand-border bg-sand-light p-2 group-data-horizontal/tabs:h-auto">
           {TABS.map((t) => (
             <TabsTrigger
               key={t.id}

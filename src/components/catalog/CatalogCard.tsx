@@ -29,6 +29,32 @@ function CatalogTag({ def }: { def: CatalogDef }) {
       </span>
     )
   }
+  if (def.category === 'decor') {
+    const neutral = `${TAG} border-transparent bg-[#eef1ea] text-[#3f4a42]`
+    return (
+      <span className="flex flex-wrap gap-1">
+        <Badge variant="outline" className={neutral}>
+          {def.material}
+        </Badge>
+        {def.glowsAtNight && (
+          <Badge
+            variant="outline"
+            className={`${TAG} border-[#f0dc9a] bg-[#fbf0cc] text-[#8a5a00]`}
+          >
+            Glows
+          </Badge>
+        )}
+        {def.canMountOnRock && (
+          <Badge
+            variant="outline"
+            className={`${TAG} border-emerald-200 bg-emerald-50 text-emerald-700`}
+          >
+            Mountable
+          </Badge>
+        )}
+      </span>
+    )
+  }
   if (def.category === 'flora' && def.canMountOnRock) {
     return (
       <Badge

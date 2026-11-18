@@ -35,6 +35,9 @@ function inspectorMeta(item: PlacedItem, def: CatalogDef | null): string {
     const habitat = (def?.category === 'fauna' && HABITAT_NAMES[def.habitat]) || 'on land'
     return `Animal · ${habitat} · ${item.aiState || 'wandering'}`
   }
+  if (item.category === 'decor') {
+    return `Decoration · ${(def?.category === 'decor' && def.material) || 'Resin'}`
+  }
   return 'Hardscape'
 }
 

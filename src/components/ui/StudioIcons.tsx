@@ -3,7 +3,7 @@
  * rock. Colour states come from CSS in index.css keyed off the parent's aria-selected / aria-checked.
  */
 
-export type TabIconName = 'vessel' | 'flora' | 'hardscape' | 'fauna' | 'room'
+export type TabIconName = 'vessel' | 'flora' | 'hardscape' | 'decor' | 'fauna' | 'room'
 
 const FLORA_LEAVES =
   'M7.46 14.99Q7.80 11.73 4.74 10.56Q4.39 13.82 7.46 14.99zM7.46 14.99Q10.09 16.30 11.92 13.99Q9.28 12.69 7.46 14.99zM8.80 12.42Q9.62 9.66 7.10 8.25Q6.28 11.01 8.80 12.42zM8.80 12.42Q10.87 13.95 12.75 12.19Q10.68 10.66 8.80 12.42zM10.54 10.12Q11.68 7.92 9.70 6.41Q8.56 8.62 10.54 10.12zM10.54 10.12Q12.04 11.74 13.86 10.48Q12.36 8.86 10.54 10.12zM12.66 8.10Q13.97 6.46 12.47 5.00Q11.17 6.64 12.66 8.10zM12.66 8.10Q13.65 9.66 15.29 8.82Q14.31 7.25 12.66 8.10zM15.18 6.35Q16.48 5.25 15.39 3.96Q14.09 5.05 15.18 6.35zM15.18 6.35Q15.73 7.73 17.12 7.20Q16.57 5.81 15.18 6.35zM17.66 5.07Q18.80 4.43 17.99 3.40Q16.84 4.04 17.66 5.07zM17.66 5.07Q17.88 6.18 18.95 5.82Q18.73 4.71 17.66 5.07z'
@@ -47,6 +47,14 @@ export function TabIcon({ name }: { name: TabIconName }) {
           />
           <path className="crack" d="M8.6 16.2c1 .3 1.6 1 1.9 2" />
           <path className="moss" d="M7 13.9c1-.9 2.4-1.2 3.6-.9" />
+        </>
+      )}
+      {name === 'decor' && (
+        <>
+          <path className="soil" d="M3.5 20.5h17" />
+          <path className="cap" d="M5.2 12.6c0-4 3-6.8 6.8-6.8s6.8 2.8 6.8 6.8z" />
+          <path d="M10.2 12.6l-.4 6.2c0 .9.9 1.7 2.2 1.7s2.2-.8 2.2-1.7l-.4-6.2" />
+          <path className="dot" d="M9 9.6h.01M13.6 8.2h.01M15.6 10.8h.01" />
         </>
       )}
       {name === 'fauna' && (
