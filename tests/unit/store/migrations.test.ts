@@ -182,7 +182,7 @@ describe('migrate', () => {
     })
   })
 
-  it('returns v5 state unchanged', () => {
+  it('returns v4 state unchanged', () => {
     const v4 = {
       lampColor: 'warm',
       pace: 'calm',
@@ -191,7 +191,7 @@ describe('migrate', () => {
       worldSeed: 'abcd1234',
       awayLog: [],
     }
-    expect(migrate(v4, 5)).toEqual(v4)
+    expect(migrate(v4, 4)).toEqual(v4)
   })
 
   it('returns v3 room state unchanged apart from the v4 fields', () => {

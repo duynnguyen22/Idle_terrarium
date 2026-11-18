@@ -189,6 +189,15 @@ describe('gardenSnapshot', () => {
     expect(studio.get(studioStateAtom).pace).toBe('garden')
   })
 
+  it('applyGardenSnapshot loads a v5 garden with lampColor "cool" as white', () => {
+    const snap = {
+      ...getGardenSnapshot(studio.get(studioStateAtom), null),
+      lampColor: 'cool',
+    } as unknown as GardenSnapshot
+    applyGardenSnapshot(snap, studio)
+    expect(studio.get(studioStateAtom).lampColor).toBe('white')
+  })
+
   it('applyGardenSnapshot calls the restored handler once, after the world is committed', () => {
     const source = createWorld()
     source.items = [item('r1', 'flora')]

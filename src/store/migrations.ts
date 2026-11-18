@@ -4,7 +4,7 @@ import { AIR_SOURCES, DEFAULT_ROOM, PH_RANGE, TDS_RANGE, WATER_SOURCES } from '@
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
 import { DEFAULT_MUSIC_VOLUME, SOUND_PRESET_IDS } from '@/data/soundPresets'
 import type { BackdropId, PumpFlow, RoomEnv, SoundPresetId, SubstrateDepths } from '@/data/types'
-import type { LampColor } from '@/store/studio/state'
+import type { LampColor } from './studio'
 import { clamp } from '@/lib/clamp'
 import { finiteOr } from '@/lib/finite'
 

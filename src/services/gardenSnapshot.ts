@@ -9,6 +9,7 @@ import {
   migrate,
   sanitizeAwayLog,
   sanitizeBackdropHaze,
+  sanitizeLampColor,
   sanitizeMusicVolume,
   sanitizePace,
   sanitizeSoundPreset,
@@ -49,6 +50,7 @@ export function applyGardenSnapshot(snapshot: GardenSnapshot, store: Store): voi
     patch.musicVolume = sanitizeMusicVolume(patch.musicVolume)
   if (Object.hasOwn(patch, 'soundPreset'))
     patch.soundPreset = sanitizeSoundPreset(patch.soundPreset)
+  if (Object.hasOwn(patch, 'lampColor')) patch.lampColor = sanitizeLampColor(patch.lampColor)
   if (Object.hasOwn(patch, 'pace')) patch.pace = sanitizePace(patch.pace)
   if (Object.hasOwn(patch, 'awayLog')) patch.awayLog = sanitizeAwayLog(patch.awayLog)
   store.set(patchStudioAtom, { ...(patch as Partial<StudioState>), selectedId: null })
