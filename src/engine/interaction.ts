@@ -103,10 +103,12 @@ export function updateDrag(world: EngineWorld, nx: number, ny: number, kx = 1): 
 
 /** Drops the dragged item; with `terrain`, a free-standing decor piece settles onto the ground first. */
 export function endDrag(world: EngineWorld, terrain?: TerrainInput): void {
-  const item = terrain ? world.items.find((i) => i.uid === world.draggingId) : undefined
-  if (item && terrain) settleDecor(item, terrain)
+  const uid = world.draggingId
   world.draggingId = null
   world.hoveredSnapTarget = null
+  if (!terrain) return
+  const item = world.items.find((i) => i.uid === uid)
+  if (item) settleDecor(item, terrain)
 }
 
 /**

@@ -10,7 +10,7 @@ const liveItemCount = (page: Page) =>
       ).__botanica?.world().items.length ?? 0,
   )
 
-/** Items in the v6 Falls Lake scene: moss wall, falls, boulders, 9 flora, 5 fauna. */
+/** Items in the v6 Falls Lake scene: moss wall, falls, boulders, 9 flora, 5 fauna, 4 decor. */
 const FALLS_ITEM_COUNT = 21
 
 test.beforeEach(({ page }) => dismissWelcomePrompt(page))

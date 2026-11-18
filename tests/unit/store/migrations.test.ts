@@ -174,7 +174,7 @@ describe('migrate', () => {
     expect((out.worldSeed as string).length).toBe(8)
   })
 
-  it('a v1 save runs through every step to v4', () => {
+  it('a v1 save runs through every step to the current version', () => {
     expect(migrate({ substrates: { water: 0 } }, 1)).toMatchObject({
       pace: 'garden',
       catchupEnabled: true,

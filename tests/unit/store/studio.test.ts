@@ -348,7 +348,7 @@ describe('studio store', () => {
     expect(store.get(backdropHazeAtom)).toBe(0)
   })
 
-  it('persists room, backdrop and mineral spots at version 4', () => {
+  it('persists room, backdrop and mineral spots at version 5', () => {
     const store = createStudio()
     store.set(roomAtom, { water: 'rain', air: 'smoke' })
     store.set(backdropAtom, 'karst')

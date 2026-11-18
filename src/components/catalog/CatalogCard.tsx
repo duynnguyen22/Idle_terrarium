@@ -7,6 +7,8 @@ import { useSpriteThumbnail } from '@/hooks/useSpriteThumbnail'
 export type CatalogEntry = CatalogDef & { id: CatalogId }
 
 const TAG = 'h-auto rounded px-1.5 py-0.5 text-[9px] font-semibold'
+/** Neutral grey chip shared by the fauna and decor tags. */
+const NEUTRAL_CHIP = `${TAG} border-transparent bg-[#eef1ea] text-[#3f4a42]`
 
 const ZONE_WORD = { land: 'Floor', glass: 'Glass', water: 'Pool', shore: 'Shore' } as const
 
@@ -17,23 +19,21 @@ function faunaZoneWord(def: FaunaDef): string {
 
 function CatalogTag({ def }: { def: CatalogDef }) {
   if (def.category === 'fauna') {
-    const chip = `${TAG} border-transparent bg-[#eef1ea] text-[#3f4a42]`
     return (
       <span className="flex gap-1">
-        <Badge variant="outline" className={chip}>
+        <Badge variant="outline" className={NEUTRAL_CHIP}>
           {faunaZoneWord(def)}
         </Badge>
-        <Badge variant="outline" className={chip}>
+        <Badge variant="outline" className={NEUTRAL_CHIP}>
           {def.nocturnal ? 'Night' : 'Day'}
         </Badge>
       </span>
     )
   }
   if (def.category === 'decor') {
-    const neutral = `${TAG} border-transparent bg-[#eef1ea] text-[#3f4a42]`
     return (
       <span className="flex flex-wrap gap-1">
-        <Badge variant="outline" className={neutral}>
+        <Badge variant="outline" className={NEUTRAL_CHIP}>
           {def.material}
         </Badge>
         {def.glowsAtNight && (
@@ -45,10 +45,7 @@ function CatalogTag({ def }: { def: CatalogDef }) {
           </Badge>
         )}
         {def.canMountOnRock && (
-          <Badge
-            variant="outline"
-            className={`${TAG} border-emerald-200 bg-emerald-50 text-emerald-700`}
-          >
+          <Badge variant="outline" className={NEUTRAL_CHIP}>
             Mountable
           </Badge>
         )}
