@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { FLORA } from '@/data/catalog'
+import { decorFootN, FLORA } from '@/data/catalog'
 import { DEFAULT_SUBSTRATES } from '@/data/substrates'
 import {
   BANK_W,
@@ -18,6 +18,7 @@ import {
   rotateItem,
   scaleItem,
   setFloraStage,
+  settleDecor,
 } from '@/engine/items'
 import { createWorld, type EngineWorld } from '@/engine/world'
 
@@ -196,5 +197,69 @@ describe('inspector operations', () => {
     setFloraStage(w, it.uid, 'mature')
     expect(it.scale).toBe(1.05)
     expect(it.growthProgress).toBe(1)
+  })
+})
+
+describe('decor grounding', () => {
+  const ground = (x: number) => getSoilSurfaceNormalizedY(terrain, x)
+  const decor = (dy: number) => {
+    const w = createWorld()
+    const it = addItem(w, 'deco_fox', 'mature', { terrain, x: 0.6, y: 0.5 })!
+    it.y = ground(it.x) - decorFootN(it.scale) + dy
+    return { w, it }
+  }
+
+  it('addItem › decor stands its feet on the soil', () => {
+    const it = addItem(createWorld(), 'deco_fox', 'mature', { terrain, rng: () => 0.5 })!
+    expect(it.scale).toBe(1.15)
+    expect(it.y).toBeCloseTo(ground(it.x) - decorFootN(1.15), 5)
+  })
+
+  it('settleDecor › drops a piece within 0.035 of the ground onto it', () => {
+    const { it } = decor(-0.02)
+    settleDecor(it, terrain)
+    expect(it.y).toBeCloseTo(ground(it.x) - decorFootN(it.scale), 5)
+  })
+
+  it('settleDecor › lifts a piece whose feet are below the ground', () => {
+    const { it } = decor(0)
+    it.y = ground(it.x)
+    settleDecor(it, terrain)
+    expect(it.y).toBeCloseTo(ground(it.x) - decorFootN(it.scale), 5)
+  })
+
+  it('settleDecor › leaves a piece dropped high in the air', () => {
+    const { it } = decor(-0.1)
+    const y = it.y
+    settleDecor(it, terrain)
+    expect(it.y).toBe(y)
+  })
+
+  it('settleDecor › leaves mounted decor and non-decor alone', () => {
+    const { w, it } = decor(0)
+    it.parentUid = 'rock'
+    it.y = ground(it.x)
+    const fern = addItem(w, 'peacock_fern', 'mature', { terrain, x: 0.6 })!
+    fern.y = ground(fern.x)
+    settleDecor(it, terrain)
+    settleDecor(fern, terrain)
+    expect(it.y).toBe(ground(it.x))
+    expect(fern.y).toBe(ground(fern.x))
+  })
+
+  it('scaleItem › decor on the ground keeps its feet on the ground when resized', () => {
+    const { w, it } = decor(0)
+    expect(it.scale).toBe(1.15)
+    scaleItem(w, it.uid, 1, terrain)
+    expect(it.scale).toBeCloseTo(1.25)
+    expect(it.y).toBeCloseTo(ground(it.x) - decorFootN(1.25), 5)
+  })
+
+  it('scaleItem › mounted decor keeps its y when resized', () => {
+    const { w, it } = decor(0)
+    it.parentUid = 'rock'
+    const y = it.y
+    scaleItem(w, it.uid, 1, terrain)
+    expect(it.y).toBe(y)
   })
 })

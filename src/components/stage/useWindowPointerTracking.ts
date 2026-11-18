@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { vesselKX } from '@/data/vessels'
+import { currentTerrain } from '@/engine/currentTerrain'
 import { commitWorld, tryGetWorld } from '@/engine/engineBridge'
 import { endDrag, updateDrag } from '@/engine/interaction'
 import { endMist } from '@/engine/simulation/mist'
@@ -67,7 +68,7 @@ export function useWindowPointerTracking({
         changed = true
       }
       if (world.draggingId) {
-        endDrag(world)
+        endDrag(world, currentTerrain(world))
         g.setDragging(false)
         changed = true
       }

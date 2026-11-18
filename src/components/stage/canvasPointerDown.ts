@@ -1,5 +1,6 @@
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { vesselKX } from '@/data/vessels'
+import { currentTerrain } from '@/engine/currentTerrain'
 import { commitWorld, tryGetWorld } from '@/engine/engineBridge'
 import { applyTool, beginDrag, endDrag, hitTest } from '@/engine/interaction'
 import { beginPinch } from '@/engine/viewInput'
@@ -27,7 +28,7 @@ function startPinch(g: CanvasGesture, world: EngineWorld): void {
     changed = true
   }
   if (world.draggingId) {
-    endDrag(world)
+    endDrag(world, currentTerrain(world))
     g.setDragging(false)
     changed = true
   }

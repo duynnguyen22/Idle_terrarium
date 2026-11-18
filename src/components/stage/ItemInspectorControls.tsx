@@ -2,6 +2,7 @@ import { cn } from 'cn'
 import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import type { PlacedItem } from '@/data/types'
+import { currentTerrain } from '@/engine/currentTerrain'
 import { advanceGrowth, flipItem, reorderItem, rotateItem, scaleItem } from '@/engine/items'
 import type { EngineWorld } from '@/engine/world'
 import { play } from '@/services/audio'
@@ -54,12 +55,18 @@ function InspectorButton({
 export function TransformButtons({ uid, apply }: { uid: string; apply: ApplyMutation }) {
   return (
     <div className="flex items-center gap-1">
-      <InspectorButton title="Smaller" onClick={() => apply((w) => scaleItem(w, uid, -1))}>
+      <InspectorButton
+        title="Smaller"
+        onClick={() => apply((w) => scaleItem(w, uid, -1, currentTerrain(w)))}
+      >
         <circle cx="11" cy="11" r="8" />
         <line x1="21" y1="21" x2="16.65" y2="16.65" />
         <line x1="8" y1="11" x2="14" y2="11" />
       </InspectorButton>
-      <InspectorButton title="Larger" onClick={() => apply((w) => scaleItem(w, uid, 1))}>
+      <InspectorButton
+        title="Larger"
+        onClick={() => apply((w) => scaleItem(w, uid, 1, currentTerrain(w)))}
+      >
         <circle cx="11" cy="11" r="8" />
         <line x1="21" y1="21" x2="16.65" y2="16.65" />
         <line x1="11" y1="8" x2="11" y2="14" />

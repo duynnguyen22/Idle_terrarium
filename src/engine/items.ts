@@ -1,4 +1,4 @@
-import { findCatalogDef } from '@/data/catalog'
+import { decorFootN, findCatalogDef } from '@/data/catalog'
 import type { GrowthStage, PlacedItem } from '@/data/types'
 import {
   BANK_W,
@@ -69,7 +69,9 @@ export function addItem(
     y ??= 0.3 + rng() * 0.2
   } else {
     x ??= randomLandX(terrain, rng)
-    y ??= getSoilSurfaceNormalizedY(terrain, x) - (def.category === 'fauna' ? 0.03 : 0.05)
+    const lift =
+      def.category === 'fauna' ? 0.03 : def.category === 'decor' ? decorFootN(def.baseScale) : 0.05
+    y ??= getSoilSurfaceNormalizedY(terrain, x) - lift
   }
   const isFlora = def.category === 'flora'
   const sprout = isFlora && stage === 'sprout'
@@ -103,10 +105,36 @@ export function addItem(
   return item
 }
 
-/** direction +1 larger, -1 smaller; clamped to [0.45, 2.2]. */
-export function scaleItem(world: EngineWorld, uid: string, direction: 1 | -1): void {
+/** Feet within this distance above the soil count as standing on it (prototype settleDecor). */
+const DECOR_SETTLE_GAP = 0.035
+
+/**
+ * A free-standing decor piece dropped near or into the ground stands its feet on the soil; one held up high
+ * stays put (prototype settleDecor). `prevScale` measures the feet before a resize. Mounted decor and every
+ * other category are left alone.
+ */
+export function settleDecor(item: PlacedItem, terrain: TerrainInput, prevScale?: number): void {
+  if (item.category !== 'decor' || item.parentUid) return
+  const ground = getSoilSurfaceNormalizedY(terrain, item.x)
+  const feet = item.y + decorFootN(prevScale ?? item.scale)
+  if (feet > ground || ground - feet < DECOR_SETTLE_GAP) item.y = ground - decorFootN(item.scale)
+}
+
+/**
+ * direction +1 larger, -1 smaller; clamped to [0.45, 2.2]. With `terrain`, free-standing decor keeps its feet
+ * on the ground.
+ */
+export function scaleItem(
+  world: EngineWorld,
+  uid: string,
+  direction: 1 | -1,
+  terrain?: TerrainInput,
+): void {
   const it = find(world, uid)
-  if (it) it.scale = clamp((it.scale || 1) + direction * SCALE_STEP, SCALE_MIN, SCALE_MAX)
+  if (!it) return
+  const was = it.scale || 1
+  it.scale = clamp(was + direction * SCALE_STEP, SCALE_MIN, SCALE_MAX)
+  if (terrain) settleDecor(it, terrain, was)
 }
 
 /** direction +1 clockwise, -1 counter-clockwise (15 degrees). */

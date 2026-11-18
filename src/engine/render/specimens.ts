@@ -1,6 +1,7 @@
 import { findCatalogDef, type CatalogId } from '@/data/catalog'
 import type { CatalogDef, PlacedItem, Rect } from '@/data/types'
 import type { StudioState } from '@/store/studio'
+import { canMount } from '../interaction'
 import { babyScale } from '../simulation/breed'
 import { sproutScale } from '../simulation/dayTick'
 import { gpuImage } from '../sprites/gpuImage'
@@ -250,7 +251,7 @@ function drawSelectionHalo(
   }
 }
 
-/** Magnetic ledge nodes when dragging a mountable plant or fauna. */
+/** Magnetic ledge nodes when dragging a mountable plant, decor piece or fauna. */
 function drawMountNodes(
   ctx: CanvasRenderingContext2D,
   world: EngineWorld,
@@ -261,12 +262,7 @@ function drawMountNodes(
   if (world.draggingId && def.category === 'hardscape' && def.mountPoints) {
     const draggedItem = world.items.find((i) => i.uid === world.draggingId)
     const draggedDef = draggedItem ? findCatalogDef(draggedItem.id) : null
-    if (
-      draggedItem &&
-      draggedDef &&
-      ((draggedDef.category === 'flora' && draggedDef.canMountOnRock) ||
-        draggedItem.category === 'fauna')
-    ) {
+    if (draggedItem && draggedDef && canMount(draggedItem, draggedDef)) {
       def.mountPoints.forEach((mp) => {
         const nx = px + mp.ox * drawSize
         const ny = py + mp.oy * drawSize

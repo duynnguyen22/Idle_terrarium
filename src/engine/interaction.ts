@@ -1,5 +1,7 @@
-import { findCatalogDef } from '@/data/catalog'
-import type { PlacedItem } from '@/data/types'
+import { decorFootN, findCatalogDef } from '@/data/catalog'
+import type { CatalogDef, PlacedItem } from '@/data/types'
+import type { TerrainInput } from './geometry'
+import { settleDecor } from './items'
 import type { EngineWorld } from './world'
 
 /** Hit radius in normalized units at scale 1 (prototype 3195). */
@@ -42,9 +44,21 @@ export function beginDrag(world: EngineWorld, item: PlacedItem, nx: number, ny: 
 const clampTo = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 
 /**
+ * Whether an item snaps to hardscape mount points: flora or decor marked canMountOnRock, or any fauna. The drag
+ * highlight in render/specimens uses the same rule.
+ */
+export function canMount(item: PlacedItem, def: CatalogDef): boolean {
+  return (
+    ((def.category === 'flora' || def.category === 'decor') && !!def.canMountOnRock) ||
+    item.category === 'fauna'
+  )
+}
+
+/**
  * Moves the dragged item to the pointer (plus grab offset), clamped to the play area, snapping to a hardscape
- * mount point within SNAP_RADIUS when the item can mount (flora with canMountOnRock, or any fauna). The item is
- * unmounted first on every move, so dragging away beyond the radius detaches it. Returns the item, or null.
+ * mount point within SNAP_RADIUS when the item can mount (see canMount). Decor snaps by its feet, not its centre,
+ * so it stands on the ledge. The item is unmounted first on every move, so dragging away beyond the radius
+ * detaches it. Returns the item, or null.
  * Children of the dragged item follow via syncChildren in the tick. Mount-point x offsets are divided by the
  * tank's KX so they keep their on-screen distance from the host on a wide tank; offsetX stores the kx-independent
  * pixel-proportional offset (normalized offset times kx), which syncChildren divides by the current kx.
@@ -60,7 +74,8 @@ export function updateDrag(world: EngineWorld, nx: number, ny: number, kx = 1): 
   const def = findCatalogDef(item.id)
   item.parentUid = null
   world.hoveredSnapTarget = null
-  if (def && ((def.category === 'flora' && def.canMountOnRock) || item.category === 'fauna')) {
+  if (def && canMount(item, def)) {
+    const footN = item.category === 'decor' ? decorFootN(item.scale) : 0
     snap: for (const host of world.items) {
       if (host.uid === item.uid || host.category !== 'hardscape') continue
       const hostDef = findCatalogDef(host.id)
@@ -69,9 +84,9 @@ export function updateDrag(world: EngineWorld, nx: number, ny: number, kx = 1): 
       for (const mp of hostDef.mountPoints) {
         const mpx = host.x + (mp.ox * hostSize) / kx
         const mpy = host.y + mp.oy * hostSize
-        if (Math.hypot(targetX - mpx, targetY - mpy) < SNAP_RADIUS) {
+        if (Math.hypot(targetX - mpx, targetY + footN - mpy) < SNAP_RADIUS) {
           targetX = mpx
-          targetY = mpy
+          targetY = mpy - footN
           item.parentUid = host.uid
           item.offsetX = (targetX - host.x) * kx
           item.offsetY = targetY - host.y
@@ -86,7 +101,10 @@ export function updateDrag(world: EngineWorld, nx: number, ny: number, kx = 1): 
   return item
 }
 
-export function endDrag(world: EngineWorld): void {
+/** Drops the dragged item; with `terrain`, a free-standing decor piece settles onto the ground first. */
+export function endDrag(world: EngineWorld, terrain?: TerrainInput): void {
+  const item = terrain ? world.items.find((i) => i.uid === world.draggingId) : undefined
+  if (item && terrain) settleDecor(item, terrain)
   world.draggingId = null
   world.hoveredSnapTarget = null
 }
