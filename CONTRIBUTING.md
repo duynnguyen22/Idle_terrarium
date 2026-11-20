@@ -54,3 +54,7 @@ Never add an entry. If your change makes something too long, split it.
 
 Imports only point down the layer table. See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the table and for where to put new code.
+
+To find the code, saved data and tests behind one feature, see
+[docs/FEATURE_MAP.md](docs/FEATURE_MAP.md). If your change adds a feature, a storage key or a saved
+field, or moves a feature's code, update the map in the same pull request.

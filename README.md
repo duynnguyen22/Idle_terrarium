@@ -29,4 +29,4 @@ Other commands: `pnpm build`, `pnpm test`, `pnpm e2e`, `pnpm lint`, and `pnpm ve
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code rules and how to open a pull request.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code rules and how to open a pull request. New to the code? Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), then [docs/FEATURE_MAP.md](docs/FEATURE_MAP.md).

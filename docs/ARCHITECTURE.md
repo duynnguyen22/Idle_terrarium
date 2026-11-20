@@ -187,6 +187,7 @@ No file is exempt from the limits.
 
 ## More
 
+- Which files, state, saved keys and tests belong to each feature: [FEATURE_MAP.md](FEATURE_MAP.md).
 - How to set up, test and send a change: `CONTRIBUTING.md`.
 - Why the layers look like this: the
   [design spec](superpowers/specs/2026-11-15-maintainability-refactor-design.md).
