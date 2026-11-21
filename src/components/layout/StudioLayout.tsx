@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useAtom, useAtomValue } from 'jotai'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { AccountDialog } from '@/components/account/AccountDialog'
 import { GrowthBoard } from '@/components/growth/GrowthBoard'
 import { LightingControls } from '@/components/nav/LightingControls'
@@ -13,12 +14,15 @@ import { Toaster } from '@/components/ui/sonner'
 import { useAccountLifecycle } from '@/hooks/useAccountLifecycle'
 import { useAudio } from '@/hooks/useAudio'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { useLayoutMode } from '@/hooks/useLayoutMode'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { useRelaxMode } from '@/hooks/useRelaxMode'
 import { useTour } from '@/hooks/useTour'
+import { isHandheldAtom, layoutModeAtom } from '@/store/layout'
+import { drawerAtom, type DrawerSide } from '@/store/overlay'
 import { LeftSidebar } from './LeftSidebar'
 import { RightTelemetry } from './RightTelemetry'
-import { TopNav, type DrawerSide } from './TopNav'
+import { TopNav } from './TopNav'
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
 
@@ -29,9 +33,14 @@ export function StudioLayout({ children }: { children: ReactNode }) {
   useAudio()
   useAccountLifecycle()
   useReducedMotion()
-  // Below the lg breakpoint the sidebars are slide-over drawers; only one is open at a time (local UI state).
-  const [drawer, setDrawer] = useState<DrawerSide | null>(null)
+  useLayoutMode()
+  const mode = useAtomValue(layoutModeAtom)
+  const handheld = useAtomValue(isHandheldAtom)
+  // Below the lg breakpoint the sidebars are slide-over drawers; only one is open at a time.
+  const [drawer, setDrawer] = useAtom(drawerAtom)
   const toggleDrawer = (side: DrawerSide) => setDrawer((d) => (d === side ? null : side))
+  // The drawer lives in the store, so reset it on unmount like the old per-mount state.
+  useEffect(() => () => setDrawer(null), [setDrawer])
 
   useEffect(() => {
     if (!drawer) return
@@ -44,7 +53,7 @@ export function StudioLayout({ children }: { children: ReactNode }) {
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [drawer])
+  }, [drawer, setDrawer])
 
   // Focus management: into the drawer on open, back to its toggle on close.
   const prevDrawer = useRef<DrawerSide | null>(null)
@@ -61,11 +70,15 @@ export function StudioLayout({ children }: { children: ReactNode }) {
   }, [drawer])
 
   return (
-    <div className="flex h-screen w-screen select-none flex-col bg-cream text-ink-deep">
+    <div
+      id="studio-root"
+      data-layout={mode}
+      className="flex h-screen w-screen select-none flex-col bg-cream text-ink-deep"
+    >
       <TopNav drawer={drawer} onToggleDrawer={toggleDrawer} />
       <div className="relative flex flex-1 overflow-hidden">
         <LeftSidebar drawerOpen={drawer === 'left'} />
-        {drawer && (
+        {drawer && !handheld && (
           <button
             type="button"
             aria-label="Close panel"

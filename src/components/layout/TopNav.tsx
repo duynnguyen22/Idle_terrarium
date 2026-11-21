@@ -2,8 +2,7 @@ import { ChartNoAxesColumnIcon, MenuIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ClockSpeedPill } from '@/components/nav/ClockSpeedPill'
 import { UtilityActions } from '@/components/nav/UtilityActions'
-
-export type DrawerSide = 'left' | 'right'
+import type { DrawerSide } from '@/store/overlay'
 
 const DRAWER_BTN = 'border-sand-border lg:hidden'
 
