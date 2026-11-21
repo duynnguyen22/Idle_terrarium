@@ -39,4 +39,10 @@ describe('care toolbar on a phone', () => {
       screen.getByRole('button', { name: 'Pouring: Lake Water' }).querySelector('span')?.className,
     ).not.toContain('max-w-[96px]')
   })
+
+  it('desktop icons keep the default 16 px size classes', () => {
+    render(<CareToolbar />)
+    const svg = screen.getByRole('button', { name: 'Mist Spray' }).querySelector('svg')
+    expect(svg?.getAttribute('class')).toContain('h-4 w-4')
+  })
 })

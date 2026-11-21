@@ -60,7 +60,7 @@ export function CareToolbar() {
             title={handheld ? t.label : undefined}
             className={cn(TOOL, 'text-ink-soft hover:bg-white', handheld && TOUCH_ICON)}
           >
-            <LineIcon name={t.icon} className={cn(handheld ? 'size-5' : undefined)} />
+            <LineIcon name={t.icon} className={handheld ? 'size-5' : undefined} />
             {!handheld && <span>{t.label}</span>}
           </Toggle>
         )

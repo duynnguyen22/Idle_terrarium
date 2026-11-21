@@ -4,8 +4,8 @@ import { StudioLayout } from '@/components/layout/StudioLayout'
 import { UtilityActions } from '@/components/nav/UtilityActions'
 import { WELCOME_KEY, panelOpenAtom, patchAccountAtom, resetAccountAtom } from '@/services/account'
 import { appStore } from '@/store/appStore'
-import { layoutModeAtom, sheetLevelAtom } from '@/store/layout'
-import { resetOverlayAtom } from '@/store/overlay'
+import { layoutModeAtom, openSheetAtom, sheetLevelAtom } from '@/store/layout'
+import { drawerAtom, resetOverlayAtom } from '@/store/overlay'
 import {
   audioEnabledAtom,
   createDefaultState,
@@ -142,5 +142,16 @@ describe('phone top bar and More menu', () => {
     act(() => void fireEvent.keyDown(window, { key: 'Escape' }))
     expect(build()).toHaveAttribute('aria-expanded', 'false')
     expect(document.activeElement).toBe(build())
+  })
+
+  it('opening More from the landscape rail closes the open sheet', () => {
+    stubMedia('land')
+    render(<StudioLayout>{null}</StudioLayout>)
+    act(() => appStore.set(openSheetAtom, 'build'))
+    expect(appStore.get(drawerAtom)).toBe('left')
+    const rail = within(screen.getByRole('navigation', { name: 'Sections' }))
+    act(() => void fireEvent.keyDown(rail.getByRole('button', { name: 'More' }), { key: 'Enter' }))
+    expect(screen.getByRole('menu')).toBeTruthy()
+    expect(appStore.get(drawerAtom)).toBeNull()
   })
 })

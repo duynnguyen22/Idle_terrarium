@@ -89,7 +89,11 @@ export function SoundMenuTrigger({
     >
       <span className="flex min-w-0 flex-col leading-tight">
         <span className="text-[11px] text-white/50">Sound</span>
-        <span className="truncate text-[13px] font-medium">{label}</span>
+        <span
+          className={phone ? 'truncate text-sm font-medium' : 'truncate text-[13px] font-medium'}
+        >
+          {label}
+        </span>
       </span>
       <LineIcon
         name="chevronUp"
@@ -120,10 +124,11 @@ export function SoundMenu({
   return (
     <div
       id={menuId}
-      className={cn(
-        'absolute bottom-full mb-3 w-72 rounded-3xl bg-forest-deep p-2 shadow-[0_20px_48px_-16px_rgba(0,0,0,0.6)]',
-        phone ? '-left-1.5' : 'left-0',
-      )}
+      className={
+        phone
+          ? 'absolute bottom-full -left-1.5 mb-3 w-72 rounded-3xl bg-forest-deep p-2 shadow-[0_20px_48px_-16px_rgba(0,0,0,0.6)]'
+          : 'absolute bottom-full left-0 mb-3 w-72 rounded-3xl bg-forest-deep p-2 shadow-[0_20px_48px_-16px_rgba(0,0,0,0.6)]'
+      }
     >
       {/* On a phone the volume range sits in the dock itself. */}
       {!phone && (

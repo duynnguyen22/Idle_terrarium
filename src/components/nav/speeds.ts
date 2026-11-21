@@ -17,7 +17,7 @@ export const activeSpeed = (realTime: boolean, speed: number): SpeedId | '' =>
 
 export const applySpeed = (id: string) => {
   const next = SPEEDS[id as SpeedId]
-  if (!next) return // pressing the active item again keeps it selected
+  if (!next) return // an unknown or empty id changes nothing
   appStore.set(realTimeModeAtom, next.rt)
   appStore.set(timeSpeedAtom, next.v)
   showToast(next.toast)

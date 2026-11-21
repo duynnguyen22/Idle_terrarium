@@ -4,7 +4,7 @@ import { tryGetWorld } from '@/engine/engineBridge'
 import type { Cam } from '@/engine/view'
 import { frameThePlants } from '@/hooks/useKeyboardShortcuts'
 import { appStore } from '@/store/appStore'
-import { isHandheldAtom, layoutModeAtom, stagePadPxAtom } from '@/store/layout'
+import { isHandheldAtom, layoutModeAtom, stagePadPxAtom, viewportHeightAtom } from '@/store/layout'
 import { relaxModeAtom } from '@/store/studio'
 
 /** True while the camera is still where the last automatic framing put it (or nothing was framed yet). */
@@ -23,6 +23,7 @@ export function camUntouched(t: Cam, auto: Cam | null, tol = 0.02): boolean {
 export function usePhoneReframe(): void {
   const pad = useAtomValue(stagePadPxAtom)
   const mode = useAtomValue(layoutModeAtom)
+  const viewportH = useAtomValue(viewportHeightAtom)
   const handheld = useAtomValue(isHandheldAtom)
   const autoCam = useRef<Cam | null>(null)
   const wasHandheld = useRef(handheld)
@@ -48,5 +49,5 @@ export function usePhoneReframe(): void {
       cancelAnimationFrame(first)
       cancelAnimationFrame(second)
     }
-  }, [pad, mode, handheld])
+  }, [pad, mode, handheld, viewportH])
 }

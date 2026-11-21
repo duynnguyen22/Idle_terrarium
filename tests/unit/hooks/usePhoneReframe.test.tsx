@@ -119,4 +119,14 @@ describe('usePhoneReframe', () => {
     flush()
     expect(framePlants).toHaveBeenCalledTimes(1)
   })
+
+  it('reframes on a plain resize while the camera is untouched', () => {
+    stubWorld()
+    renderHook(() => usePhoneReframe())
+    flush()
+    framePlants.mockClear()
+    act(() => appStore.set(viewportHeightAtom, 700))
+    flush()
+    expect(framePlants).toHaveBeenCalledTimes(1)
+  })
 })
