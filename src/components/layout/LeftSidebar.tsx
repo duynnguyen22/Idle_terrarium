@@ -6,8 +6,9 @@ import { RoomTab } from '@/components/catalog/RoomTab'
 import { VesselTab } from '@/components/catalog/VesselTab'
 import { TabIcon, type TabIconName } from '@/components/ui/StudioIcons'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { layoutModeAtom } from '@/store/layout'
+import { layoutModeAtom, sheetDragPxAtom } from '@/store/layout'
 import { activeTabAtom } from '@/store/studio'
+import { SheetGrab } from './phone/SheetGrab'
 import { sheetClasses } from './phone/sheetClasses'
 
 /** Tab bar entries; each uses the artifact's two-tone tab icon of the same name. */
@@ -81,12 +82,14 @@ export function LeftSidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
   const [activeTab, setActiveTab] = useAtom(activeTabAtom)
   const select = (id: string) => setActiveTab(id as TabIconName)
   const mode = useAtomValue(layoutModeAtom)
-  const sheet = sheetClasses(mode, drawerOpen)
+  const dragging = useAtomValue(sheetDragPxAtom) !== null
+  const sheet = sheetClasses(mode, drawerOpen, dragging)
   return (
     <Tabs asChild value={activeTab} onValueChange={select} className="gap-0">
       <aside
         id="left-sidebar"
         data-drawer-open={drawerOpen}
+        data-dragging={dragging || undefined}
         className={cn(
           sheet
             ? [sheet, 'flex flex-col']
@@ -94,6 +97,7 @@ export function LeftSidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
           !sheet && !drawerOpen && 'max-lg:invisible max-lg:-translate-x-full',
         )}
       >
+        {mode === 'phone' && <SheetGrab className="bg-sand-light" />}
         <TabsList className="grid w-full grid-cols-6 gap-1 rounded-none border-b border-sand-border bg-sand-light p-2 group-data-horizontal/tabs:h-auto">
           {TABS.map((t) => (
             <TabsTrigger
