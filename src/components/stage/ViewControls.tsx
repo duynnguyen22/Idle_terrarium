@@ -30,7 +30,7 @@ const goHome = () => {
 const BTN =
   'h-[30px] min-w-[30px] rounded-lg px-1.5 text-[11.5px] font-semibold tabular-nums text-ink-deep transition-[background-color,transform] duration-150 hover:bg-sand-pale active:scale-95 disabled:opacity-35 motion-reduce:transition-none'
 /** Touch size: 40 px buttons. The percent button keeps its width in a column. */
-const BTN_TOUCH = 'h-10 min-w-10'
+const BTN_TOUCH = 'h-10 min-w-10 px-0'
 const BTN_RELAX = 'text-white/80 hover:bg-white/10 hover:text-white'
 // Radix sets both aria-pressed and data-state; both rules have the same specificity, so each on-state
 // utility is paired (as in ui/toggle.tsx) and neither can be overridden by the other.
@@ -111,7 +111,7 @@ export function ViewControls() {
           variant="ghost"
           title="Show the whole tank (0)"
           onClick={goHome}
-          className={cn(BTN, 'min-w-[46px]', tone)}
+          className={cn(BTN, 'min-w-[46px]', tone, handheld && 'text-[11px]')}
         >
           {zoomPct}%
         </Button>
@@ -122,7 +122,7 @@ export function ViewControls() {
           aria-hidden="true"
           className={cn(
             'mx-0.5 h-[18px] w-px',
-            handheld && 'mx-0 my-0.5 h-px w-[18px]',
+            handheld && 'mx-0 my-0.5 h-px w-5',
             relax ? 'bg-white/15' : 'bg-sand-border',
           )}
         />

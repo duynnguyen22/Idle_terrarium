@@ -18,7 +18,7 @@ const TOOLS: readonly { id: string; icon: IconName; label: string }[] = [
 
 const TOOL = 'h-9 gap-1.5 rounded-xl px-3 text-xs font-semibold'
 /** Touch size: 44 px square icon buttons (the label moves to aria-label and title). */
-const TOUCH_ICON = 'size-11 px-0'
+const TOUCH_ICON = 'size-11 rounded-[14px] px-0'
 
 function pourLabel(material: string): string {
   const layer = SUBSTRATES_BY_ID[material as SubstrateId] as
@@ -43,7 +43,10 @@ export function CareToolbar() {
       id="care-toolbar"
       role="toolbar"
       aria-label="Care tools"
-      className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-2xl border border-sand-border bg-paper/95 px-3 py-2 shadow-lg backdrop-blur-md"
+      className={cn(
+        'absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-2xl border border-sand-border bg-paper/95 px-3 py-2 shadow-lg backdrop-blur-md',
+        handheld && 'bottom-2.5 max-w-none gap-0.5 overflow-visible rounded-[18px] p-1',
+      )}
     >
       {TOOLS.map((t, i) => {
         // Pressing the active tool again keeps it chosen: one tool is always in hand.
@@ -57,7 +60,7 @@ export function CareToolbar() {
             title={handheld ? t.label : undefined}
             className={cn(TOOL, 'text-ink-soft hover:bg-white', handheld && TOUCH_ICON)}
           >
-            <LineIcon name={t.icon} />
+            <LineIcon name={t.icon} className={cn(handheld ? 'size-5' : undefined)} />
             {!handheld && <span>{t.label}</span>}
           </Toggle>
         )

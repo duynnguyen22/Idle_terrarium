@@ -45,7 +45,10 @@ export function LightingControls() {
       id="light-control"
       role="group"
       aria-label="Lighting"
-      className="absolute right-3 top-3 z-20 flex items-center gap-0.5 rounded-xl border border-sand-border bg-paper/95 p-1 shadow-sm"
+      className={cn(
+        'absolute right-3 top-3 z-20 flex items-center gap-0.5 rounded-xl border border-sand-border bg-paper/95 p-1 shadow-sm',
+        handheld && 'top-2 right-2 max-w-[calc(100%-16px)] overflow-visible',
+      )}
     >
       <ToggleGroup
         type="single"

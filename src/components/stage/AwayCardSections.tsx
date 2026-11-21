@@ -101,6 +101,7 @@ export function AwayChanges({
   ping,
   select,
 }: { report: AwayReport; empty: boolean } & ItemLineActions) {
+  const handheld = useAtomValue(isHandheldAtom)
   return (
     <>
       {empty ? (
@@ -116,7 +117,7 @@ export function AwayChanges({
                 size="auto"
                 onMouseEnter={() => ping(item.uid)}
                 onClick={() => select(item.uid)}
-                className={LINE}
+                className={cn(LINE, handheld && 'px-2 py-[9px]')}
               >
                 <Dot colour={dotColour(item.kind)} />
                 <span>{item.text}</span>
@@ -181,7 +182,7 @@ export function AwayActions({
   canVisit: boolean
   onClose: () => void
 }) {
-  const touch = useAtomValue(isHandheldAtom) && 'h-11'
+  const touch = useAtomValue(isHandheldAtom) && 'h-11 text-sm'
   return (
     <div className="flex items-center gap-2">
       {canVisit && (

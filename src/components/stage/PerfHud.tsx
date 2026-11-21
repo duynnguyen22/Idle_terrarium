@@ -19,7 +19,7 @@ export function PerfHud() {
       aria-live="off"
       className={cn(
         'pointer-events-none absolute top-2 left-2 z-50 rounded-md bg-forest-night/70 px-2 py-1 font-mono text-[11px] text-cream tabular-nums',
-        handheld && 'top-auto bottom-[72px] left-2',
+        handheld && 'top-auto bottom-[72px] left-2 max-w-[calc(100%-70px)] text-[10px]',
       )}
     >
       {text || '…'}
