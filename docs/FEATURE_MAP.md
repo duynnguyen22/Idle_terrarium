@@ -311,7 +311,7 @@ fail the build. It loses someone's garden. Reviewers check them by hand.
 - **Hide the sign-up prompt in e2e tests.** Call `dismissWelcomePrompt` from
   `tests/e2e/helpers.ts` before `page.goto`.
 - **Find the prototype's behavior.** Many comments say "prototype 2907-3020" or "prototype v8".
-  Those point at line numbers in the saved prototypes in `docs/reference/` (`prototype-v10.html` is
+  Those point at line numbers in the saved prototypes in `docs/reference/` (`prototype-v11.html` is
   the newest). Each plan in `docs/superpowers/plans/` names the prototype file its line numbers use.
   When the app and the prototype disagree and no spec explains why, treat the prototype as the
   intended behavior and ask before changing it.
