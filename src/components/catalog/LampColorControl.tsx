@@ -1,5 +1,7 @@
 import { useAtomValue, useSetAtom } from 'jotai'
+import { cn } from 'cn'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { layoutModeAtom } from '@/store/layout'
 import { hasGrowLampAtom, lampColorAtom, type LampColor } from '@/store/studio'
 import { showToast } from '@/store/toast'
 
@@ -17,6 +19,7 @@ export function LampColorControl() {
   const lampColor = useAtomValue(lampColorAtom)
   const hasGrowLamp = useAtomValue(hasGrowLampAtom)
   const setLampColor = useSetAtom(lampColorAtom)
+  const phone = useAtomValue(layoutModeAtom) === 'phone'
 
   const choose = (color: string) => {
     if (!color || color === lampColor) return
@@ -40,7 +43,10 @@ export function LampColorControl() {
         <ToggleGroupItem
           key={color}
           value={color}
-          className="h-[26px] phone:h-9 gap-1.5 rounded-[7px] text-[11.5px] hover:bg-transparent hover:text-forest-ink data-[state=on]:font-semibold data-[state=on]:text-forest-ink data-[state=on]:shadow-none disabled:opacity-60"
+          className={cn(
+            'h-[26px] gap-1.5 rounded-[7px] text-[11.5px] hover:bg-transparent hover:text-forest-ink data-[state=on]:font-semibold data-[state=on]:text-forest-ink data-[state=on]:shadow-none disabled:opacity-60',
+            phone && 'h-9',
+          )}
         >
           <span
             aria-hidden="true"

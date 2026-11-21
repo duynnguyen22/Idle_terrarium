@@ -39,7 +39,8 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
   const room = useAtomValue(roomAtom)
   const hasLid = useAtomValue(hasLidAtom)
   const m = useMemo(() => envModel(room, hasLid), [room, hasLid])
-  const sheet = sheetClasses(useAtomValue(layoutModeAtom), drawerOpen)
+  const mode = useAtomValue(layoutModeAtom)
+  const sheet = sheetClasses(mode, drawerOpen)
   const [badgeLabel, badgeCls] = badge(t.careIssues.filter((i) => i.level === 'warn').length)
 
   return (
@@ -49,7 +50,7 @@ export function RightTelemetry({ drawerOpen = false }: { drawerOpen?: boolean })
       data-drawer-open={drawerOpen}
       className={cn(
         sheet
-          ? [sheet, 'flex flex-col gap-3.5 overflow-y-auto p-4 phone:pt-0']
+          ? [sheet, 'flex flex-col gap-3.5 overflow-y-auto p-4', mode === 'phone' && 'pt-0']
           : 'z-20 flex w-72 shrink-0 flex-col gap-3.5 overflow-y-auto border-l border-sand-border bg-paper p-4 max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:z-40 max-lg:max-w-[85vw] max-lg:shadow-xl max-lg:transition-[transform,visibility] motion-reduce:max-lg:transition-none',
         !sheet && !drawerOpen && 'max-lg:invisible max-lg:translate-x-full',
       )}

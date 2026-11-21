@@ -1,7 +1,9 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CatalogGrid } from '@/components/catalog/CatalogGrid'
+import { LampColorControl } from '@/components/catalog/LampColorControl'
 import { StudioLayout } from '@/components/layout/StudioLayout'
+import { enterRelax } from '@/components/nav/studioActions'
 import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { configureSpriteCache } from '@/engine/sprites/spriteCache'
 import { createWorld } from '@/engine/world'
@@ -104,12 +106,35 @@ describe('phone tab bar', () => {
     expect(nav()).toBeNull()
   })
 
+  it('entering relax drops the stage bottom margin', () => {
+    render(<StudioLayout>{null}</StudioLayout>)
+    const stage = document.getElementById('canvas-stage') as HTMLElement
+    const margin = 'mb-[calc(58px+env(safe-area-inset-bottom)+var(--stage-pad))]'
+    expect(stage).toHaveClass(margin)
+    act(() => enterRelax())
+    expect(stage).not.toHaveClass(margin)
+  })
+
   it('writes the sheet height to #studio-root', () => {
     vi.stubGlobal('innerHeight', 800)
     render(<StudioLayout>{null}</StudioLayout>)
     click(tab('Build'))
     const root = document.getElementById('studio-root') as HTMLElement
     expect(root.style.getPropertyValue('--sheet-h')).toBe('432px')
+  })
+})
+
+describe('phone touch sizes', () => {
+  it('gives the lamp colour buttons a 36 px height on a phone only', () => {
+    const { unmount } = render(<LampColorControl />)
+    const white = () => screen.getByRole('radio', { name: /White/ })
+    expect(white()).toHaveClass('h-[26px]')
+    expect(white()).not.toHaveClass('h-9')
+    unmount()
+    appStore.set(layoutModeAtom, 'phone')
+    render(<LampColorControl />)
+    expect(white()).toHaveClass('h-9')
+    expect(white()).not.toHaveClass('h-[26px]')
   })
 })
 

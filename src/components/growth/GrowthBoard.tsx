@@ -52,7 +52,8 @@ export function GrowthBoard() {
   const lampColor = useAtomValue(lampColorAtom)
   const substrates = useAtomValue(substratesAtom)
   const setPace = useSetAtom(paceAtom)
-  const sheet = sheetClasses(useAtomValue(layoutModeAtom), true)
+  const mode = useAtomValue(layoutModeAtom)
+  const sheet = sheetClasses(mode, true)
   useGrowthBoardLifecycle(open, setOpen)
 
   if (!open) return null
@@ -96,7 +97,7 @@ export function GrowthBoard() {
       aria-labelledby={titleId}
       className={cn(
         sheet
-          ? [sheet, 'flex flex-col gap-2.5 px-4 pt-4 phone:pt-0']
+          ? [sheet, 'flex flex-col gap-2.5 px-4 pt-4', mode === 'phone' && 'pt-0']
           : 'absolute inset-y-0 right-0 z-30 flex w-[min(26.25rem,100%)] flex-col gap-2.5 border-l border-sand-border bg-paper px-4 pt-4 shadow-[-18px_0_40px_-24px_rgba(20,40,28,.45)]',
       )}
     >
