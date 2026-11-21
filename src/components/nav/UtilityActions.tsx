@@ -2,30 +2,11 @@ import { useAtomValue } from 'jotai'
 import { AccountChip } from '@/components/account/AccountChip'
 import { Button } from '@/components/ui/button'
 import { LineIcon } from '@/components/ui/LineIcon'
-import { startAudioFromGesture, stopAudio } from '@/services/audio'
-import { exportSnapshotPng, snapshotFilename } from '@/lib/snapshot'
-import { getTerrariumCanvas } from '@/lib/terrariumCanvas'
 import { appStore } from '@/store/appStore'
 import { growthBoardOpenAtom, openGrowthBoardAtom } from '@/store/overlay'
-import { audioEnabledAtom, dayCountAtom, relaxModeAtom } from '@/store/studio'
-import { showToast } from '@/store/toast'
+import { audioEnabledAtom } from '@/store/studio'
 import { MoreMenu } from './MoreMenu'
-
-const enterRelax = () => {
-  appStore.set(relaxModeAtom, true)
-  startAudioFromGesture()
-}
-const toggleAudio = () => {
-  // Starting must happen inside this click (gesture); stopping must not create an AudioContext.
-  if (appStore.get(audioEnabledAtom)) stopAudio()
-  else startAudioFromGesture()
-}
-const takeSnapshot = async () => {
-  const canvas = getTerrariumCanvas()
-  if (!canvas) return
-  const ok = await exportSnapshotPng(canvas, snapshotFilename(appStore.get(dayCountAtom)))
-  if (ok) showToast('Snapshot saved')
-}
+import { enterRelax, takeSnapshot, toggleAudio } from './studioActions'
 
 export function UtilityActions() {
   const audioEnabled = useAtomValue(audioEnabledAtom)
