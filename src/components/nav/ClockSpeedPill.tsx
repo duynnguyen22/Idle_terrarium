@@ -1,4 +1,4 @@
-import { atom, useAtomValue, useSetAtom } from 'jotai'
+import { atom, useAtomValue } from 'jotai'
 import { ClockIcon, PauseIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -10,6 +10,7 @@ import { useLocalClock } from '@/hooks/useLocalClock'
 import { plusOneDay } from '@/services/awayFlow'
 import { dayCountAtom, lightingAtom, realTimeModeAtom, timeSpeedAtom } from '@/store/studio'
 import { showToast } from '@/store/toast'
+import { activeSpeed, applySpeed } from './speeds'
 
 const PHASE_ICONS: Record<LightingId, IconName> = {
   dawn: 'sunrise',
@@ -25,15 +26,6 @@ const PHASE_BADGES: Record<LightingId, string> = {
   night: 'Night · respiration',
 }
 
-type SpeedId = 'rt' | 'pause' | '1x' | '5x'
-
-const SPEEDS: Record<SpeedId, { rt: boolean; v: number; toast: string }> = {
-  rt: { rt: true, v: 1, toast: 'Running at real-world speed' },
-  pause: { rt: false, v: 0, toast: 'Simulation paused' },
-  '1x': { rt: false, v: 1, toast: 'Standard 1× speed' },
-  '5x': { rt: false, v: 5, toast: 'Fast-forward: 5× growth and creature speed' },
-}
-
 const ITEM = 'text-xs font-semibold'
 /** Compact items (pause, 1×, 5×) keep the old tight padding so the nav fits at 900 px. */
 const COMPACT = `${ITEM} min-w-0 px-2`
@@ -44,8 +36,6 @@ export function ClockSpeedPill() {
   const lighting = useAtomValue(lightingAtom)
   const dayCount = useAtomValue(dayCountAtom)
   const speedKey = useAtomValue(speedKeyAtom)
-  const setTimeSpeed = useSetAtom(timeSpeedAtom)
-  const setRealTimeMode = useSetAtom(realTimeModeAtom)
   const clock = useLocalClock()
 
   const [mode, speedStr] = speedKey.split(':')
@@ -53,16 +43,7 @@ export function ClockSpeedPill() {
   const realTime = mode === 'rt'
   const dateLabel = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
-  const active: SpeedId | '' =
-    speed === 0 ? 'pause' : speed === 5 ? '5x' : speed === 1 ? (realTime ? 'rt' : '1x') : ''
-
-  const setSpeed = (id: string) => {
-    const next = SPEEDS[id as SpeedId]
-    if (!next) return // pressing the active item again keeps it selected
-    setRealTimeMode(next.rt)
-    setTimeSpeed(next.v)
-    showToast(next.toast)
-  }
+  const active = activeSpeed(realTime, speed)
 
   const plusDay = () => showToast(plusOneDay())
 
@@ -84,7 +65,7 @@ export function ClockSpeedPill() {
         spacing={1.5}
         aria-label="Simulation speed"
         value={active}
-        onValueChange={setSpeed}
+        onValueChange={applySpeed}
       >
         <ToggleGroupItem
           value="rt"
