@@ -25,7 +25,7 @@ export function GrowthPaceToggle({
         <ToggleGroupItem
           key={id}
           value={id}
-          className="h-[30px] min-w-0 rounded-lg text-xs font-semibold data-[state=on]:shadow-[0_1px_2px_rgba(20,40,28,.12)]"
+          className="h-[30px] min-w-0 phone:h-10 rounded-lg text-xs font-semibold data-[state=on]:shadow-[0_1px_2px_rgba(20,40,28,.12)]"
         >
           {PACE_LABELS[id]}
         </ToggleGroupItem>

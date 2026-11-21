@@ -50,7 +50,7 @@ export function PumpFlowControl() {
             key={flow}
             value={flow}
             className={cn(
-              'h-[26px] rounded-[7px] text-[11.5px] hover:bg-transparent hover:text-forest-ink data-[state=on]:font-semibold data-[state=on]:text-forest-ink data-[state=on]:shadow-none disabled:opacity-60',
+              'h-[26px] phone:h-9 rounded-[7px] text-[11.5px] hover:bg-transparent hover:text-forest-ink data-[state=on]:font-semibold data-[state=on]:text-forest-ink data-[state=on]:shadow-none disabled:opacity-60',
               flow === 'strong' &&
                 'data-[state=on]:text-[#9a3412] data-[state=on]:hover:text-[#9a3412]',
             )}

@@ -2,6 +2,9 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
+/* Portrait phone: #studio-root carries data-layout='phone'. */
+@custom-variant phone (&:where([data-layout='phone'] *));
+
 @theme {
   --font-display: 'Fraunces', serif;
   --font-sans: 'Inter', sans-serif;
