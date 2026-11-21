@@ -1,4 +1,5 @@
 import { atom } from 'jotai'
+import { drawerAtom } from './layout'
 
 export interface TourStep {
   uid: string
@@ -47,4 +48,5 @@ export const resetOverlayAtom = atom(null, (_get, set) => {
   set(growthBoardOpenAtom, false)
   set(awayIndexAtom, null)
   set(tourAtom, null)
+  set(drawerAtom, null)
 })
