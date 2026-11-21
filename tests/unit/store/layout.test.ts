@@ -2,7 +2,6 @@ import { createStore } from 'jotai'
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   activeSheetAtom,
-  drawerAtom,
   isHandheldAtom,
   layoutModeAtom,
   layoutModeFor,
@@ -14,7 +13,7 @@ import {
   stagePadPxAtom,
   viewportHeightAtom,
 } from '@/store/layout'
-import { awayIndexAtom, growthBoardOpenAtom, resetOverlayAtom } from '@/store/overlay'
+import { awayIndexAtom, drawerAtom, growthBoardOpenAtom, resetOverlayAtom } from '@/store/overlay'
 
 let store = createStore()
 beforeEach(() => {

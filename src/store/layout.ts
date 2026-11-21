@@ -1,9 +1,8 @@
 import { atom } from 'jotai'
 import { type SheetLevel, sheetLevelPx } from '@/lib/sheetMath'
-import { growthBoardOpenAtom, openGrowthBoardAtom } from './overlay'
+import { drawerAtom, growthBoardOpenAtom, openGrowthBoardAtom } from './overlay'
 
 export type LayoutMode = 'desktop' | 'phone' | 'land'
-export type DrawerSide = 'left' | 'right'
 export type SheetName = 'build' | 'health' | 'growth'
 
 // Transient layout state; never persisted.
@@ -16,7 +15,6 @@ export function layoutModeFor(phoneMatches: boolean, landMatches: boolean): Layo
 
 export const layoutModeAtom = atom<LayoutMode>('desktop')
 export const viewportHeightAtom = atom(800)
-export const drawerAtom = atom<DrawerSide | null>(null)
 export const sheetLevelAtom = atom<SheetLevel>('half')
 /** Live drag height in px while the sheet handle is held, else null. */
 export const sheetDragPxAtom = atom<number | null>(null)
