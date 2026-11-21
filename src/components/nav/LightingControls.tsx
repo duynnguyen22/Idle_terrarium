@@ -1,10 +1,12 @@
 import { useAtomValue, useSetAtom } from 'jotai'
+import { cn } from 'cn'
 import { LineIcon } from '@/components/ui/LineIcon'
 import type { IconName } from '@/components/ui/lineIconPaths'
 import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { LightingId } from '@/data/types'
+import { isHandheldAtom } from '@/store/layout'
 import { autoLightSyncAtom, lightingAtom } from '@/store/studio'
 import { showToast } from '@/store/toast'
 
@@ -15,12 +17,15 @@ const PHASES: { id: LightingId; icon: IconName; label: string }[] = [
   { id: 'night', icon: 'moon', label: 'Night' },
 ]
 
+/** Touch size: 40 px buttons. */
+const TOUCH = 'h-10 min-w-10'
 const ITEM = 'gap-1 px-2 text-xs font-medium data-[state=on]:font-semibold'
 
 /** Floating light switcher in the canvas corner (prototype #light-control); hidden in relax mode. */
 export function LightingControls() {
   const lighting = useAtomValue(lightingAtom)
   const autoSync = useAtomValue(autoLightSyncAtom)
+  const handheld = useAtomValue(isHandheldAtom)
   const setLighting = useSetAtom(lightingAtom)
   const setAutoLightSync = useSetAtom(autoLightSyncAtom)
 
@@ -56,7 +61,7 @@ export function LightingControls() {
             value={p.id}
             aria-label={p.label}
             title={p.label}
-            className={ITEM}
+            className={cn(ITEM, handheld && TOUCH)}
           >
             <LineIcon name={p.icon} />
             <span className="hidden 2xl:inline">{p.label}</span>
@@ -69,7 +74,7 @@ export function LightingControls() {
         pressed={autoSync}
         onPressedChange={toggleAuto}
         title="Follow your local clock"
-        className="gap-1 px-2 text-xs font-semibold"
+        className={cn('gap-1 px-2 text-xs font-semibold', handheld && TOUCH)}
       >
         <LineIcon name="auto" />
         <span>Auto</span>

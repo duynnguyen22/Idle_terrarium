@@ -1,5 +1,6 @@
 import type { AwayReport } from '@/data/events'
 import { XIcon } from 'lucide-react'
+import { useAtomValue } from 'jotai'
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import {
@@ -10,6 +11,7 @@ import {
   sinceLabel,
 } from '@/engine/simulation/report'
 import { startEveningVisit } from '@/services/awayFlow'
+import { isHandheldAtom } from '@/store/layout'
 
 function tankSpan(tankHours: number): string {
   const days = tankHours / 24
@@ -179,12 +181,16 @@ export function AwayActions({
   canVisit: boolean
   onClose: () => void
 }) {
+  const touch = useAtomValue(isHandheldAtom) && 'h-11'
   return (
     <div className="flex items-center gap-2">
       {canVisit && (
         <Button
           onClick={() => startEveningVisit(report)}
-          className="h-10 flex-1 rounded-xl bg-forest-ink text-[13.5px] font-semibold text-white hover:bg-forest-deep"
+          className={cn(
+            'h-10 flex-1 rounded-xl bg-forest-ink text-[13.5px] font-semibold text-white hover:bg-forest-deep',
+            touch,
+          )}
         >
           Start the evening visit
         </Button>
@@ -195,6 +201,7 @@ export function AwayActions({
         className={cn(
           'h-10 rounded-xl border-sand-border bg-white px-5 text-[13.5px] font-semibold text-forest-ink hover:bg-linen hover:text-forest-ink',
           !canVisit && 'flex-1',
+          touch,
         )}
       >
         Got it
