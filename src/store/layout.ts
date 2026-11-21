@@ -7,9 +7,9 @@ export type SheetName = 'build' | 'health' | 'growth'
 
 // Transient layout state; never persisted.
 
-/** Maps the phone and landscape media queries to a layout mode. */
+/** Maps the phone and landscape media queries to a layout mode; landscape wins whenever its query matches. */
 export function layoutModeFor(phoneMatches: boolean, landMatches: boolean): LayoutMode {
-  if (phoneMatches && landMatches) return 'land'
+  if (landMatches) return 'land'
   return phoneMatches ? 'phone' : 'desktop'
 }
 

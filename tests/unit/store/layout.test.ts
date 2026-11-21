@@ -26,6 +26,10 @@ describe('layoutModeFor', () => {
     expect(layoutModeFor(true, false)).toBe('phone')
     expect(layoutModeFor(false, false)).toBe('desktop')
   })
+
+  it('landscape follows the landscape query alone', () => {
+    expect(layoutModeFor(false, true)).toBe('land')
+  })
 })
 
 describe('layout atoms', () => {
