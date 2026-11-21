@@ -16,6 +16,7 @@ import { useAccountLifecycle } from '@/hooks/useAccountLifecycle'
 import { useAudio } from '@/hooks/useAudio'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useLayoutMode } from '@/hooks/useLayoutMode'
+import { usePhoneReframe } from '@/hooks/usePhoneReframe'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { useRelaxMode } from '@/hooks/useRelaxMode'
 import { useTour } from '@/hooks/useTour'
@@ -44,6 +45,7 @@ export function StudioLayout({ children }: { children: ReactNode }) {
   useAccountLifecycle()
   useReducedMotion()
   useLayoutMode()
+  usePhoneReframe()
   const mode = useAtomValue(layoutModeAtom)
   const handheld = useAtomValue(isHandheldAtom)
   const relax = useAtomValue(relaxModeAtom)
