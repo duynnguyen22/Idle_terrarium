@@ -58,7 +58,7 @@ export function TopNav({ drawer = null, onToggleDrawer }: TopNavProps) {
             />
           </svg>
         </div>
-        <div className="leading-tight">
+        <div className="leading-tight max-lg:hidden">
           <h1 className="whitespace-nowrap font-serif-title text-lg font-bold tracking-tight text-forest-ink">
             Botanica
           </h1>
