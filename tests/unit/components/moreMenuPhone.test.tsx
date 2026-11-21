@@ -79,10 +79,16 @@ describe('phone top bar and More menu', () => {
     render(<StudioLayout>{null}</StudioLayout>)
     openMenu()
     expect(menu().getByText('Time')).toBeTruthy()
-    click(menu().getByRole('menuitem', { name: '5×' }))
+    click(menu().getByRole('menuitemradio', { name: '5×' }))
     expect(appStore.get(timeSpeedAtom)).toBe(5)
-    expect(menu().getByRole('menuitem', { name: '5×' })).toHaveAttribute('aria-pressed', 'true')
-    expect(menu().getByRole('menuitem', { name: 'Pause' })).toHaveAttribute('aria-pressed', 'false')
+    expect(menu().getByRole('menuitemradio', { name: '5×' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    expect(menu().getByRole('menuitemradio', { name: 'Pause' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    )
   })
 
   it('Ambient sound row shows Off then On', () => {

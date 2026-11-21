@@ -5,6 +5,8 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { phaseAtom, userAtom } from '@/services/account'
@@ -16,7 +18,7 @@ import { takeSnapshot, toggleAudio } from './studioActions'
 
 const ROW = 'min-h-11 gap-2.5 rounded-[10px] px-3 text-sm font-medium text-[#1f2924]'
 const SEG =
-  'min-h-11 justify-center rounded-[10px] bg-[#eef1ea] text-sm font-semibold text-forest-deep aria-pressed:bg-forest-deep aria-pressed:text-white focus:aria-pressed:bg-forest-deep focus:aria-pressed:text-white'
+  'min-h-11 justify-center rounded-[10px] bg-[#eef1ea] px-1 text-sm font-semibold text-forest-deep data-[state=checked]:bg-forest-deep data-[state=checked]:text-white focus:data-[state=checked]:bg-forest-deep focus:data-[state=checked]:text-white focus:data-[state=checked]:**:text-white [&>[data-slot=dropdown-menu-radio-item-indicator]]:hidden'
 
 const SEG_ITEMS: { id: SpeedId; label: string }[] = [
   { id: 'rt', label: 'Live' },
@@ -72,22 +74,23 @@ export function MoreMenuPhoneGroup() {
       <DropdownMenuLabel className="px-3 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
         Time
       </DropdownMenuLabel>
-      <div
-        role="group"
+      <DropdownMenuRadioGroup
         aria-label="Time speed"
+        value={active}
+        onValueChange={applySpeed}
         className="grid grid-cols-4 gap-1 px-1.5 pt-0.5 pb-1.5"
       >
         {SEG_ITEMS.map((s) => (
-          <DropdownMenuItem
+          <DropdownMenuRadioItem
             key={s.id}
-            aria-pressed={active === s.id}
-            onSelect={keepOpen(() => applySpeed(s.id))}
+            value={s.id}
+            onSelect={(e) => e.preventDefault()}
             className={SEG}
           >
             {s.label}
-          </DropdownMenuItem>
+          </DropdownMenuRadioItem>
         ))}
-      </div>
+      </DropdownMenuRadioGroup>
       <DropdownMenuItem onSelect={() => showToast(plusOneDay())} className={ROW}>
         <RowIcon>
           <path d="M5 4v16M19 4v16M9 8l6 4l-6 4z" />
