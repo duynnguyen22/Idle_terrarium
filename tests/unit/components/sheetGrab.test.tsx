@@ -93,4 +93,42 @@ describe('sheet grab handle', () => {
     act(() => appStore.set(layoutModeAtom, 'desktop'))
     expect(screen.queryByRole('button', { name: LABEL })).toBeNull()
   })
+
+  it('a move of exactly 6px is still a tap', () => {
+    down(500)
+    move(494)
+    expect(appStore.get(sheetDragPxAtom)).toBeNull()
+    up(494)
+    expect(appStore.get(sheetLevelAtom)).toBe('full')
+  })
+
+  it('unmounting the grab mid-drag clears the drag height', () => {
+    down(500)
+    move(400)
+    expect(appStore.get(sheetDragPxAtom)).toBe(532)
+    act(() => appStore.set(layoutModeAtom, 'land'))
+    expect(screen.queryByRole('button', { name: LABEL })).toBeNull()
+    expect(appStore.get(sheetDragPxAtom)).toBeNull()
+  })
+
+  it('losing pointer capture mid-drag clears the drag height and keeps the level', () => {
+    down(500)
+    move(400)
+    act(() => void fireEvent.lostPointerCapture(grab(), { pointerId: 1 }))
+    expect(appStore.get(sheetDragPxAtom)).toBeNull()
+    expect(appStore.get(sheetLevelAtom)).toBe('half')
+    expect(left()).not.toHaveAttribute('data-dragging')
+  })
+
+  it('a keyboard click steps half → full', () => {
+    act(() => void fireEvent.click(grab(), { detail: 0 }))
+    expect(appStore.get(sheetLevelAtom)).toBe('full')
+  })
+
+  it('a pointer tap and its synthetic click step exactly once', () => {
+    down(500)
+    up(500)
+    act(() => void fireEvent.click(grab(), { detail: 1 }))
+    expect(appStore.get(sheetLevelAtom)).toBe('full')
+  })
 })
