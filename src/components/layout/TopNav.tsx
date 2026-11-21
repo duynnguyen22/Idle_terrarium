@@ -76,7 +76,8 @@ export function TopNav({ drawer = null, onToggleDrawer }: TopNavProps) {
             />
           </svg>
         </div>
-        <div className="leading-tight">
+        {/* Desktop hides the title below lg so the nav controls fit; the phone bar keeps it (spec 664). */}
+        <div className={phone ? 'leading-tight' : 'leading-tight max-lg:hidden'}>
           <h1
             className={cn(
               'whitespace-nowrap font-serif-title text-lg font-bold tracking-tight text-forest-ink',
