@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator'
 import type { LightingId } from '@/data/types'
 import { useLocalClock } from '@/hooks/useLocalClock'
 import { plusOneDay } from '@/services/awayFlow'
+import { isHandheldAtom } from '@/store/layout'
 import { dayCountAtom, lightingAtom, realTimeModeAtom, timeSpeedAtom } from '@/store/studio'
 import { showToast } from '@/store/toast'
 import { activeSpeed, applySpeed } from './speeds'
@@ -37,6 +38,7 @@ export function ClockSpeedPill() {
   const dayCount = useAtomValue(dayCountAtom)
   const speedKey = useAtomValue(speedKeyAtom)
   const clock = useLocalClock()
+  const handheld = useAtomValue(isHandheldAtom)
 
   const [mode, speedStr] = speedKey.split(':')
   const speed = Number(speedStr)
@@ -59,41 +61,46 @@ export function ClockSpeedPill() {
         <span className="hidden text-[11px] text-stone 2xl:inline">{PHASE_BADGES[lighting]}</span>
       </div>
 
-      <ToggleGroup
-        type="single"
-        variant="solid"
-        spacing={1.5}
-        aria-label="Simulation speed"
-        value={active}
-        onValueChange={applySpeed}
-      >
-        <ToggleGroupItem
-          value="rt"
-          aria-label="Real-time"
-          title="Run at real-world speed"
-          className={ITEM}
-        >
-          <ClockIcon data-icon="inline-start" className="size-3.5" />
-          <span className="hidden lg:inline">Real-time</span>
-        </ToggleGroupItem>
-        <ToggleGroupItem value="pause" aria-label="Pause" title="Pause" className={COMPACT}>
-          <PauseIcon className="size-3.5 fill-current" />
-        </ToggleGroupItem>
-        <ToggleGroupItem value="1x" className={COMPACT}>
-          1×
-        </ToggleGroupItem>
-        <ToggleGroupItem value="5x" className={COMPACT}>
-          5×
-        </ToggleGroupItem>
-      </ToggleGroup>
-      <Button
-        variant="wheat"
-        title="Advance the biosphere by 24 hours"
-        onClick={plusDay}
-        className="text-xs font-semibold"
-      >
-        +1 day
-      </Button>
+      {/* Handheld: the speeds and +1 day move into the More menu. */}
+      {!handheld && (
+        <>
+          <ToggleGroup
+            type="single"
+            variant="solid"
+            spacing={1.5}
+            aria-label="Simulation speed"
+            value={active}
+            onValueChange={applySpeed}
+          >
+            <ToggleGroupItem
+              value="rt"
+              aria-label="Real-time"
+              title="Run at real-world speed"
+              className={ITEM}
+            >
+              <ClockIcon data-icon="inline-start" className="size-3.5" />
+              <span className="hidden lg:inline">Real-time</span>
+            </ToggleGroupItem>
+            <ToggleGroupItem value="pause" aria-label="Pause" title="Pause" className={COMPACT}>
+              <PauseIcon className="size-3.5 fill-current" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="1x" className={COMPACT}>
+              1×
+            </ToggleGroupItem>
+            <ToggleGroupItem value="5x" className={COMPACT}>
+              5×
+            </ToggleGroupItem>
+          </ToggleGroup>
+          <Button
+            variant="wheat"
+            title="Advance the biosphere by 24 hours"
+            onClick={plusDay}
+            className="text-xs font-semibold"
+          >
+            +1 day
+          </Button>
+        </>
+      )}
     </div>
   )
 }

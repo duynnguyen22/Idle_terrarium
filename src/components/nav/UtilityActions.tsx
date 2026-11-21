@@ -3,6 +3,7 @@ import { AccountChip } from '@/components/account/AccountChip'
 import { Button } from '@/components/ui/button'
 import { LineIcon } from '@/components/ui/LineIcon'
 import { appStore } from '@/store/appStore'
+import { isHandheldAtom } from '@/store/layout'
 import { growthBoardOpenAtom, openGrowthBoardAtom } from '@/store/overlay'
 import { audioEnabledAtom } from '@/store/studio'
 import { MoreMenu } from './MoreMenu'
@@ -11,10 +12,13 @@ import { enterRelax, takeSnapshot, toggleAudio } from './studioActions'
 export function UtilityActions() {
   const audioEnabled = useAtomValue(audioEnabledAtom)
   const growthOpen = useAtomValue(growthBoardOpenAtom)
+  const handheld = useAtomValue(isHandheldAtom)
   const toggleGrowth = () => {
     if (appStore.get(growthBoardOpenAtom)) appStore.set(growthBoardOpenAtom, false)
     else appStore.set(openGrowthBoardAtom)
   }
+  // Handheld: the tab bar and the More menu carry everything else.
+  if (handheld) return <MoreMenu />
 
   return (
     <div className="flex shrink-0 items-center gap-1 lg:gap-1.5">
