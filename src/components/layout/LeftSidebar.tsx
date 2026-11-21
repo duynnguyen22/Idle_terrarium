@@ -1,4 +1,4 @@
-import { useAtom } from 'jotai'
+import { useAtom, useAtomValue } from 'jotai'
 import { cn } from 'cn'
 import { CatalogGrid } from '@/components/catalog/CatalogGrid'
 import { PlantingStageToggle } from '@/components/catalog/PlantingStageToggle'
@@ -6,7 +6,10 @@ import { RoomTab } from '@/components/catalog/RoomTab'
 import { VesselTab } from '@/components/catalog/VesselTab'
 import { TabIcon, type TabIconName } from '@/components/ui/StudioIcons'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { layoutModeAtom, sheetDragPxAtom } from '@/store/layout'
 import { activeTabAtom } from '@/store/studio'
+import { SheetGrab } from './phone/SheetGrab'
+import { sheetClasses } from './phone/sheetClasses'
 
 /** Tab bar entries; each uses the artifact's two-tone tab icon of the same name. */
 const TABS = [
@@ -78,16 +81,23 @@ function ActivePanel({ tab }: { tab: string }) {
 export function LeftSidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
   const [activeTab, setActiveTab] = useAtom(activeTabAtom)
   const select = (id: string) => setActiveTab(id as TabIconName)
+  const mode = useAtomValue(layoutModeAtom)
+  const dragging = useAtomValue(sheetDragPxAtom) !== null
+  const sheet = sheetClasses(mode, drawerOpen, dragging)
   return (
     <Tabs asChild value={activeTab} onValueChange={select} className="gap-0">
       <aside
         id="left-sidebar"
         data-drawer-open={drawerOpen}
+        data-dragging={dragging || undefined}
         className={cn(
-          'z-20 flex w-80 shrink-0 flex-col border-r border-sand-border bg-paper max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:z-40 max-lg:max-w-[85vw] max-lg:shadow-xl max-lg:transition-[transform,visibility] motion-reduce:max-lg:transition-none',
-          !drawerOpen && 'max-lg:invisible max-lg:-translate-x-full',
+          sheet
+            ? [sheet, 'flex flex-col']
+            : 'z-20 flex w-80 shrink-0 flex-col border-r border-sand-border bg-paper max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:z-40 max-lg:max-w-[85vw] max-lg:shadow-xl max-lg:transition-[transform,visibility] motion-reduce:max-lg:transition-none',
+          !sheet && !drawerOpen && 'max-lg:invisible max-lg:-translate-x-full',
         )}
       >
+        {mode === 'phone' && <SheetGrab className="bg-sand-light" />}
         <TabsList className="grid w-full grid-cols-6 gap-1 rounded-none border-b border-sand-border bg-sand-light p-2 group-data-horizontal/tabs:h-auto">
           {TABS.map((t) => (
             <TabsTrigger
@@ -95,7 +105,10 @@ export function LeftSidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
               value={t.id}
               // Radix selects on mousedown and keyboard; a plain click (assistive tech) selects too.
               onClick={() => select(t.id)}
-              className="sidebar-tab h-auto flex-col gap-1 rounded-xl px-1 py-2 text-[11px] text-stone hover:bg-white/50 hover:text-stone data-active:bg-white data-active:font-semibold data-active:text-forest-deep group-data-[variant=default]/tabs-list:data-active:shadow-xs"
+              className={cn(
+                'sidebar-tab h-auto flex-col gap-1 rounded-xl px-1 py-2 text-[11px] text-stone hover:bg-white/50 hover:text-stone data-active:bg-white data-active:font-semibold data-active:text-forest-deep group-data-[variant=default]/tabs-list:data-active:shadow-xs',
+                mode === 'phone' && 'min-h-[52px]',
+              )}
             >
               <TabIcon name={t.id} />
               {t.label}

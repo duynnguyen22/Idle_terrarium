@@ -1,5 +1,6 @@
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useId } from 'react'
+import { cn } from 'cn'
 import {
   AwayActions,
   AwayCardHeader,
@@ -12,6 +13,7 @@ import { clearRings, pingItem, PING_MS, setRings } from '@/engine/marks'
 import { focusOn } from '@/engine/view'
 import { paceMs } from '@/engine/simulation/pace'
 import { appStore } from '@/store/appStore'
+import { isHandheldAtom } from '@/store/layout'
 import { awayIndexAtom } from '@/store/overlay'
 import { awayLogAtom, paceAtom, relaxModeAtom, selectedIdAtom } from '@/store/studio'
 
@@ -27,6 +29,7 @@ export function AwayCard() {
   const awayIndex = useAtomValue(awayIndexAtom)
   const awayLog = useAtomValue(awayLogAtom)
   const pace = useAtomValue(paceAtom)
+  const handheld = useAtomValue(isHandheldAtom)
   const setAwayIndex = useSetAtom(awayIndexAtom)
   const report = awayIndex === null ? undefined : awayLog[awayIndex]
 
@@ -77,7 +80,10 @@ export function AwayCard() {
       id="away-card"
       role="dialog"
       aria-labelledby={titleId}
-      className="absolute top-4 left-4 z-30 flex max-h-[calc(100%-2rem)] w-[21rem] max-w-[calc(100%-2rem)] flex-col gap-4 overflow-y-auto rounded-[22px] border border-sand-border bg-paper p-5 text-ink-deep shadow-[0_18px_44px_-20px_rgba(17,34,26,0.45)]"
+      className={cn(
+        'absolute top-4 left-4 z-30 flex max-h-[calc(100%-2rem)] w-[21rem] max-w-[calc(100%-2rem)] flex-col gap-4 overflow-y-auto rounded-[22px] border border-sand-border bg-paper p-5 text-ink-deep shadow-[0_18px_44px_-20px_rgba(17,34,26,0.45)]',
+        handheld && 'inset-x-2 top-auto bottom-2 max-h-[64%] w-auto max-w-none',
+      )}
     >
       <AwayCardHeader report={report} titleId={titleId} onClose={() => setAwayIndex(null)} />
 

@@ -1,11 +1,14 @@
-import { useAtom } from 'jotai'
+import { useAtom, useAtomValue } from 'jotai'
+import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import { isEvening } from '@/hooks/useTour'
+import { layoutModeAtom } from '@/store/layout'
 import { tourAtom } from '@/store/overlay'
 
 /** Caption for the evening visit: where we are in the tour, the line for this item, and a Skip button. */
 export function TourCaption() {
   const [tour, setTour] = useAtom(tourAtom)
+  const phone = useAtomValue(layoutModeAtom) === 'phone'
   if (!tour) return null
 
   const step = tour.steps[tour.i]
@@ -18,7 +21,10 @@ export function TourCaption() {
       id="tour-caption"
       aria-label="Evening visit"
       aria-live="polite"
-      className="pointer-events-none absolute bottom-20 left-1/2 z-40 flex w-max max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 rounded-full bg-forest-night/90 py-2 pl-5 pr-2 text-white shadow-[0_12px_32px_-12px_rgba(0,0,0,0.55)] sm:bottom-24"
+      className={cn(
+        'pointer-events-none absolute bottom-20 left-1/2 z-40 flex w-max max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 rounded-full bg-forest-night/90 py-2 pl-5 pr-2 text-white shadow-[0_12px_32px_-12px_rgba(0,0,0,0.55)] sm:bottom-24',
+        phone && 'bottom-[calc(132px+env(safe-area-inset-bottom))]',
+      )}
     >
       <div className="min-w-0">
         {pos && (

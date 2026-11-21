@@ -1,5 +1,6 @@
 import { useAtomValue } from 'jotai'
 import { useReducer } from 'react'
+import { cn } from 'cn'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { SpecimenButtons, TransformButtons } from '@/components/stage/ItemInspectorControls'
@@ -10,6 +11,7 @@ import { deleteItem, duplicateItem } from '@/engine/items'
 import { play } from '@/services/audio'
 import type { EngineWorld } from '@/engine/world'
 import { appStore } from '@/store/appStore'
+import { isHandheldAtom } from '@/store/layout'
 import {
   plantingStageAtom,
   relaxModeAtom,
@@ -48,6 +50,7 @@ function inspectorMeta(item: PlacedItem, def: CatalogDef | null): string {
 export function ItemInspector() {
   const selectedId = useAtomValue(selectedIdAtom)
   const relaxMode = useAtomValue(relaxModeAtom)
+  const handheld = useAtomValue(isHandheldAtom)
   useAtomValue(worldSnapshotAtom)
   const [, bump] = useReducer((n: number) => n + 1, 0)
 
@@ -91,7 +94,10 @@ export function ItemInspector() {
   return (
     <div
       id="item-inspector"
-      className="absolute left-1/2 top-4 z-30 flex -translate-x-1/2 items-center gap-2.5 rounded-2xl border border-sand-border bg-paper/95 px-3.5 py-2 shadow-xl backdrop-blur-md"
+      className={cn(
+        'absolute left-1/2 top-4 z-30 flex -translate-x-1/2 items-center gap-2.5 rounded-2xl border border-sand-border bg-paper/95 px-3.5 py-2 shadow-xl backdrop-blur-md',
+        handheld && 'top-[60px] inset-x-2 translate-x-0',
+      )}
     >
       <div className="whitespace-nowrap">
         <div className="flex items-center gap-1.5">

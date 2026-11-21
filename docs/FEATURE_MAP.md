@@ -16,7 +16,7 @@ request.
 2. [Building the tank](#building-the-tank): vessel, catalog, placing and dragging, pouring, room
 3. [The living tank](#the-living-tank): simulation, care, gauges, lighting and lamp colour
 4. [Living time](#living-time): pace, catch-up, away card, evening visit, growth board
-5. [Looking at the tank](#looking-at-the-tank): camera, depth, backdrops, performance
+5. [Looking at the tank](#looking-at-the-tank): camera, depth, backdrops, performance, phone layout
 6. [Relax mode and sound](#relax-mode-and-sound)
 7. [Account and saved gardens](#account-and-saved-gardens)
 8. [Saving and loading](#saving-and-loading)
@@ -231,6 +231,16 @@ is in [the living-time spec](superpowers/specs/2026-11-11-living-time-design.md)
 Saving a PNG of the tank: `src/lib/snapshot.ts` (`exportSnapshotPng`; file name
 `botanica-living-biosphere-day-N`). Tested in `tests/unit/engine/snapshot.test.ts`.
 
+### Phone layout
+
+| | |
+|---|---|
+| What the player sees | On a phone (width up to 640 px) a tab bar sits at the bottom: Build, Health, Growth, Relax. Build, Health and Growth open as a bottom sheet with a grab handle: tap it to step the height, drag it down to close. Adding a catalog item shrinks the Build sheet to its peek height so the tank stays in view. In short landscape (height up to 480 px) the tabs become a left rail with a fifth More tab, the top bar is gone, and the panels open beside the rail. The More menu gains the Time, Live, Pause, 1×, 5×, +1 day, sound and snapshot rows that the phone top bar has no room for. Desktop is unchanged. |
+| Code | Layout mode and sheet math: `src/hooks/useLayoutMode.ts` (mirrors the two media queries), `src/store/layout.ts` (atoms), `src/lib/sheetMath.ts` (levels, snapping, drag clamp). Reframing when a sheet or rotation changes the stage: `src/hooks/usePhoneReframe.ts`. Chrome: `src/components/layout/phone/` (`PhoneTabBar.tsx`, `TabButton.tsx`, `SheetGrab.tsx`, `PhoneSheetVars.tsx`, `sheetClasses.ts`), `src/components/layout/useDrawerA11y.ts`. Menu: `src/components/nav/MoreMenu.tsx`, `MoreMenuPhoneGroup.tsx`, `speeds.ts`, `studioActions.ts`. Adapted for touch: `StudioLayout.tsx`, `TopNav.tsx`, `LeftSidebar.tsx`, `RightTelemetry.tsx`, `ClockSpeedPill.tsx`, `LightingControls.tsx`, the care toolbar, view controls, relax dock, item inspector, away card and growth board in `src/components/stage/` and `src/components/growth/`, plus touch-size tweaks in `CatalogGrid.tsx` (also holds the `peekBuildSheetAtom` call), `LampColorControl.tsx`, `PumpFlowControl.tsx`, `GrowthPaceToggle.tsx`, `TourCaption.tsx` and `PerfHud.tsx`. |
+| State | `layoutModeAtom`, `viewportHeightAtom`, `sheetLevelAtom`, `sheetDragPxAtom` in `src/store/layout.ts`; the open sheet is derived from `drawerAtom` and `growthBoardOpenAtom` (`src/store/overlay.ts`). **No storage key.** All layout state is transient and nothing is saved or added to a garden snapshot. |
+| Tests | `tests/unit/lib/sheetMath.test.ts`, `tests/unit/store/layout.test.ts`, `tests/unit/hooks/useLayoutMode.test.tsx`, `tests/unit/hooks/usePhoneReframe.test.tsx`, `tests/unit/components/phoneLayout.test.tsx`, `sheetGrab.test.tsx`, `moreMenuPhone.test.tsx`, `drawers.test.tsx`, `tests/e2e/phone.spec.ts` |
+| Watch out | The two media queries are copied from the prototype and landscape wins when both match. Sizes are fixed: tab bar 58 px, top bar 48 px, rail 60 px, sheet heights 0.27, 0.54 of the viewport and a full height. Touch targets are at least 44 px (40 px for view and light buttons). Rotating while a sheet is open must keep the same panel open and recompute its height. Escape with a sheet open closes only the sheet. Entering relax closes the sheet first. On desktop the tab bar is not rendered and adding an item never changes the sheet level. |
+
 ## Relax mode and sound
 
 | | |
@@ -311,7 +321,7 @@ fail the build. It loses someone's garden. Reviewers check them by hand.
 - **Hide the sign-up prompt in e2e tests.** Call `dismissWelcomePrompt` from
   `tests/e2e/helpers.ts` before `page.goto`.
 - **Find the prototype's behavior.** Many comments say "prototype 2907-3020" or "prototype v8".
-  Those point at line numbers in the saved prototypes in `docs/reference/` (`prototype-v10.html` is
+  Those point at line numbers in the saved prototypes in `docs/reference/` (`prototype-v11.html` is
   the newest). Each plan in `docs/superpowers/plans/` names the prototype file its line numbers use.
   When the app and the prototype disagree and no spec explains why, treat the prototype as the
   intended behavior and ask before changing it.

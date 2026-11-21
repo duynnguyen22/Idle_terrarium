@@ -1,11 +1,13 @@
 import { cn } from 'cn'
 import type { ReactNode } from 'react'
+import { useAtomValue } from 'jotai'
 import { Button } from '@/components/ui/button'
 import type { PlacedItem } from '@/data/types'
 import { currentTerrain } from '@/engine/currentTerrain'
 import { advanceGrowth, flipItem, reorderItem, rotateItem, scaleItem } from '@/engine/items'
 import type { EngineWorld } from '@/engine/world'
 import { play } from '@/services/audio'
+import { isHandheldAtom } from '@/store/layout'
 
 /** Runs a mutation on the live world and re-renders the inspector. */
 type ApplyMutation = (fn: (w: EngineWorld) => void) => void
@@ -37,6 +39,7 @@ function InspectorButton({
   className?: string
   children: ReactNode
 }) {
+  const handheld = useAtomValue(isHandheldAtom)
   return (
     <Button
       variant="ghost"
@@ -44,7 +47,7 @@ function InspectorButton({
       title={title}
       aria-label={title}
       onClick={onClick}
-      className={cn('hover:bg-white', className)}
+      className={cn('hover:bg-white', className, handheld && 'size-10')}
     >
       <Icon>{children}</Icon>
     </Button>

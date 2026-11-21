@@ -3,6 +3,7 @@ import { cn } from 'cn'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { PumpFlow } from '@/data/types'
 import { hasPool } from '@/engine/geometry'
+import { layoutModeAtom } from '@/store/layout'
 import { pumpFlowAtom, waterSplitAtom } from '@/store/studio'
 import { Glyph, HwText } from './HardwareRow'
 import { ICON_BASE, ICON_OFF, ICON_ON } from './hardwareRowStyles'
@@ -23,6 +24,7 @@ export function PumpFlowControl() {
   const pumpFlow = useAtomValue(pumpFlowAtom)
   const waterSplit = useAtomValue(waterSplitAtom)
   const setPumpFlow = useSetAtom(pumpFlowAtom)
+  const phone = useAtomValue(layoutModeAtom) === 'phone'
   const pool = hasPool(waterSplit)
   const pumpSub = pool ? PUMP_COPY[pumpFlow] : 'No pool in this build'
 
@@ -53,6 +55,7 @@ export function PumpFlowControl() {
               'h-[26px] rounded-[7px] text-[11.5px] hover:bg-transparent hover:text-forest-ink data-[state=on]:font-semibold data-[state=on]:text-forest-ink data-[state=on]:shadow-none disabled:opacity-60',
               flow === 'strong' &&
                 'data-[state=on]:text-[#9a3412] data-[state=on]:hover:text-[#9a3412]',
+              phone && 'h-9',
             )}
           >
             {label}
