@@ -1,4 +1,4 @@
-import { useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect } from 'react'
 import { layoutModeAtom, layoutModeFor, viewportHeightAtom } from '@/store/layout'
 
@@ -37,4 +37,10 @@ export function useLayoutMode(): void {
       window.removeEventListener('resize', onResize)
     }
   }, [setMode, setHeight])
+
+  // Re-read once the layout for a new mode has rendered. A mobile browser zooms the layout
+  // viewport out to fit the wide desktop first render, so the read above can be twice the real
+  // height, and it shrinks back for the phone layout without firing a resize event.
+  const mode = useAtomValue(layoutModeAtom)
+  useEffect(() => setHeight(window.innerHeight), [mode, setHeight])
 }

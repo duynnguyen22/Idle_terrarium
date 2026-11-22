@@ -75,6 +75,31 @@ test.describe('portrait phone', () => {
   })
 })
 
+// Mobile emulation zooms the layout viewport out to fit the desktop first render, then shrinks it
+// back with no resize event; the sheets must still size from the real 852 px height.
+test.describe('mobile browser', () => {
+  test.use({ viewport: { width: 393, height: 852 }, isMobile: true, hasTouch: true })
+
+  for (const [tab, id] of [
+    ['Build', '#left-sidebar'],
+    ['Health', '#right-sidebar'],
+    ['Growth', '#growth-board'],
+  ] as const) {
+    test(`${tab} opens as a half sheet that stays on screen`, async ({ page }) => {
+      await page.goto('/')
+      await page
+        .getByRole('navigation', { name: 'Sections' })
+        .getByRole('button', { name: tab })
+        .tap()
+      const sheet = page.locator(id)
+      await expect
+        .poll(async () => (await sheet.boundingBox())?.height)
+        .toBeCloseTo(852 * 0.54, -0.5)
+      expect((await sheet.boundingBox())?.y).toBeGreaterThan(0)
+    })
+  }
+})
+
 test.describe('short landscape', () => {
   test.use({ viewport: { width: 844, height: 390 }, hasTouch: true })
 
