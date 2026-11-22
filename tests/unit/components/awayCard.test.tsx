@@ -51,6 +51,9 @@ let world: EngineWorld
 const click = (el: HTMLElement) => act(() => void fireEvent.click(el))
 
 beforeEach(() => {
+  // Reports start 2 h before now; pin midday so the "since today" label holds on any CI clock.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 10, 11, 12, 0))
   appStore.set(patchStudioAtom, createDefaultState())
   appStore.set(resetOverlayAtom)
   world = createWorld()
@@ -60,6 +63,7 @@ beforeEach(() => {
 
 afterEach(() => {
   unregisterWorld()
+  vi.useRealTimers()
 })
 
 const open = (reports: AwayReport[], index = 0) => {
