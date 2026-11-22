@@ -1,9 +1,11 @@
+import { useAtomValue } from 'jotai'
+import { cn } from 'cn'
 import { ChartNoAxesColumnIcon, MenuIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ClockSpeedPill } from '@/components/nav/ClockSpeedPill'
 import { UtilityActions } from '@/components/nav/UtilityActions'
-
-export type DrawerSide = 'left' | 'right'
+import { layoutModeAtom } from '@/store/layout'
+import type { DrawerSide } from '@/store/overlay'
 
 const DRAWER_BTN = 'border-sand-border lg:hidden'
 
@@ -13,35 +15,51 @@ interface TopNavProps {
   onToggleDrawer?: (side: DrawerSide) => void
 }
 
+/** Phone top bar (spec 664): 48 px tall, logo, title and clock, then the More button. */
+const PHONE_BAR = 'h-12 gap-2 overflow-hidden pl-2.5'
+
 export function TopNav({ drawer = null, onToggleDrawer }: TopNavProps) {
+  const mode = useAtomValue(layoutModeAtom)
+  // Landscape: the rail carries the sections and the More menu, so there is no header at all.
+  if (mode === 'land') return null
+  const phone = mode === 'phone'
+
   return (
     <header
       id="top-nav"
-      className="z-30 flex h-14 shrink-0 flex-nowrap items-center justify-between gap-1 border-b border-sand-border bg-paper/95 px-2 lg:gap-2 lg:px-3 backdrop-blur-md"
+      className={cn(
+        'z-30 flex h-14 shrink-0 flex-nowrap items-center justify-between gap-1 border-b border-sand-border bg-paper/95 px-2 lg:gap-2 lg:px-3 backdrop-blur-md',
+        phone && PHONE_BAR,
+      )}
     >
       <div className="flex shrink-0 items-center gap-1.5 lg:gap-2.5">
-        <Button
-          variant="sand"
-          size="icon"
-          aria-label="Toggle catalog panel"
-          aria-expanded={drawer === 'left'}
-          aria-controls="left-sidebar"
-          onClick={() => onToggleDrawer?.('left')}
-          className={DRAWER_BTN}
-        >
-          <MenuIcon />
-        </Button>
-        <Button
-          variant="sand"
-          size="icon"
-          aria-label="Toggle telemetry panel"
-          aria-expanded={drawer === 'right'}
-          aria-controls="right-sidebar"
-          onClick={() => onToggleDrawer?.('right')}
-          className={DRAWER_BTN}
-        >
-          <ChartNoAxesColumnIcon />
-        </Button>
+        {/* Handheld: the tab bar's Build and Health tabs open the panels instead. */}
+        {!phone && (
+          <>
+            <Button
+              variant="sand"
+              size="icon"
+              aria-label="Toggle catalog panel"
+              aria-expanded={drawer === 'left'}
+              aria-controls="left-sidebar"
+              onClick={() => onToggleDrawer?.('left')}
+              className={DRAWER_BTN}
+            >
+              <MenuIcon />
+            </Button>
+            <Button
+              variant="sand"
+              size="icon"
+              aria-label="Toggle telemetry panel"
+              aria-expanded={drawer === 'right'}
+              aria-controls="right-sidebar"
+              onClick={() => onToggleDrawer?.('right')}
+              className={DRAWER_BTN}
+            >
+              <ChartNoAxesColumnIcon />
+            </Button>
+          </>
+        )}
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-forest-deep text-white shadow-sm">
           <svg
             className="h-5 w-5"
@@ -58,8 +76,14 @@ export function TopNav({ drawer = null, onToggleDrawer }: TopNavProps) {
             />
           </svg>
         </div>
-        <div className="leading-tight max-lg:hidden">
-          <h1 className="whitespace-nowrap font-serif-title text-lg font-bold tracking-tight text-forest-ink">
+        {/* Desktop hides the title below lg so the nav controls fit; the phone bar keeps it (spec 664). */}
+        <div className={phone ? 'leading-tight' : 'leading-tight max-lg:hidden'}>
+          <h1
+            className={cn(
+              'whitespace-nowrap font-serif-title text-lg font-bold tracking-tight text-forest-ink',
+              phone && 'text-[17px] max-[380px]:hidden',
+            )}
+          >
             Botanica
           </h1>
           <p className="hidden whitespace-nowrap text-[11px] text-stone-grey xl:block">

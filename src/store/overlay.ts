@@ -1,5 +1,7 @@
 import { atom } from 'jotai'
 
+export type DrawerSide = 'left' | 'right'
+
 export interface TourStep {
   uid: string
   text: string
@@ -15,6 +17,8 @@ export interface TourState {
 export const growthBoardOpenAtom = atom(false)
 /** Index of the away report the time-away card shows, or null when it is closed. */
 export const awayIndexAtom = atom<number | null>(null)
+/** Which side drawer (left build, right health) is open, or null. */
+export const drawerAtom = atom<DrawerSide | null>(null)
 export const tourAtom = atom<TourState | null>(null)
 
 /** Opens the growth board and closes the time-away card. */
@@ -47,4 +51,5 @@ export const resetOverlayAtom = atom(null, (_get, set) => {
   set(growthBoardOpenAtom, false)
   set(awayIndexAtom, null)
   set(tourAtom, null)
+  set(drawerAtom, null)
 })

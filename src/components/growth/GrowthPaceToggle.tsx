@@ -1,5 +1,8 @@
+import { useAtomValue } from 'jotai'
+import { cn } from 'cn'
 import { PACE_LABELS, type PaceId } from '@/data/pace'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { layoutModeAtom } from '@/store/layout'
 import { PACE_IDS } from './growthBoardConstants'
 
 /** The four-way tank pace switch at the top of the Growth board. */
@@ -10,6 +13,7 @@ export function GrowthPaceToggle({
   pace: PaceId
   onChoose: (id: PaceId) => void
 }) {
+  const phone = useAtomValue(layoutModeAtom) === 'phone'
   return (
     <ToggleGroup
       type="single"
@@ -25,7 +29,10 @@ export function GrowthPaceToggle({
         <ToggleGroupItem
           key={id}
           value={id}
-          className="h-[30px] min-w-0 rounded-lg text-xs font-semibold data-[state=on]:shadow-[0_1px_2px_rgba(20,40,28,.12)]"
+          className={cn(
+            'h-[30px] min-w-0 rounded-lg text-xs font-semibold data-[state=on]:shadow-[0_1px_2px_rgba(20,40,28,.12)]',
+            phone && 'h-10',
+          )}
         >
           {PACE_LABELS[id]}
         </ToggleGroupItem>

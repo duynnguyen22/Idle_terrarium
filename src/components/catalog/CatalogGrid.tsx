@@ -4,6 +4,7 @@ import { mutateWorld } from '@/engine/engineBridge'
 import { addItem } from '@/engine/items'
 import { play } from '@/services/audio'
 import { appStore } from '@/store/appStore'
+import { peekBuildSheetAtom } from '@/store/layout'
 import { selectedIdAtom, studioStateAtom } from '@/store/studio'
 import { showToast } from '@/store/toast'
 import { CatalogCard } from './CatalogCard'
@@ -40,6 +41,7 @@ export function CatalogGrid({ category }: { category: CatalogCategory }) {
       play('repot')
     }
     if (issueText) showToast(issueText)
+    appStore.set(peekBuildSheetAtom)
   }
   if (category === 'fauna') {
     return (

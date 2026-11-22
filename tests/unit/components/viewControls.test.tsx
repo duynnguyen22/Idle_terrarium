@@ -4,6 +4,7 @@ import { ViewControls } from '@/components/stage/ViewControls'
 import { registerWorld, unregisterWorld } from '@/engine/engineBridge'
 import { createWorld, type EngineWorld } from '@/engine/world'
 import { appStore } from '@/store/appStore'
+import { layoutModeAtom, openSheetAtom, sheetLevelAtom } from '@/store/layout'
 import { relaxModeAtom } from '@/store/studio'
 import { toastAtom } from '@/store/toast'
 import { VIEW_STORAGE_KEY, depthOnAtom, hydrateViewPrefs, zoomPctAtom } from '@/store/view'
@@ -127,5 +128,39 @@ describe('ViewControls', () => {
     const buttons = screen.getAllByRole('button')
     expect(buttons).toHaveLength(5)
     for (const b of buttons) expect(b).toHaveAccessibleName()
+  })
+  describe('on a phone', () => {
+    afterEach(() => {
+      appStore.set(layoutModeAtom, 'desktop')
+      appStore.set(openSheetAtom, null)
+      appStore.set(sheetLevelAtom, 'half')
+      appStore.set(relaxModeAtom, false)
+    })
+
+    it('phone view controls hide zoom in/out', () => {
+      appStore.set(layoutModeAtom, 'phone')
+      render(<ViewControls />)
+      expect(screen.queryByRole('button', { name: 'Zoom out' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Zoom in' })).toBeNull()
+      expect(screen.getByTitle('Show the whole tank (0)')).toBeTruthy()
+      expect(document.getElementById('view-ctl')?.className).toContain('bottom-[72px]')
+    })
+
+    it('a peeking sheet hides the percent button', () => {
+      appStore.set(layoutModeAtom, 'phone')
+      appStore.set(openSheetAtom, 'build', 'peek')
+      render(<ViewControls />)
+      expect(screen.queryByTitle('Show the whole tank (0)')).toBeNull()
+      expect(screen.getByRole('button', { name: 'Frame the plants' })).toBeTruthy()
+      expect(document.querySelector('#view-ctl span[aria-hidden="true"]')).toBeNull()
+    })
+
+    it('relax mode moves the stack to the top right', () => {
+      appStore.set(layoutModeAtom, 'phone')
+      appStore.set(relaxModeAtom, true)
+      render(<ViewControls />)
+      expect(document.getElementById('view-ctl')?.className).toContain('right-3')
+      expect(document.getElementById('view-ctl')?.className).not.toContain('bottom-[72px]')
+    })
   })
 })

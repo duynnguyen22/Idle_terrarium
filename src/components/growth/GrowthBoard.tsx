@@ -1,12 +1,16 @@
 import { PACE_SUBTITLES, type PaceId } from '@/data/pace'
 import { useAtomValue, useSetAtom } from 'jotai'
+import { cn } from 'cn'
 import { useId } from 'react'
+import { SheetGrab } from '@/components/layout/phone/SheetGrab'
+import { sheetClasses } from '@/components/layout/phone/sheetClasses'
 import { tryGetWorld } from '@/engine/engineBridge'
 import { PING_MS, pingItem } from '@/engine/marks'
 import { focusOn } from '@/engine/view'
 import { breedConditions } from '@/engine/simulation/breed'
 import { lightDose } from '@/engine/simulation/life'
 import { appStore } from '@/store/appStore'
+import { layoutModeAtom, sheetDragPxAtom } from '@/store/layout'
 import { growthBoardOpenAtom } from '@/store/overlay'
 import {
   dayCountAtom,
@@ -49,6 +53,9 @@ export function GrowthBoard() {
   const lampColor = useAtomValue(lampColorAtom)
   const substrates = useAtomValue(substratesAtom)
   const setPace = useSetAtom(paceAtom)
+  const mode = useAtomValue(layoutModeAtom)
+  const dragging = useAtomValue(sheetDragPxAtom) !== null
+  const sheet = sheetClasses(mode, true, dragging)
   useGrowthBoardLifecycle(open, setOpen)
 
   if (!open) return null
@@ -90,8 +97,14 @@ export function GrowthBoard() {
       id="growth-board"
       role="dialog"
       aria-labelledby={titleId}
-      className="absolute inset-y-0 right-0 z-30 flex w-[min(26.25rem,100%)] flex-col gap-2.5 border-l border-sand-border bg-paper px-4 pt-4 shadow-[-18px_0_40px_-24px_rgba(20,40,28,.45)]"
+      data-dragging={dragging || undefined}
+      className={cn(
+        sheet
+          ? [sheet, 'flex flex-col gap-2.5 px-4 pt-4', mode === 'phone' && 'pt-0']
+          : 'absolute inset-y-0 right-0 z-30 flex w-[min(26.25rem,100%)] flex-col gap-2.5 border-l border-sand-border bg-paper px-4 pt-4 shadow-[-18px_0_40px_-24px_rgba(20,40,28,.45)]',
+      )}
     >
+      {mode === 'phone' && <SheetGrab />}
       <GrowthBoardHeader titleId={titleId} onClose={closeGrowthBoard} />
 
       <GrowthPaceToggle pace={pace} onChoose={choosePace} />

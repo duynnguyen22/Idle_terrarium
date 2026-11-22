@@ -1,4 +1,6 @@
 import { useAtomValue } from 'jotai'
+import { cn } from 'cn'
+import { isHandheldAtom } from '@/store/layout'
 import { perfHudAtom, perfTextAtom } from '@/store/view'
 
 /**
@@ -9,12 +11,16 @@ import { perfHudAtom, perfTextAtom } from '@/store/view'
 export function PerfHud() {
   const on = useAtomValue(perfHudAtom)
   const text = useAtomValue(perfTextAtom)
+  const handheld = useAtomValue(isHandheldAtom)
   if (!on) return null
   return (
     <output
       id="perf-hud"
       aria-live="off"
-      className="pointer-events-none absolute top-2 left-2 z-50 rounded-md bg-forest-night/70 px-2 py-1 font-mono text-[11px] text-cream tabular-nums"
+      className={cn(
+        'pointer-events-none absolute top-2 left-2 z-50 rounded-md bg-forest-night/70 px-2 py-1 font-mono text-[11px] text-cream tabular-nums',
+        handheld && 'top-auto bottom-[72px] left-2 max-w-[calc(100%-70px)] text-[10px]',
+      )}
     >
       {text || '…'}
     </output>
